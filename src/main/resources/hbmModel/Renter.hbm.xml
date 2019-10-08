@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.anteater.star.domain.Renter">
+        <!--  主键 -->
+        <id name="renterId" column="renterId">
+            <generator class="native"></generator>
+        </id>
+        <!--   普通字段关联     -->
+        <property name="renterName"></property>
+        <property name="renterProvince"></property>
+        <property name="renterCity"></property>
+        <property name="renterAge"></property>
+        <property name="renterSex"></property>
+        <property name="renterIdCardNum"></property>
+        <property name="renterIdCardAddress"></property>
+        <property name="renterPhone"></property>
+        <property name="renterPic"></property>
+        <property name="renterJob"></property>
+        <property name="renterDeposit"></property>
+        <property name="renterIsMarried"></property>
+
+        <set name="renterRooms" table="room_renter">
+            <key column="renterId"></key>
+            <many-to-many class="com.anteater.star.domain.Room" column="roomId"></many-to-many>
+        </set>
+    </class>
+</hibernate-mapping>

@@ -1,0 +1,34 @@
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <session-factory>
+        <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/anteater</property>
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password">hugo931124</property>
+        <!--  设置对应的语法       -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</property>
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.format_sql">true</property>
+        <property name="hibernate.hbm2ddl.auto">update</property>
+
+        <!--    C3P0    -->
+        <property name="connection.provider_class">org.hibernate.c3p0.internal.C3P0ConnectionProvider</property>
+        <property name="c3p0.max_size">20</property>
+        <property name="c3p0.min_size">5</property>
+        <property name="c3p0.timeout">120</property>
+        <property name="c3p0.idle_test_period">3000</property>
+        <!-- 设置隔离级别 -->
+        <property name="hibernate.connection.isolation">4</property>
+        <!-- 将session绑定到线程 -->
+        <property name="current_session_context_class">thread</property>
+
+
+        <mapping resource="hbmModel/Bill.hbm.xml"></mapping>
+        <mapping resource="hbmModel/House.hbm.xml"></mapping>
+        <mapping resource="hbmModel/Owner.hbm.xml"></mapping>
+        <mapping resource="hbmModel/Renter.hbm.xml"></mapping>
+        <mapping resource="hbmModel/Room.hbm.xml"></mapping>
+    </session-factory>
+</hibernate-configuration>

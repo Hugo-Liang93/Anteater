@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.anteater.star.domain.House">
+        <!--  主键 -->
+        <id name="houseId" column="houseId">
+            <generator class="native"></generator>
+        </id>
+        <!--   普通字段关联     -->
+        <property name="houseName"></property>
+        <property name="houseProvince"></property>
+        <property name="houseCity"></property>
+        <property name="houseDistrict"></property>
+        <property name="houseAddress"></property>
+<!--        <property name="houseOwnerId"></property>-->
+        <property name="houseFloors"></property>
+        <property name="houseWithLift"></property>
+
+        <!-- relationship -->
+        <!-- 双向维护 -->
+        <!-- lazy 用于懒加载，当session close的时候是否能使用 -->
+        <many-to-one name="houseOwner" class="com.anteater.star.domain.Owner"
+                     column="houseOwnerId"
+                     lazy="false">
+        </many-to-one>
+
+        <set name="houseRoomSet">
+            <key column="roomHouseId"></key>
+            <one-to-many class="com.anteater.star.domain.Room"></one-to-many>
+        </set>
+    </class>
+</hibernate-mapping>

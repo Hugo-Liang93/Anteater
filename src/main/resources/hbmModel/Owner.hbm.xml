@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.anteater.star.domain.Owner">
+        <!--  主键 -->
+        <id name="ownerId" column="ownerId">
+            <generator class="native"></generator>
+        </id>
+        <!--   普通字段关联     -->
+        <property name="ownerName"></property>
+        <property name="ownerPhone"></property>
+
+        <!-- relationship -->
+        <set name="ownerHouseSet" cascade="save-update">  <!-- Set name -->
+            <key column="houseOwnerId"></key> <!-- fk -->
+            <one-to-many class="com.anteater.star.domain.House"></one-to-many>
+        </set>
+    </class>
+</hibernate-mapping>

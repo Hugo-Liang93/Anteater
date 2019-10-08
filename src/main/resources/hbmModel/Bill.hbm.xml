@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.anteater.star.domain.Bill">
+        <!--  主键 -->
+        <id name="billId" column="billId">
+            <generator class="native"></generator>
+        </id>
+        <!--   普通字段关联     -->
+        <property name="billYear"></property>
+        <property name="billMonth"></property>
+        <property name="billDate"></property>
+<!--        <property name="billRoomId"></property>-->
+        <property name="billWaterNum"></property>
+        <property name="billElectricNum"></property>
+        <property name="billWaterRate"></property>
+        <property name="billElectricRate"></property>
+        <property name="billNet"></property>
+        <property name="billRubbish"></property>
+        <property name="billOther"></property>
+        <property name="billIsPay"></property>
+        <property name="billPayDate"></property>
+        <property name="billPayWay"></property>
+        <!--    column 存放外键    -->
+        <!-- relationship -->
+        <many-to-one name="billRoom" class="com.anteater.star.domain.Room" column="billRoomId"></many-to-one>
+    </class>
+</hibernate-mapping>

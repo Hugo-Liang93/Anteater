@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.anteater.star.domain.Room">
+        <!--  主键 -->
+        <id name="roomId" column="roomId">
+            <generator class="native"></generator>
+        </id>
+        <!--   普通字段关联     -->
+        <property name="roomName"></property>
+        <property name="roomType"></property>
+        <property name="roomFloor"></property>
+        <property name="roomStatus"></property>
+<!--        <property name="roomRenterList"></property>-->
+        <property name="roomContract"></property>
+        <property name="roomFacility"></property>
+
+        <!-- relationship -->
+        <set name="roomBillSet">
+            <key column="billRoomId"></key>
+            <one-to-many class="com.anteater.star.domain.Bill"></one-to-many>
+        </set>
+        <many-to-one name="roomHouse" class="com.anteater.star.domain.House" column="roomHouseId"></many-to-one>
+        <!-- many to many
+        name 当前集合属性名称
+        table 多对多中间表
+        column 当前表外建
+        -->
+        <set name="roomRenters" table="room_renter">
+            <key column="roomId"></key>
+            <many-to-many class="com.anteater.star.domain.Renter" column="renterId"></many-to-many>
+        </set>
+    </class>
+</hibernate-mapping>
