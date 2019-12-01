@@ -14,4 +14,5 @@ public class HibernateUtil {
         Session session = sessionFactory.openSession();
         return session;
     }
+
 }

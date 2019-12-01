@@ -21,6 +21,7 @@
         <!-- relationship -->
         <!-- 双向维护 -->
         <!-- lazy 用于懒加载，当session close的时候是否能使用 -->
+        <!-- column 外键 -->
         <many-to-one name="houseOwner" class="com.anteater.star.domain.Owner"
                      column="houseOwnerId"
                      lazy="false">

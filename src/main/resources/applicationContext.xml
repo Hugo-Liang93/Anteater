@@ -16,7 +16,22 @@
        http://www.springframework.org/schema/tx
        http://www.springframework.org/schema/tx/spring-tx.xsd">
 
-    <context:component-scan base-package="com.anteater.star.controller"></context:component-scan>
-    <mvc:default-servlet-handler></mvc:default-servlet-handler>
-    <mvc:annotation-driven></mvc:annotation-driven>
+
+    <import resource="hibernateApplication.xml"></import>
+
+    <!-- 参考https://blog.csdn.net/qq_35571554/article/details/82453684   -->
+    <context:annotation-config/>
+    <context:component-scan base-package="com.anteater.star">
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+    <import resource="hibernateApplication.xml"></import>
+
+    <bean id="OwnerDao" class="com.anteater.star.dao.impl.OwnerDaoImpl">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+
+    <bean id="RenterDao" class="com.anteater.star.dao.impl.RenterDaoImpl">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+
 </beans>

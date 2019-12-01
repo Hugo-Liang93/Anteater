@@ -18,11 +18,18 @@
         <property name="roomFacility"></property>
 
         <!-- relationship -->
+        <!-- room house 关系 -->
+
         <set name="roomBillSet">
             <key column="billRoomId"></key>
             <one-to-many class="com.anteater.star.domain.Bill"></one-to-many>
         </set>
-        <many-to-one name="roomHouse" class="com.anteater.star.domain.House" column="roomHouseId"></many-to-one>
+
+        <many-to-one name="roomHouse"
+                     class="com.anteater.star.domain.House"
+                     column="roomHouseId"
+                     lazy="false">
+        </many-to-one>
         <!-- many to many
         name 当前集合属性名称
         table 多对多中间表

@@ -14,7 +14,7 @@
 
         <!-- relationship -->
         <set name="ownerHouseSet" cascade="save-update">  <!-- Set name -->
-            <key column="houseOwnerId"></key> <!-- fk -->
+            <key column="houseOwnerId"></key> <!-- fk 根据外键去关联对应的表 -->
             <one-to-many class="com.anteater.star.domain.House"></one-to-many>
         </set>
     </class>
