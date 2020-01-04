@@ -5,9 +5,11 @@ import com.anteater.star.domain.House;
 import com.anteater.star.domain.Owner;
 import com.anteater.star.service.ownerService.HouseService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class HouseServiceImpl implements HouseService {
     @Autowired
     private HouseDao houseDao;

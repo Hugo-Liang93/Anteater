@@ -16,9 +16,6 @@
        http://www.springframework.org/schema/tx
        http://www.springframework.org/schema/tx/spring-tx.xsd">
 
-
-    <import resource="hibernateApplication.xml"></import>
-
     <!-- 参考https://blog.csdn.net/qq_35571554/article/details/82453684   -->
     <context:annotation-config/>
     <context:component-scan base-package="com.anteater.star">
@@ -27,11 +24,11 @@
     <import resource="hibernateApplication.xml"></import>
 
     <bean id="OwnerDao" class="com.anteater.star.dao.impl.OwnerDaoImpl">
-        <property name="sessionFactory" ref="sessionFactory"></property>
+        <property name="sessionFactory" ref="localSessionFactoryBean"></property>
     </bean>
 
     <bean id="RenterDao" class="com.anteater.star.dao.impl.RenterDaoImpl">
-        <property name="sessionFactory" ref="sessionFactory"></property>
+        <property name="sessionFactory" ref="localSessionFactoryBean"></property>
     </bean>
 
 </beans>

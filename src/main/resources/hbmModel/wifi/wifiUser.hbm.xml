@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.anteater.star.domain.wifi.WifiUser">
+        <!--  主键 -->
+        <id name="id" column="id">
+            <generator class="native"></generator>
+        </id>
+        <!--   普通字段关联     -->
+        <property name="username"></property>
+        <property name="attribute"></property>
+        <property name="op"></property>
+        <property name="value"></property>
+
+    </class>
+</hibernate-mapping>

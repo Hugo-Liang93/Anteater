@@ -19,7 +19,7 @@
         <property name="password" value="${jdbc.password}"></property>
     </bean>
     <!-- 整合hibernate -->
-    <bean id="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+    <bean id="localSessionFactoryBean" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
         <!-- 注入连接池信息 -->
         <property name="dataSource" ref="dataSource"></property>
         <!-- 配置hibernate相关属性 -->
@@ -39,13 +39,14 @@
                 <value>hbmModel/Owner.hbm.xml</value>
                 <value>hbmModel/Renter.hbm.xml</value>
                 <value>hbmModel/Room.hbm.xml</value>
+                <value>hbmModel/wifi/wifiUser.hbm.xml</value>
             </list>
         </property>
     </bean>
 
     <!-- 配置事务管理器 -->
     <bean id="transactionManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
-        <property name="sessionFactory" ref="sessionFactory"></property>
+        <property name="sessionFactory" ref="localSessionFactoryBean"></property>
     </bean>
 
     <!-- 开启注解 增强 -->
