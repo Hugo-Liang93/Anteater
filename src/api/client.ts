@@ -26,10 +26,22 @@ class ApiClient {
       ...(this.apiKey ? { "X-API-Key": this.apiKey } : {}),
     };
 
-    const res = await fetch(`${BASE}${path}`, {
-      ...init,
-      headers: { ...headers, ...init?.headers },
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}${path}`, {
+        ...init,
+        headers: { ...headers, ...init?.headers },
+      });
+    } catch {
+      // 网络错误（后端不在线、proxy 连接拒绝等）
+      return {
+        success: false,
+        data: null,
+        error: "Network error: backend unreachable",
+        error_code: "NETWORK_ERROR",
+        metadata: null,
+      };
+    }
 
     if (!res.ok) {
       return {
@@ -41,7 +53,17 @@ class ApiClient {
       };
     }
 
-    return res.json() as Promise<ApiResponse<T>>;
+    try {
+      return (await res.json()) as ApiResponse<T>;
+    } catch {
+      return {
+        success: false,
+        data: null,
+        error: "Invalid JSON response",
+        error_code: "PARSE_ERROR",
+        metadata: null,
+      };
+    }
   }
 
   get<T>(path: string) {

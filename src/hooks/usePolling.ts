@@ -42,7 +42,11 @@ export function usePolling() {
         if (posRes.status === "fulfilled" && posRes.value.data) {
           useMarketStore.getState().setPositions(posRes.value.data);
         }
-        useMarketStore.getState().setConnected(true);
+        // 任何一个请求成功返回即视为已连接
+        const anySuccess = [quoteRes, accountRes, posRes].some(
+          (r) => r.status === "fulfilled" && r.value.success,
+        );
+        useMarketStore.getState().setConnected(anySuccess);
       } catch {
         useMarketStore.getState().setConnected(false);
       }
