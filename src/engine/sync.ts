@@ -1,14 +1,14 @@
 /**
  * 后端数据 → 员工状态同步引擎
  *
- * 每个角色都必须在每次 syncAll() 中获得完整的 status + currentTask 更新。
- * 不允许只更新 status 而留 currentTask 为默认值。
+ * 每次 syncAll() 用真实后端数据驱动所有 10 个角色的状态。
  */
 
 import { EmployeeRole, type EmployeeRoleType } from "@/config/employees";
 import { useEmployeeStore } from "@/store/employees";
 import { useMarketStore } from "@/store/market";
 import { useSignalStore } from "@/store/signals";
+import { useLiveStore } from "@/store/live";
 
 function update(
   role: EmployeeRoleType,
@@ -17,141 +17,201 @@ function update(
   useEmployeeStore.getState().updateEmployee(role, patch);
 }
 
-/** 一次性同步所有角色 */
+function addAction(
+  role: EmployeeRoleType,
+  log: Omit<import("@/store/employees").ActionLog, "id">,
+) {
+  useEmployeeStore.getState().addAction(role, log);
+}
+
+/** 上次推送到日志的信号 ID，避免重复 */
+let lastLoggedSignalId = "";
+
 export function syncAll() {
   const { quotes, account, positions, connected } = useMarketStore.getState();
   const { health, strategies } = useSignalStore.getState();
+  const { indicators, signals, queues } = useLiveStore.getState();
   const quote = quotes["XAUUSD"];
+  const m5 = indicators["M5"];
 
-  // ─── 采集员 ───
+  // ─── 采集员：行情数据 ───
   if (quote) {
     update(EmployeeRole.COLLECTOR, {
       status: "working",
-      currentTask: `采集 XAUUSD | ${quote.bid.toFixed(2)} / ${quote.ask.toFixed(2)}`,
-      stats: { spread: quote.spread, bid: quote.bid, ask: quote.ask },
+      currentTask: `XAUUSD ${quote.bid.toFixed(2)} / ${quote.ask.toFixed(2)}`,
+      stats: { bid: quote.bid, ask: quote.ask, spread: quote.spread },
     });
   } else {
     update(EmployeeRole.COLLECTOR, {
       status: connected ? "idle" : "error",
-      currentTask: connected ? "已连接，等待行情数据" : "后端未连接",
+      currentTask: connected ? "等待行情数据" : "后端未连接",
     });
   }
 
-  // ─── 分析师 ───
-  const indicatorComp = health?.components?.["indicator_calculation"];
-  if (indicatorComp) {
-    const ok = indicatorComp.status === "healthy";
+  // ─── 分析师：指标计算 ───
+  if (m5 && m5.indicators) {
+    const count = Object.keys(m5.indicators).length;
+    const rsi = m5.indicators["rsi14"]?.["rsi"];
+    const atr = m5.indicators["atr14"]?.["atr"];
+    const rsiStr = rsi != null ? `RSI ${rsi.toFixed(1)}` : "";
+    const atrStr = atr != null ? `ATR ${atr.toFixed(2)}` : "";
+    const detail = [rsiStr, atrStr].filter(Boolean).join(" | ");
     update(EmployeeRole.ANALYST, {
-      status: ok ? "working" : "alert",
-      currentTask: ok
-        ? "计算技术指标 | 21 个指标运行中"
-        : `指标计算异常: ${indicatorComp.status}`,
+      status: "working",
+      currentTask: `${count} 个指标${detail ? " | " + detail : ""}`,
+      stats: { indicators: count, rsi: rsi ?? 0, atr: atr ?? 0 },
     });
   } else if (connected) {
-    update(EmployeeRole.ANALYST, {
-      status: "working",
-      currentTask: "计算技术指标中...",
-    });
+    update(EmployeeRole.ANALYST, { status: "working", currentTask: "计算指标中..." });
   } else {
-    update(EmployeeRole.ANALYST, {
-      status: "idle",
-      currentTask: "等待后端连接",
-    });
+    update(EmployeeRole.ANALYST, { status: "idle", currentTask: "等待后端连接" });
   }
 
-  // ─── 策略师 ───
-  if (strategies.length > 0) {
+  // ─── 策略师：信号评估 ───
+  const buySignals = signals.filter((s) => s.direction === "buy");
+  const sellSignals = signals.filter((s) => s.direction === "sell");
+  if (signals.length > 0) {
+    const latest = signals[0]!;
     update(EmployeeRole.STRATEGIST, {
       status: "working",
-      currentTask: `${strategies.length} 个策略运行中`,
+      currentTask: `${strategies.length} 策略 | ${buySignals.length} 买 ${sellSignals.length} 卖`,
+      stats: {
+        total_strategies: strategies.length,
+        buy_signals: buySignals.length,
+        sell_signals: sellSignals.length,
+        latest_strategy: latest.strategy,
+        latest_confidence: latest.confidence,
+      },
+    });
+
+    // 推送最新信号到日志
+    if (latest.signal_id !== lastLoggedSignalId) {
+      lastLoggedSignalId = latest.signal_id;
+      addAction(EmployeeRole.STRATEGIST, {
+        timestamp: Date.now(),
+        message: `${latest.strategy} → ${latest.direction} (${(latest.confidence * 100).toFixed(0)}%)`,
+        type: latest.direction === "hold" ? "info" : "success",
+      });
+    }
+  } else if (strategies.length > 0) {
+    update(EmployeeRole.STRATEGIST, {
+      status: "working",
+      currentTask: `${strategies.length} 个策略监听中`,
       stats: { total_strategies: strategies.length },
     });
   } else {
-    update(EmployeeRole.STRATEGIST, {
-      status: connected ? "idle" : "idle",
-      currentTask: connected ? "等待策略加载" : "等待后端连接",
-    });
+    update(EmployeeRole.STRATEGIST, { status: "idle", currentTask: "等待策略加载" });
   }
 
-  // ─── 投票主席 ───
-  if (strategies.length > 0) {
+  // ─── 投票主席：投票汇总 ───
+  if (signals.length > 0) {
+    const dirs = signals.reduce(
+      (acc, s) => {
+        if (s.direction === "buy") acc.buy++;
+        else if (s.direction === "sell") acc.sell++;
+        return acc;
+      },
+      { buy: 0, sell: 0 },
+    );
+    const consensus = dirs.buy > dirs.sell ? "偏多" : dirs.sell > dirs.buy ? "偏空" : "分歧";
     update(EmployeeRole.VOTER, {
       status: "working",
-      currentTask: `汇总 ${strategies.length} 个策略投票`,
+      currentTask: `${signals.length} 票 | ${consensus} (${dirs.buy}买/${dirs.sell}卖)`,
+      stats: { buy: dirs.buy, sell: dirs.sell },
     });
   } else {
     update(EmployeeRole.VOTER, {
-      status: "idle",
-      currentTask: "等待策略投票",
+      status: strategies.length > 0 ? "working" : "idle",
+      currentTask: strategies.length > 0 ? `汇总 ${strategies.length} 策略投票` : "等待策略投票",
     });
   }
 
-  // ─── 风控官 ───
-  const riskOk = connected && strategies.length > 0;
-  update(EmployeeRole.RISK_OFFICER, {
-    status: riskOk ? "working" : "idle",
-    currentTask: riskOk ? "风控规则监控中" : "待命",
-  });
-
-  // ─── 交易员 ───
-  if (positions.length > 0) {
-    update(EmployeeRole.TRADER, {
-      status: "working",
-      currentTask: `${positions.length} 笔订单执行中`,
+  // ─── 风控官：风控状态 ───
+  const queueDrops = queues.reduce((s, q) => s + q.drops_oldest + q.drops_newest, 0);
+  const queueWarning = queues.some((q) => q.status !== "normal");
+  if (connected && strategies.length > 0) {
+    update(EmployeeRole.RISK_OFFICER, {
+      status: queueWarning ? "alert" : "working",
+      currentTask: queueWarning
+        ? `队列异常 | ${queueDrops} 次丢弃`
+        : `风控监控中 | ${queues.length} 队列正常`,
+      stats: { queues: queues.length, drops: queueDrops },
     });
   } else {
-    update(EmployeeRole.TRADER, {
-      status: riskOk ? "idle" : "idle",
-      currentTask: riskOk ? "等待交易信号" : "待命",
-    });
+    update(EmployeeRole.RISK_OFFICER, { status: "idle", currentTask: "待命" });
   }
 
-  // ─── 仓管员 ───
+  // ─── 交易员：交易执行 ───
   if (positions.length > 0) {
     const totalProfit = positions.reduce((s, p) => s + p.profit, 0);
+    update(EmployeeRole.TRADER, {
+      status: "working",
+      currentTask: `${positions.length} 笔持仓 | P&L ${totalProfit >= 0 ? "+" : ""}${totalProfit.toFixed(2)}`,
+      stats: { positions: positions.length, pnl: totalProfit },
+    });
+  } else {
+    const hasSignal = signals.some(
+      (s) => s.direction !== "hold" && s.confidence > 0.5,
+    );
+    update(EmployeeRole.TRADER, {
+      status: hasSignal ? "working" : "idle",
+      currentTask: hasSignal ? "信号待执行" : "等待交易信号",
+    });
+  }
+
+  // ─── 仓管员：持仓监控 ───
+  if (positions.length > 0) {
+    const totalProfit = positions.reduce((s, p) => s + p.profit, 0);
+    const types = positions.map((p) => p.type === "buy" ? "多" : "空").join("/");
     update(EmployeeRole.POSITION_MANAGER, {
       status: "working",
-      currentTask: `监控 ${positions.length} 笔持仓 | P&L ${totalProfit >= 0 ? "+" : ""}${totalProfit.toFixed(2)}`,
+      currentTask: `${positions.length} 仓 (${types}) | ${totalProfit >= 0 ? "+" : ""}${totalProfit.toFixed(2)}`,
       stats: { positions: positions.length, profit: totalProfit },
     });
   } else {
-    update(EmployeeRole.POSITION_MANAGER, {
-      status: "idle",
-      currentTask: "无持仓，等待新交易",
-    });
+    update(EmployeeRole.POSITION_MANAGER, { status: "idle", currentTask: "无持仓" });
   }
 
-  // ─── 会计 ───
+  // ─── 会计：账户数据 ───
   if (account) {
+    const marginPct = account.margin > 0
+      ? ((account.free_margin / (account.margin + account.free_margin)) * 100).toFixed(0)
+      : "100";
     update(EmployeeRole.ACCOUNTANT, {
       status: "working",
-      currentTask: `余额 $${account.balance.toFixed(0)} | 净值 $${account.equity.toFixed(0)}`,
-      stats: { balance: account.balance, equity: account.equity, margin: account.margin },
+      currentTask: `$${account.equity.toFixed(0)} | 可用${marginPct}%`,
+      stats: {
+        balance: account.balance,
+        equity: account.equity,
+        margin: account.margin,
+        free_margin: account.free_margin,
+      },
     });
   } else {
-    update(EmployeeRole.ACCOUNTANT, {
-      status: "idle",
-      currentTask: "等待账户数据",
-    });
+    update(EmployeeRole.ACCOUNTANT, { status: "idle", currentTask: "等待账户数据" });
   }
 
   // ─── 日历员 ───
   update(EmployeeRole.CALENDAR_REPORTER, {
     status: connected ? "working" : "idle",
-    currentTask: connected ? "监控经济日历事件" : "等待后端连接",
+    currentTask: connected ? "监控经济日历" : "等待连接",
   });
 
-  // ─── 巡检员 ───
+  // ─── 巡检员：系统健康 ───
   if (health) {
-    const ok = health.status === "healthy";
+    const compCount = Object.keys(health.components).length;
+    const issues = Object.values(health.components).filter((c) => c.status !== "healthy").length;
     update(EmployeeRole.INSPECTOR, {
-      status: ok ? "working" : "alert",
-      currentTask: ok ? "系统运行正常" : `系统状态: ${health.status}`,
+      status: issues > 0 ? "alert" : "working",
+      currentTask: issues > 0
+        ? `${issues}/${compCount} 组件异常`
+        : `${compCount} 组件正常`,
+      stats: { components: compCount, issues },
     });
   } else {
     update(EmployeeRole.INSPECTOR, {
       status: connected ? "working" : "idle",
-      currentTask: connected ? "巡检系统组件中" : "等待后端连接",
+      currentTask: connected ? "巡检中" : "等待连接",
     });
   }
 }
