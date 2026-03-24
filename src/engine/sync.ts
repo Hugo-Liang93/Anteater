@@ -28,6 +28,14 @@ function addAction(
 let lastLoggedSignalId = "";
 
 export function syncAll() {
+  try {
+    _syncAllInner();
+  } catch (err) {
+    console.error("[sync] syncAll error:", err);
+  }
+}
+
+function _syncAllInner() {
   const { quotes, account, positions, connected } = useMarketStore.getState();
   const { health, strategies } = useSignalStore.getState();
   const { indicators, signals, queues } = useLiveStore.getState();

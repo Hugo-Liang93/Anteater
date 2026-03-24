@@ -242,15 +242,16 @@ function PottedPlant({ position }: { position: [number, number, number] }) {
 // ─── 工位布局 ───
 
 const DESKS: { pos: [number, number, number]; screens: number; deskColor?: string }[] = [
-  { pos: [-3, 0, -1], screens: 3, deskColor: "#a08060" },
-  { pos: [-1, 0, -1], screens: 3, deskColor: "#9a7a5a" },
-  { pos: [1, 0, -1.5], screens: 3, deskColor: "#a08060" },
-  { pos: [1, 0, 0.2], screens: 2, deskColor: "#9a7a5a" },
-  { pos: [3, 0, -1], screens: 2, deskColor: "#8a6a4a" },
-  { pos: [3, 0, 1], screens: 2, deskColor: "#a08060" },
-  { pos: [1, 0, 2], screens: 2, deskColor: "#9a7a5a" },
-  { pos: [-2.5, 0, 2], screens: 1, deskColor: "#a08060" },
-  { pos: [-1, 0, 2], screens: 1, deskColor: "#9a7a5a" },
+  // 角色站在桌子前方(+Z)，桌子在后方(-Z)
+  { pos: [-3, 0, -1], screens: 3, deskColor: "#a08060" },       // 采集员
+  { pos: [-1, 0, -1], screens: 3, deskColor: "#9a7a5a" },       // 分析师
+  { pos: [1, 0, -1.5], screens: 3, deskColor: "#a08060" },      // 策略师
+  { pos: [1, 0, 0.2], screens: 2, deskColor: "#9a7a5a" },       // 投票主席
+  { pos: [3, 0, -1], screens: 2, deskColor: "#8a6a4a" },        // 风控官
+  { pos: [3, 0, 1], screens: 2, deskColor: "#a08060" },         // 交易员
+  { pos: [1, 0, 2], screens: 2, deskColor: "#9a7a5a" },         // 仓管员
+  { pos: [-2.5, 0, 2], screens: 1, deskColor: "#a08060" },      // 会计
+  { pos: [-1, 0, 2], screens: 1, deskColor: "#9a7a5a" },        // 巡检员
 ];
 
 const ROOM_W = 12;

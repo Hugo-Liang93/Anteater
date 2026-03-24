@@ -13,18 +13,18 @@ import { Office3D } from "./Office3D";
 import { DataFlowParticle, FlowLine } from "./DataFlow3D";
 import type { EmployeeRoleType } from "@/config/employees";
 
-/** 角色在 3D 空间中的工位位置 */
+/** 角色在 3D 空间中的工位位置（站在桌前） */
 const POSITIONS: Record<EmployeeRoleType, [number, number, number]> = {
-  collector:         [-3, 0, -1],
-  analyst:           [-1, 0, -1],
-  strategist:        [1, 0, -1.5],
-  voter:             [1, 0, 0.2],
-  risk_officer:      [3, 0, -1],
-  trader:            [3, 0, 1],
-  position_manager:  [1, 0, 2],
-  accountant:        [-2.5, 0, 2],
-  calendar_reporter: [-3.5, 0, 1],
-  inspector:         [-1, 0, 2],
+  collector:         [-3, 0, -0.4],
+  analyst:           [-1, 0, -0.4],
+  strategist:        [1, 0, -0.9],
+  voter:             [1, 0, 0.8],
+  risk_officer:      [3, 0, -0.4],
+  trader:            [3, 0, 1.6],
+  position_manager:  [1, 0, 2.6],
+  accountant:        [-2.5, 0, 2.6],
+  calendar_reporter: [-3.5, 0, 1.6],
+  inspector:         [-1, 0, 2.6],
 };
 
 /** 数据流连接 */
@@ -82,19 +82,15 @@ function Scene() {
         );
       })}
 
-      {/* 角色 */}
+      {/* 角色 — 不再传 status/currentTask，Character3D 内部直接读 store */}
       {employeeConfigs.map((cfg) => {
-        const emp = employees[cfg.id];
         const pos = POSITIONS[cfg.id];
-        if (!emp || !pos) return null;
-
+        if (!pos) return null;
         return (
           <Character3D
             key={cfg.id}
             role={cfg.id}
             position={pos}
-            status={emp.status}
-            currentTask={emp.currentTask}
             onClick={() => setSelected(cfg.id)}
           />
         );
