@@ -1,7 +1,7 @@
 import { usePolling } from "@/hooks/usePolling";
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
-import { StudioCanvas } from "../studio/StudioCanvas";
+import { Studio3D } from "../studio/Studio3D";
 import { EmployeeDetail } from "../overlay/EmployeeDetail";
 
 export function AppShell() {
@@ -13,7 +13,7 @@ export function AppShell() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="relative flex-1 overflow-hidden">
-          <StudioCanvas />
+          <Studio3D />
           <EmployeeDetail />
         </main>
       </div>
