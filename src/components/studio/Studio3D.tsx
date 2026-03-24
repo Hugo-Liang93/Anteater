@@ -110,7 +110,7 @@ export function Studio3D() {
     <div className="absolute inset-0">
       <Canvas
         shadows
-        camera={{ position: [0, 8, 8], fov: 50, near: 0.1, far: 50 }}
+        camera={{ position: [0, 12, 4], fov: 45, near: 0.1, far: 50 }}
         onPointerMissed={() => setSelected(null)}
         style={{ background: "#e8ddd0" }}
       >
@@ -119,9 +119,10 @@ export function Studio3D() {
           enablePan
           enableZoom
           enableRotate
-          maxPolarAngle={Math.PI / 2.2}
-          minDistance={3}
-          maxDistance={15}
+          maxPolarAngle={Math.PI / 2.5}
+          minPolarAngle={0.2}
+          minDistance={5}
+          maxDistance={20}
           target={[0, 0, 0.5]}
         />
         <fog attach="fog" args={["#e8ddd0", 14, 22]} />

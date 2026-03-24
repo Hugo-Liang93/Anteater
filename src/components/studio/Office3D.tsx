@@ -39,12 +39,12 @@ function Window({ position, rotation = [0, 0, 0] as [number, number, number] }: 
     <group position={position} rotation={rotation}>
       {/* 窗框 */}
       <mesh>
-        <boxGeometry args={[1.6, 1.8, 0.08]} />
+        <boxGeometry args={[1.6, 0.9, 0.08]} />
         <meshStandardMaterial color="#8d7b68" />
       </mesh>
       {/* 玻璃 */}
       <mesh position={[0, 0, 0.02]}>
-        <planeGeometry args={[1.4, 1.6]} />
+        <planeGeometry args={[1.4, 0.75]} />
         <meshStandardMaterial
           color="#a8d8ea"
           transparent
@@ -55,7 +55,7 @@ function Window({ position, rotation = [0, 0, 0] as [number, number, number] }: 
       </mesh>
       {/* 窗格十字 */}
       <mesh position={[0, 0, 0.05]}>
-        <boxGeometry args={[0.04, 1.6, 0.02]} />
+        <boxGeometry args={[0.04, 0.75, 0.02]} />
         <meshStandardMaterial color="#8d7b68" />
       </mesh>
       <mesh position={[0, 0, 0.05]}>
@@ -168,15 +168,15 @@ function TradingDesk({ position, screens = 2, deskColor = "#a08060" }: {
 function TickerWall({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      {/* 背板 */}
+      {/* 背板（矮墙高度内） */}
       <mesh>
-        <boxGeometry args={[6, 2.0, 0.08]} />
+        <boxGeometry args={[6, 1.0, 0.08]} />
         <meshStandardMaterial color="#3a3028" />
       </mesh>
-      {/* 3 块大屏 */}
+      {/* 3 块屏幕 */}
       {[-1.8, 0, 1.8].map((ox, i) => (
-        <mesh key={i} position={[ox, 0.15, 0.05]}>
-          <planeGeometry args={[1.5, 1.0]} />
+        <mesh key={i} position={[ox, 0.05, 0.05]}>
+          <planeGeometry args={[1.5, 0.6]} />
           <meshStandardMaterial
             color="#050e08"
             emissive={["#003322", "#002244", "#003322"][i]}
@@ -185,27 +185,13 @@ function TickerWall({ position }: { position: [number, number, number] }) {
         </mesh>
       ))}
       {/* LED 滚动条 */}
-      <mesh position={[0, -0.8, 0.05]}>
-        <planeGeometry args={[5.6, 0.15]} />
+      <mesh position={[0, -0.38, 0.05]}>
+        <planeGeometry args={[5.6, 0.1]} />
         <meshStandardMaterial color="#001100" emissive="#00d4aa" emissiveIntensity={0.25} />
       </mesh>
-      <Text position={[0, 0.85, 0.06]} fontSize={0.12} color="#ffe4b5" anchorX="center" font={undefined}>
+      <Text position={[0, 0.4, 0.06]} fontSize={0.09} color="#ffe4b5" anchorX="center" font={undefined}>
         XAUUSD TRADING STUDIO
       </Text>
-    </group>
-  );
-}
-
-// ─── 天花板暖色灯 ───
-
-function CeilingLight({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      <mesh>
-        <boxGeometry args={[0.8, 0.05, 0.2]} />
-        <meshStandardMaterial color="#f5e6d3" emissive="#ffe4b5" emissiveIntensity={0.3} />
-      </mesh>
-      <pointLight intensity={0.35} distance={5} color="#ffe4b5" position={[0, -0.1, 0]} />
     </group>
   );
 }
@@ -269,7 +255,7 @@ const DESKS: { pos: [number, number, number]; screens: number; deskColor?: strin
 
 const ROOM_W = 12;
 const ROOM_D = 10;
-const WALL_H = 3.2;
+const WALL_H = 1.2; // 矮墙，俯瞰时能看到室内
 
 export function Office3D() {
   const gridHelper = useMemo(() => {
@@ -288,13 +274,9 @@ export function Office3D() {
       </mesh>
       <primitive object={gridHelper} />
 
-      {/* 天花板 */}
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_H, 0]}>
-        <planeGeometry args={[ROOM_W + 2, ROOM_D + 2]} />
-        <meshStandardMaterial color="#f0e8d8" side={THREE.DoubleSide} />
-      </mesh>
+      {/* 无天花板 — 俯瞰视角 */}
 
-      {/* ─── 四面墙 ─── */}
+      {/* ─── 四面矮墙 ─── */}
       {/* 后墙（行情墙所在） */}
       <Wall position={[0, WALL_H / 2, -(ROOM_D / 2 + 0.5)]} size={[ROOM_W + 2, WALL_H]} />
       {/* 前墙 */}
@@ -304,11 +286,11 @@ export function Office3D() {
       {/* 右墙 */}
       <Wall position={[ROOM_W / 2 + 1, WALL_H / 2, 0]} size={[ROOM_D + 2, WALL_H]} rotation={[0, Math.PI / 2, 0]} />
 
-      {/* ─── 窗户（左墙 + 右墙） ─── */}
-      <Window position={[-(ROOM_W / 2 + 0.95), 1.8, -2]} rotation={[0, Math.PI / 2, 0]} />
-      <Window position={[-(ROOM_W / 2 + 0.95), 1.8, 1]} rotation={[0, Math.PI / 2, 0]} />
-      <Window position={[ROOM_W / 2 + 0.95, 1.8, -2]} rotation={[0, -Math.PI / 2, 0]} />
-      <Window position={[ROOM_W / 2 + 0.95, 1.8, 1]} rotation={[0, -Math.PI / 2, 0]} />
+      {/* ─── 窗户（嵌在矮墙中） ─── */}
+      <Window position={[-(ROOM_W / 2 + 0.95), 0.7, -2]} rotation={[0, Math.PI / 2, 0]} />
+      <Window position={[-(ROOM_W / 2 + 0.95), 0.7, 1]} rotation={[0, Math.PI / 2, 0]} />
+      <Window position={[ROOM_W / 2 + 0.95, 0.7, -2]} rotation={[0, -Math.PI / 2, 0]} />
+      <Window position={[ROOM_W / 2 + 0.95, 0.7, 1]} rotation={[0, -Math.PI / 2, 0]} />
 
       {/* ─── 窗外树木 ─── */}
       <OutdoorTree position={[-(ROOM_W / 2 + 2.5), 0, -2.5]} />
@@ -339,15 +321,14 @@ export function Office3D() {
       <FloorStripe position={[3, 0.005, 0]} size={[2.4, 4]} color="#ef5350" />
       <FloorStripe position={[-0.5, 0.005, 2]} size={[6, 2.2]} color="#78909c" />
 
-      {/* LED行情墙 */}
-      <TickerWall position={[0, 1.5, -(ROOM_D / 2 + 0.35)]} />
+      {/* LED行情墙（贴在后矮墙上） */}
+      <TickerWall position={[0, 0.65, -(ROOM_D / 2 + 0.35)]} />
 
-      {/* 天花板灯（暖光） */}
-      <CeilingLight position={[-3, 3.0, -1]} />
-      <CeilingLight position={[0, 3.0, -1]} />
-      <CeilingLight position={[3, 3.0, -1]} />
-      <CeilingLight position={[-1.5, 3.0, 2]} />
-      <CeilingLight position={[2, 3.0, 2]} />
+      {/* 暖色区域照明（无遮挡，从上方打光） */}
+      <pointLight position={[-3, 4, -1]} intensity={0.4} distance={8} color="#ffe4b5" />
+      <pointLight position={[1, 4, -0.5]} intensity={0.4} distance={8} color="#ffe4b5" />
+      <pointLight position={[3, 4, 0]} intensity={0.4} distance={8} color="#ffe4b5" />
+      <pointLight position={[0, 4, 2]} intensity={0.3} distance={8} color="#ffe4b5" />
 
       {/* 盆栽 */}
       <PottedPlant position={[-5.5, 0, -3.5]} />
