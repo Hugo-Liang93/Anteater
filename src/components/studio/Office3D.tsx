@@ -1,35 +1,122 @@
 /**
- * 3D 交易部门场景
+ * 3D 交易部门场景 — 暖色调
  *
- * 模拟真实的公司交易部门：
- * - 多屏交易工位（弧形排列）
- * - 大型LED行情墙
- * - 玻璃隔断分区
- * - 风控台（红色警示灯）
- * - 天花板照明
- * - 地板分区色带
+ * 温暖的木质办公室：
+ * - 四面墙体（带窗户透入阳光）
+ * - 暖色木地板
+ * - 窗外绿树和蓝天
+ * - 多屏交易工位
+ * - LED行情墙
+ * - 暖色照明
  */
 
 import { useMemo } from "react";
 import * as THREE from "three";
 import { Text } from "@react-three/drei";
 
-// ─── 交易工位（多屏） ───
+// ─── 墙体 ───
 
-function TradingDesk({ position, screens = 2, color = "#2a3f52" }: {
+function Wall({ position, size, rotation = [0, 0, 0] as [number, number, number] }: {
+  position: [number, number, number];
+  size: [number, number];
+  rotation?: [number, number, number];
+}) {
+  return (
+    <mesh position={position} rotation={rotation} receiveShadow>
+      <planeGeometry args={size} />
+      <meshStandardMaterial color="#f5ede3" side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
+// ─── 窗户（透出阳光） ───
+
+function Window({ position, rotation = [0, 0, 0] as [number, number, number] }: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+}) {
+  return (
+    <group position={position} rotation={rotation}>
+      {/* 窗框 */}
+      <mesh>
+        <boxGeometry args={[1.6, 1.8, 0.08]} />
+        <meshStandardMaterial color="#8d7b68" />
+      </mesh>
+      {/* 玻璃 */}
+      <mesh position={[0, 0, 0.02]}>
+        <planeGeometry args={[1.4, 1.6]} />
+        <meshStandardMaterial
+          color="#a8d8ea"
+          transparent
+          opacity={0.3}
+          emissive="#ffe8c0"
+          emissiveIntensity={0.15}
+        />
+      </mesh>
+      {/* 窗格十字 */}
+      <mesh position={[0, 0, 0.05]}>
+        <boxGeometry args={[0.04, 1.6, 0.02]} />
+        <meshStandardMaterial color="#8d7b68" />
+      </mesh>
+      <mesh position={[0, 0, 0.05]}>
+        <boxGeometry args={[1.4, 0.04, 0.02]} />
+        <meshStandardMaterial color="#8d7b68" />
+      </mesh>
+      {/* 阳光光柱 */}
+      <pointLight
+        position={[0, 0, 1.5]}
+        intensity={0.6}
+        distance={5}
+        color="#ffe4b5"
+        castShadow={false}
+      />
+    </group>
+  );
+}
+
+// ─── 窗外树木 ───
+
+function OutdoorTree({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {/* 树干 */}
+      <mesh position={[0, 0.4, 0]}>
+        <cylinderGeometry args={[0.06, 0.1, 0.8, 6]} />
+        <meshStandardMaterial color="#8d6e53" />
+      </mesh>
+      {/* 树冠（3层球） */}
+      <mesh position={[0, 1.0, 0]}>
+        <sphereGeometry args={[0.5, 8, 8]} />
+        <meshStandardMaterial color="#5a8a4a" />
+      </mesh>
+      <mesh position={[-0.2, 1.3, 0.1]}>
+        <sphereGeometry args={[0.35, 8, 8]} />
+        <meshStandardMaterial color="#6a9a5a" />
+      </mesh>
+      <mesh position={[0.15, 1.4, -0.1]}>
+        <sphereGeometry args={[0.3, 8, 8]} />
+        <meshStandardMaterial color="#4a7a3a" />
+      </mesh>
+    </group>
+  );
+}
+
+// ─── 交易工位 ───
+
+function TradingDesk({ position, screens = 2, deskColor = "#a08060" }: {
   position: [number, number, number];
   screens?: number;
-  color?: string;
+  deskColor?: string;
 }) {
   const screenWidth = 0.42;
   const totalWidth = screens * screenWidth + (screens - 1) * 0.06;
 
   return (
     <group position={position}>
-      {/* 弧形桌面 */}
+      {/* 木桌面 */}
       <mesh position={[0, 0.52, 0]} receiveShadow castShadow>
         <boxGeometry args={[totalWidth + 0.3, 0.04, 0.55]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={deskColor} />
       </mesh>
       {/* 桌腿 */}
       {[
@@ -39,38 +126,30 @@ function TradingDesk({ position, screens = 2, color = "#2a3f52" }: {
         [(totalWidth + 0.2) / 2, 0.26, 0.22],
       ].map((p, i) => (
         <mesh key={i} position={p as [number, number, number]} castShadow>
-          <boxGeometry args={[0.04, 0.52, 0.04]} />
-          <meshStandardMaterial color="#1a2634" />
+          <boxGeometry args={[0.05, 0.52, 0.05]} />
+          <meshStandardMaterial color="#6b5240" />
         </mesh>
       ))}
-      {/* 多屏显示器 */}
+      {/* 显示器 */}
       {Array.from({ length: screens }).map((_, i) => {
         const offsetX = (i - (screens - 1) / 2) * (screenWidth + 0.06);
         return (
           <group key={i} position={[offsetX, 0.55, -0.15]}>
-            {/* 显示器外壳 */}
             <mesh position={[0, 0.25, 0]}>
               <boxGeometry args={[screenWidth, 0.3, 0.025]} />
-              <meshStandardMaterial color="#1a1a2e" />
+              <meshStandardMaterial color="#2a2a2e" />
             </mesh>
-            {/* 屏幕（发光） */}
             <mesh position={[0, 0.25, 0.014]}>
               <planeGeometry args={[screenWidth - 0.04, 0.25]} />
-              <meshStandardMaterial
-                color="#051510"
-                emissive="#004433"
-                emissiveIntensity={0.4}
-              />
+              <meshStandardMaterial color="#0a1510" emissive="#003a28" emissiveIntensity={0.35} />
             </mesh>
-            {/* 支架 */}
             <mesh position={[0, 0.07, 0]}>
               <boxGeometry args={[0.04, 0.14, 0.04]} />
-              <meshStandardMaterial color="#1a2634" />
+              <meshStandardMaterial color="#3a3a3e" />
             </mesh>
-            {/* 底座 */}
             <mesh position={[0, 0.01, 0.05]}>
               <boxGeometry args={[0.15, 0.02, 0.1]} />
-              <meshStandardMaterial color="#1a2634" />
+              <meshStandardMaterial color="#3a3a3e" />
             </mesh>
           </group>
         );
@@ -78,7 +157,7 @@ function TradingDesk({ position, screens = 2, color = "#2a3f52" }: {
       {/* 键盘 */}
       <mesh position={[0, 0.545, 0.1]}>
         <boxGeometry args={[0.35, 0.01, 0.12]} />
-        <meshStandardMaterial color="#263238" />
+        <meshStandardMaterial color="#404040" />
       </mesh>
     </group>
   );
@@ -89,96 +168,44 @@ function TradingDesk({ position, screens = 2, color = "#2a3f52" }: {
 function TickerWall({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      {/* 墙体 */}
+      {/* 背板 */}
       <mesh>
-        <boxGeometry args={[8, 2.8, 0.12]} />
-        <meshStandardMaterial color="#0d151d" />
+        <boxGeometry args={[6, 2.0, 0.08]} />
+        <meshStandardMaterial color="#3a3028" />
       </mesh>
-      {/* 大屏幕 (3块) */}
-      {[-2.2, 0, 2.2].map((ox, i) => (
-        <mesh key={i} position={[ox, 0.2, 0.07]}>
-          <planeGeometry args={[1.8, 1.2]} />
+      {/* 3 块大屏 */}
+      {[-1.8, 0, 1.8].map((ox, i) => (
+        <mesh key={i} position={[ox, 0.15, 0.05]}>
+          <planeGeometry args={[1.5, 1.0]} />
           <meshStandardMaterial
-            color="#020e08"
+            color="#050e08"
             emissive={["#003322", "#002244", "#003322"][i]}
             emissiveIntensity={0.5}
           />
         </mesh>
       ))}
       {/* LED 滚动条 */}
-      <mesh position={[0, -1.15, 0.07]}>
-        <planeGeometry args={[7.5, 0.18]} />
-        <meshStandardMaterial color="#001100" emissive="#00d4aa" emissiveIntensity={0.3} />
+      <mesh position={[0, -0.8, 0.05]}>
+        <planeGeometry args={[5.6, 0.15]} />
+        <meshStandardMaterial color="#001100" emissive="#00d4aa" emissiveIntensity={0.25} />
       </mesh>
-      {/* 标题 */}
-      <Text
-        position={[0, 1.2, 0.08]}
-        fontSize={0.15}
-        color="#00d4aa"
-        anchorX="center"
-        font={undefined}
-      >
+      <Text position={[0, 0.85, 0.06]} fontSize={0.12} color="#ffe4b5" anchorX="center" font={undefined}>
         XAUUSD TRADING STUDIO
       </Text>
     </group>
   );
 }
 
-// ─── 玻璃隔断 ───
-
-function GlassPartition({ position, size }: {
-  position: [number, number, number];
-  size: [number, number];
-}) {
-  return (
-    <group position={position}>
-      {/* 玻璃面 */}
-      <mesh>
-        <boxGeometry args={[size[0], size[1], 0.03]} />
-        <meshStandardMaterial color="#1a3040" transparent opacity={0.15} />
-      </mesh>
-      {/* 金属框 - 顶 */}
-      <mesh position={[0, size[1] / 2, 0]}>
-        <boxGeometry args={[size[0], 0.03, 0.05]} />
-        <meshStandardMaterial color="#37474f" metalness={0.6} roughness={0.3} />
-      </mesh>
-      {/* 金属框 - 底 */}
-      <mesh position={[0, -size[1] / 2, 0]}>
-        <boxGeometry args={[size[0], 0.03, 0.05]} />
-        <meshStandardMaterial color="#37474f" metalness={0.6} roughness={0.3} />
-      </mesh>
-    </group>
-  );
-}
-
-// ─── 风控警示灯 ───
-
-function WarningLight({ position, active }: {
-  position: [number, number, number];
-  active: boolean;
-}) {
-  return (
-    <mesh position={position}>
-      <sphereGeometry args={[0.08, 8, 8]} />
-      <meshStandardMaterial
-        color={active ? "#ff4757" : "#3a1a1a"}
-        emissive={active ? "#ff0000" : "#000000"}
-        emissiveIntensity={active ? 1.5 : 0}
-      />
-    </mesh>
-  );
-}
-
-// ─── 天花板灯 ───
+// ─── 天花板暖色灯 ───
 
 function CeilingLight({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
       <mesh>
-        <boxGeometry args={[1.2, 0.04, 0.15]} />
-        <meshStandardMaterial color="#e0e0e0" emissive="#ffffff" emissiveIntensity={0.3} />
+        <boxGeometry args={[0.8, 0.05, 0.2]} />
+        <meshStandardMaterial color="#f5e6d3" emissive="#ffe4b5" emissiveIntensity={0.3} />
       </mesh>
-      <pointLight intensity={0.4} distance={6} color="#e8edf2" position={[0, -0.1, 0]} />
+      <pointLight intensity={0.35} distance={5} color="#ffe4b5" position={[0, -0.1, 0]} />
     </group>
   );
 }
@@ -193,47 +220,117 @@ function FloorStripe({ position, size, color }: {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={position} receiveShadow>
       <planeGeometry args={size} />
-      <meshStandardMaterial color={color} transparent opacity={0.06} />
+      <meshStandardMaterial color={color} transparent opacity={0.08} />
     </mesh>
+  );
+}
+
+// ─── 盆栽 ───
+
+function PottedPlant({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {/* 花盆 */}
+      <mesh position={[0, 0.12, 0]}>
+        <cylinderGeometry args={[0.12, 0.1, 0.24, 8]} />
+        <meshStandardMaterial color="#8d6e53" />
+      </mesh>
+      {/* 泥土 */}
+      <mesh position={[0, 0.25, 0]}>
+        <cylinderGeometry args={[0.11, 0.11, 0.02, 8]} />
+        <meshStandardMaterial color="#5a4030" />
+      </mesh>
+      {/* 叶子 */}
+      <mesh position={[0, 0.45, 0]}>
+        <sphereGeometry args={[0.18, 8, 8]} />
+        <meshStandardMaterial color="#6a9a5a" />
+      </mesh>
+      <mesh position={[0.08, 0.55, 0.05]}>
+        <sphereGeometry args={[0.12, 8, 8]} />
+        <meshStandardMaterial color="#5a8a4a" />
+      </mesh>
+    </group>
   );
 }
 
 // ─── 工位布局 ───
 
-const DESKS: { pos: [number, number, number]; screens: number; color?: string }[] = [
-  // 采集区
-  { pos: [-3, 0, -1], screens: 3, color: "#1e3a4a" },
-  // 分析区
-  { pos: [-1, 0, -1], screens: 3, color: "#2a1a3a" },
-  // 策略室（双排）
-  { pos: [1, 0, -1.5], screens: 3, color: "#3a2a1a" },
-  { pos: [1, 0, 0.2], screens: 2, color: "#3a3a1a" },
-  // 风控台
-  { pos: [3, 0, -1], screens: 2, color: "#3a1a1a" },
-  // 交易台
-  { pos: [3, 0, 1], screens: 2, color: "#1a3a1a" },
-  // 支持区
-  { pos: [1, 0, 2], screens: 2 },
-  { pos: [-2.5, 0, 2], screens: 1 },
-  { pos: [-1, 0, 2], screens: 1 },
+const DESKS: { pos: [number, number, number]; screens: number; deskColor?: string }[] = [
+  { pos: [-3, 0, -1], screens: 3, deskColor: "#a08060" },
+  { pos: [-1, 0, -1], screens: 3, deskColor: "#9a7a5a" },
+  { pos: [1, 0, -1.5], screens: 3, deskColor: "#a08060" },
+  { pos: [1, 0, 0.2], screens: 2, deskColor: "#9a7a5a" },
+  { pos: [3, 0, -1], screens: 2, deskColor: "#8a6a4a" },
+  { pos: [3, 0, 1], screens: 2, deskColor: "#a08060" },
+  { pos: [1, 0, 2], screens: 2, deskColor: "#9a7a5a" },
+  { pos: [-2.5, 0, 2], screens: 1, deskColor: "#a08060" },
+  { pos: [-1, 0, 2], screens: 1, deskColor: "#9a7a5a" },
 ];
+
+const ROOM_W = 12;
+const ROOM_D = 10;
+const WALL_H = 3.2;
 
 export function Office3D() {
   const gridHelper = useMemo(() => {
-    const grid = new THREE.GridHelper(16, 32, "#1a2634", "#111a22");
+    const grid = new THREE.GridHelper(16, 32, "#c8b8a0", "#d4c4ac");
     (grid.material as THREE.Material).transparent = true;
-    (grid.material as THREE.Material).opacity = 0.4;
+    (grid.material as THREE.Material).opacity = 0.15;
     return grid;
   }, []);
 
   return (
     <>
-      {/* 地板 */}
+      {/* 木地板 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-        <planeGeometry args={[16, 12]} />
-        <meshStandardMaterial color="#0b1118" />
+        <planeGeometry args={[ROOM_W + 2, ROOM_D + 2]} />
+        <meshStandardMaterial color="#c4a882" />
       </mesh>
       <primitive object={gridHelper} />
+
+      {/* 天花板 */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_H, 0]}>
+        <planeGeometry args={[ROOM_W + 2, ROOM_D + 2]} />
+        <meshStandardMaterial color="#f0e8d8" side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* ─── 四面墙 ─── */}
+      {/* 后墙（行情墙所在） */}
+      <Wall position={[0, WALL_H / 2, -(ROOM_D / 2 + 0.5)]} size={[ROOM_W + 2, WALL_H]} />
+      {/* 前墙 */}
+      <Wall position={[0, WALL_H / 2, ROOM_D / 2 + 0.5]} size={[ROOM_W + 2, WALL_H]} />
+      {/* 左墙 */}
+      <Wall position={[-(ROOM_W / 2 + 1), WALL_H / 2, 0]} size={[ROOM_D + 2, WALL_H]} rotation={[0, Math.PI / 2, 0]} />
+      {/* 右墙 */}
+      <Wall position={[ROOM_W / 2 + 1, WALL_H / 2, 0]} size={[ROOM_D + 2, WALL_H]} rotation={[0, Math.PI / 2, 0]} />
+
+      {/* ─── 窗户（左墙 + 右墙） ─── */}
+      <Window position={[-(ROOM_W / 2 + 0.95), 1.8, -2]} rotation={[0, Math.PI / 2, 0]} />
+      <Window position={[-(ROOM_W / 2 + 0.95), 1.8, 1]} rotation={[0, Math.PI / 2, 0]} />
+      <Window position={[ROOM_W / 2 + 0.95, 1.8, -2]} rotation={[0, -Math.PI / 2, 0]} />
+      <Window position={[ROOM_W / 2 + 0.95, 1.8, 1]} rotation={[0, -Math.PI / 2, 0]} />
+
+      {/* ─── 窗外树木 ─── */}
+      <OutdoorTree position={[-(ROOM_W / 2 + 2.5), 0, -2.5]} />
+      <OutdoorTree position={[-(ROOM_W / 2 + 3.2), 0, 0.5]} />
+      <OutdoorTree position={[-(ROOM_W / 2 + 2.0), 0, 1.8]} />
+      <OutdoorTree position={[ROOM_W / 2 + 2.5, 0, -1.5]} />
+      <OutdoorTree position={[ROOM_W / 2 + 3.0, 0, 1.5]} />
+
+      {/* ─── 阳光（从窗户方向） ─── */}
+      <directionalLight
+        position={[-8, 6, 0]}
+        intensity={0.5}
+        color="#ffe8c0"
+        castShadow
+        shadow-mapSize-width={512}
+        shadow-mapSize-height={512}
+      />
+      <directionalLight
+        position={[8, 6, 0]}
+        intensity={0.3}
+        color="#ffe0b0"
+      />
 
       {/* 地板区域色带 */}
       <FloorStripe position={[-3, 0.005, -1]} size={[2.8, 2.2]} color="#4fc3f7" />
@@ -243,26 +340,25 @@ export function Office3D() {
       <FloorStripe position={[-0.5, 0.005, 2]} size={[6, 2.2]} color="#78909c" />
 
       {/* LED行情墙 */}
-      <TickerWall position={[0, 1.6, -3.5]} />
+      <TickerWall position={[0, 1.5, -(ROOM_D / 2 + 0.35)]} />
 
-      {/* 玻璃隔断 */}
-      <GlassPartition position={[-0.1, 1.0, -1]} size={[0.03, 1.8]} />
-      <GlassPartition position={[2.1, 1.0, -0.6]} size={[0.03, 1.8]} />
-      <GlassPartition position={[0, 0.9, 0.9]} size={[8, 0.03]} />
+      {/* 天花板灯（暖光） */}
+      <CeilingLight position={[-3, 3.0, -1]} />
+      <CeilingLight position={[0, 3.0, -1]} />
+      <CeilingLight position={[3, 3.0, -1]} />
+      <CeilingLight position={[-1.5, 3.0, 2]} />
+      <CeilingLight position={[2, 3.0, 2]} />
 
-      {/* 风控警示灯 */}
-      <WarningLight position={[3.8, 1.6, -1.5]} active={false} />
-      <WarningLight position={[3.8, 1.4, -1.5]} active={false} />
-
-      {/* 天花板灯 */}
-      <CeilingLight position={[-2, 3.2, -1]} />
-      <CeilingLight position={[1, 3.2, -1]} />
-      <CeilingLight position={[3, 3.2, 0]} />
-      <CeilingLight position={[-0.5, 3.2, 2]} />
+      {/* 盆栽 */}
+      <PottedPlant position={[-5.5, 0, -3.5]} />
+      <PottedPlant position={[5.5, 0, -3.5]} />
+      <PottedPlant position={[-5.5, 0, 3.5]} />
+      <PottedPlant position={[5.5, 0, 3.5]} />
+      <PottedPlant position={[0, 0, 3.8]} />
 
       {/* 交易工位 */}
       {DESKS.map((d, i) => (
-        <TradingDesk key={i} position={d.pos} screens={d.screens} color={d.color} />
+        <TradingDesk key={i} position={d.pos} screens={d.screens} deskColor={d.deskColor} />
       ))}
     </>
   );

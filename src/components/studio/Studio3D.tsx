@@ -43,11 +43,13 @@ function Scene() {
 
   return (
     <>
-      {/* 灯光 */}
-      <ambientLight intensity={0.4} />
+      {/* 暖色环境光 */}
+      <ambientLight intensity={0.5} color="#fff5e6" />
+      {/* 主光源（模拟室内照明） */}
       <directionalLight
-        position={[5, 8, 5]}
-        intensity={0.8}
+        position={[3, 8, 3]}
+        intensity={0.6}
+        color="#ffe8cc"
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
@@ -57,8 +59,8 @@ function Scene() {
         shadow-camera-top={8}
         shadow-camera-bottom={-8}
       />
-      <pointLight position={[-4, 4, -2]} intensity={0.3} color="#4fc3f7" />
-      <pointLight position={[4, 4, 2]} intensity={0.3} color="#00d4aa" />
+      {/* 暖色补光 */}
+      <hemisphereLight args={["#ffe4b5", "#c4a882", 0.3]} />
 
       {/* 办公室 */}
       <Office3D />
@@ -110,7 +112,7 @@ export function Studio3D() {
         shadows
         camera={{ position: [0, 8, 8], fov: 50, near: 0.1, far: 50 }}
         onPointerMissed={() => setSelected(null)}
-        style={{ background: "#0f1923" }}
+        style={{ background: "#e8ddd0" }}
       >
         <Scene />
         <OrbitControls
@@ -122,7 +124,7 @@ export function Studio3D() {
           maxDistance={15}
           target={[0, 0, 0.5]}
         />
-        <fog attach="fog" args={["#0f1923", 12, 20]} />
+        <fog attach="fog" args={["#e8ddd0", 14, 22]} />
       </Canvas>
     </div>
   );
