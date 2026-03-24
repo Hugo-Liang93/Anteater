@@ -13,6 +13,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { Text } from "@react-three/drei";
+import type { DayNightParams } from "@/engine/daynight";
 
 // ─── 墙体 ───
 
@@ -31,9 +32,10 @@ function Wall({ position, size, rotation = [0, 0, 0] as [number, number, number]
 
 // ─── 窗户（透出阳光） ───
 
-function Window({ position, rotation = [0, 0, 0] as [number, number, number] }: {
+function Window({ position, rotation = [0, 0, 0] as [number, number, number], dayNight }: {
   position: [number, number, number];
   rotation?: [number, number, number];
+  dayNight: DayNightParams;
 }) {
   return (
     <group position={position} rotation={rotation}>
@@ -42,15 +44,15 @@ function Window({ position, rotation = [0, 0, 0] as [number, number, number] }: 
         <boxGeometry args={[1.6, 0.9, 0.08]} />
         <meshStandardMaterial color="#8d7b68" />
       </mesh>
-      {/* 玻璃 */}
+      {/* 玻璃（颜色随日夜变化） */}
       <mesh position={[0, 0, 0.02]}>
         <planeGeometry args={[1.4, 0.75]} />
         <meshStandardMaterial
-          color="#a8d8ea"
+          color={dayNight.windowGlassColor}
           transparent
-          opacity={0.3}
-          emissive="#ffe8c0"
-          emissiveIntensity={0.15}
+          opacity={0.35}
+          emissive={dayNight.windowGlassColor}
+          emissiveIntensity={dayNight.isNight ? 0.05 : 0.2}
         />
       </mesh>
       {/* 窗格十字 */}
@@ -62,12 +64,12 @@ function Window({ position, rotation = [0, 0, 0] as [number, number, number] }: 
         <boxGeometry args={[1.4, 0.04, 0.02]} />
         <meshStandardMaterial color="#8d7b68" />
       </mesh>
-      {/* 阳光光柱 */}
+      {/* 窗户光（白天强，夜晚弱） */}
       <pointLight
         position={[0, 0, 1.5]}
-        intensity={0.6}
+        intensity={dayNight.windowLightIntensity}
         distance={5}
-        color="#ffe4b5"
+        color={dayNight.isNight ? "#2a3060" : "#ffe4b5"}
         castShadow={false}
       />
     </group>
@@ -103,10 +105,11 @@ function OutdoorTree({ position }: { position: [number, number, number] }) {
 
 // ─── 交易工位 ───
 
-function TradingDesk({ position, screens = 2, deskColor = "#a08060" }: {
+function TradingDesk({ position, screens = 2, deskColor = "#a08060", monitorGlow = 0.35 }: {
   position: [number, number, number];
   screens?: number;
   deskColor?: string;
+  monitorGlow?: number;
 }) {
   const screenWidth = 0.42;
   const totalWidth = screens * screenWidth + (screens - 1) * 0.06;
@@ -141,7 +144,7 @@ function TradingDesk({ position, screens = 2, deskColor = "#a08060" }: {
             </mesh>
             <mesh position={[0, 0.25, 0.014]}>
               <planeGeometry args={[screenWidth - 0.04, 0.25]} />
-              <meshStandardMaterial color="#0a1510" emissive="#003a28" emissiveIntensity={0.35} />
+              <meshStandardMaterial color="#0a1510" emissive="#003a28" emissiveIntensity={monitorGlow} />
             </mesh>
             <mesh position={[0, 0.07, 0]}>
               <boxGeometry args={[0.04, 0.14, 0.04]} />
@@ -258,7 +261,7 @@ const ROOM_W = 12;
 const ROOM_D = 10;
 const WALL_H = 1.2; // 矮墙，俯瞰时能看到室内
 
-export function Office3D() {
+export function Office3D({ dayNight }: { dayNight: DayNightParams }) {
   const gridHelper = useMemo(() => {
     const grid = new THREE.GridHelper(16, 32, "#c8b8a0", "#d4c4ac");
     (grid.material as THREE.Material).transparent = true;
@@ -288,10 +291,10 @@ export function Office3D() {
       <Wall position={[ROOM_W / 2 + 1, WALL_H / 2, 0]} size={[ROOM_D + 2, WALL_H]} rotation={[0, Math.PI / 2, 0]} />
 
       {/* ─── 窗户（嵌在矮墙中） ─── */}
-      <Window position={[-(ROOM_W / 2 + 0.95), 0.7, -2]} rotation={[0, Math.PI / 2, 0]} />
-      <Window position={[-(ROOM_W / 2 + 0.95), 0.7, 1]} rotation={[0, Math.PI / 2, 0]} />
-      <Window position={[ROOM_W / 2 + 0.95, 0.7, -2]} rotation={[0, -Math.PI / 2, 0]} />
-      <Window position={[ROOM_W / 2 + 0.95, 0.7, 1]} rotation={[0, -Math.PI / 2, 0]} />
+      <Window position={[-(ROOM_W / 2 + 0.95), 0.7, -2]} rotation={[0, Math.PI / 2, 0]} dayNight={dayNight} />
+      <Window position={[-(ROOM_W / 2 + 0.95), 0.7, 1]} rotation={[0, Math.PI / 2, 0]} dayNight={dayNight} />
+      <Window position={[ROOM_W / 2 + 0.95, 0.7, -2]} rotation={[0, -Math.PI / 2, 0]} dayNight={dayNight} />
+      <Window position={[ROOM_W / 2 + 0.95, 0.7, 1]} rotation={[0, -Math.PI / 2, 0]} dayNight={dayNight} />
 
       {/* ─── 窗外树木 ─── */}
       <OutdoorTree position={[-(ROOM_W / 2 + 2.5), 0, -2.5]} />
@@ -300,19 +303,19 @@ export function Office3D() {
       <OutdoorTree position={[ROOM_W / 2 + 2.5, 0, -1.5]} />
       <OutdoorTree position={[ROOM_W / 2 + 3.0, 0, 1.5]} />
 
-      {/* ─── 阳光（从窗户方向） ─── */}
+      {/* ─── 窗外阳光（日夜联动） ─── */}
       <directionalLight
-        position={[-8, 6, 0]}
-        intensity={0.5}
-        color="#ffe8c0"
+        position={[-8, dayNight.sunY, 0]}
+        intensity={dayNight.windowLightIntensity * 0.8}
+        color={dayNight.sunColor}
         castShadow
         shadow-mapSize-width={512}
         shadow-mapSize-height={512}
       />
       <directionalLight
-        position={[8, 6, 0]}
-        intensity={0.3}
-        color="#ffe0b0"
+        position={[8, dayNight.sunY, 0]}
+        intensity={dayNight.windowLightIntensity * 0.5}
+        color={dayNight.sunColor}
       />
 
       {/* 地板区域色带 */}
@@ -325,11 +328,16 @@ export function Office3D() {
       {/* LED行情墙（贴在后矮墙上） */}
       <TickerWall position={[0, 0.65, -(ROOM_D / 2 + 0.35)]} />
 
-      {/* 暖色区域照明（无遮挡，从上方打光） */}
-      <pointLight position={[-3, 4, -1]} intensity={0.4} distance={8} color="#ffe4b5" />
-      <pointLight position={[1, 4, -0.5]} intensity={0.4} distance={8} color="#ffe4b5" />
-      <pointLight position={[3, 4, 0]} intensity={0.4} distance={8} color="#ffe4b5" />
-      <pointLight position={[0, 4, 2]} intensity={0.3} distance={8} color="#ffe4b5" />
+      {/* 室内照明（夜晚更亮，模拟开灯） */}
+      {[[-3,4,-1], [1,4,-0.5], [3,4,0], [0,4,2]].map((p, i) => (
+        <pointLight
+          key={i}
+          position={p as [number, number, number]}
+          intensity={dayNight.isNight ? 0.55 : 0.3}
+          distance={8}
+          color={dayNight.isNight ? "#ffd080" : "#ffe4b5"}
+        />
+      ))}
 
       {/* 盆栽 */}
       <PottedPlant position={[-5.5, 0, -3.5]} />
@@ -338,9 +346,9 @@ export function Office3D() {
       <PottedPlant position={[5.5, 0, 3.5]} />
       <PottedPlant position={[0, 0, 3.8]} />
 
-      {/* 交易工位 */}
+      {/* 交易工位（显示器亮度随日夜变化） */}
       {DESKS.map((d, i) => (
-        <TradingDesk key={i} position={d.pos} screens={d.screens} deskColor={d.deskColor} />
+        <TradingDesk key={i} position={d.pos} screens={d.screens} deskColor={d.deskColor} monitorGlow={dayNight.monitorEmissive} />
       ))}
     </>
   );

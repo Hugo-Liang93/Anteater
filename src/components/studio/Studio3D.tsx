@@ -1,19 +1,22 @@
 /**
  * 3D 工作室主场景
  *
- * R3F Canvas + 相机 + 灯光 + 角色 + 办公室 + 数据流
+ * 真实日夜交替 + R3F Canvas + 角色 + 办公室 + 数据流
  */
 
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { useRef, useState, useEffect } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { OrbitControls, Stars } from "@react-three/drei";
 import { employeeConfigs } from "@/config/employees";
 import { useEmployeeStore } from "@/store/employees";
 import { Character3D } from "./Character3D";
 import { Office3D } from "./Office3D";
 import { DataFlowParticle, FlowLine } from "./DataFlow3D";
+import { computeDayNight, type DayNightParams } from "@/engine/daynight";
 import type { EmployeeRoleType } from "@/config/employees";
+import * as THREE from "three";
 
-/** 角色在 3D 空间中的工位位置（站在桌前） */
+/** 角色位置 */
 const POSITIONS: Record<EmployeeRoleType, [number, number, number]> = {
   collector:         [-3, 0, -0.4],
   analyst:           [-1, 0, -0.4],
@@ -27,7 +30,7 @@ const POSITIONS: Record<EmployeeRoleType, [number, number, number]> = {
   inspector:         [-1, 0, 2.6],
 };
 
-/** 数据流连接 */
+/** 数据流 */
 const FLOWS: { from: EmployeeRoleType; to: EmployeeRoleType }[] = [
   { from: "collector", to: "analyst" },
   { from: "analyst", to: "strategist" },
@@ -37,19 +40,45 @@ const FLOWS: { from: EmployeeRoleType; to: EmployeeRoleType }[] = [
   { from: "trader", to: "position_manager" },
 ];
 
-function Scene() {
-  const employees = useEmployeeStore((s) => s.employees);
-  const setSelected = useEmployeeStore((s) => s.setSelectedEmployee);
+/** 动态光照组件 — 每帧根据真实时间更新 */
+function DynamicLighting({ params }: { params: DayNightParams }) {
+  const ambientRef = useRef<THREE.AmbientLight>(null);
+  const sunRef = useRef<THREE.DirectionalLight>(null);
+  const hemiRef = useRef<THREE.HemisphereLight>(null);
+  const { scene } = useThree();
+
+  useFrame(() => {
+    const p = computeDayNight();
+
+    if (ambientRef.current) {
+      ambientRef.current.color.copy(p.ambientColor);
+      ambientRef.current.intensity = p.ambientIntensity;
+    }
+    if (sunRef.current) {
+      sunRef.current.color.copy(p.sunColor);
+      sunRef.current.intensity = p.sunIntensity;
+      sunRef.current.position.y = p.sunY;
+    }
+    if (hemiRef.current) {
+      hemiRef.current.color.copy(p.hemiSkyColor);
+      hemiRef.current.groundColor.copy(p.hemiGroundColor);
+    }
+    // 雾色
+    if (scene.fog && scene.fog instanceof THREE.Fog) {
+      scene.fog.color.copy(p.bgColor);
+    }
+    // 背景色
+    scene.background = p.bgColor;
+  });
 
   return (
     <>
-      {/* 暖色环境光 */}
-      <ambientLight intensity={0.5} color="#fff5e6" />
-      {/* 主光源（模拟室内照明） */}
+      <ambientLight ref={ambientRef} intensity={params.ambientIntensity} color={params.ambientColor} />
       <directionalLight
-        position={[3, 8, 3]}
-        intensity={0.6}
-        color="#ffe8cc"
+        ref={sunRef}
+        position={[3, params.sunY, 3]}
+        intensity={params.sunIntensity}
+        color={params.sunColor}
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
@@ -59,11 +88,26 @@ function Scene() {
         shadow-camera-top={8}
         shadow-camera-bottom={-8}
       />
-      {/* 暖色补光 */}
-      <hemisphereLight args={["#ffe4b5", "#c4a882", 0.3]} />
+      <hemisphereLight ref={hemiRef} args={[params.hemiSkyColor, params.hemiGroundColor, 0.3]} />
+    </>
+  );
+}
 
-      {/* 办公室 */}
-      <Office3D />
+function Scene({ dayNight }: { dayNight: DayNightParams }) {
+  const employees = useEmployeeStore((s) => s.employees);
+  const setSelected = useEmployeeStore((s) => s.setSelectedEmployee);
+
+  return (
+    <>
+      <DynamicLighting params={dayNight} />
+
+      {/* 夜间星空 */}
+      {dayNight.isNight && (
+        <Stars radius={50} depth={30} count={800} factor={3} fade speed={0.5} />
+      )}
+
+      {/* 办公室（传入日夜参数） */}
+      <Office3D dayNight={dayNight} />
 
       {/* 数据流 */}
       {FLOWS.map(({ from, to }, i) => {
@@ -82,7 +126,7 @@ function Scene() {
         );
       })}
 
-      {/* 角色 — 不再传 status/currentTask，Character3D 内部直接读 store */}
+      {/* 角色 */}
       {employeeConfigs.map((cfg) => {
         const pos = POSITIONS[cfg.id];
         if (!pos) return null;
@@ -101,16 +145,29 @@ function Scene() {
 
 export function Studio3D() {
   const setSelected = useEmployeeStore((s) => s.setSelectedEmployee);
+  const [dayNight, setDayNight] = useState(() => computeDayNight());
+
+  // 每 30 秒更新一次日夜参数（用于初始渲染和 React 状态）
+  useEffect(() => {
+    const timer = setInterval(() => setDayNight(computeDayNight()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const bgHex = "#" + dayNight.bgColor.getHexString();
 
   return (
     <div className="absolute inset-0">
+      {/* 时段指示器 */}
+      <div className="absolute left-2 top-2 z-10 rounded-md bg-black/30 px-2 py-1 text-[10px] text-white/70 backdrop-blur-sm">
+        {dayNight.periodName} {dayNight.isNight ? "🌙" : "☀️"}
+      </div>
       <Canvas
         shadows
         camera={{ position: [0, 12, 4], fov: 45, near: 0.1, far: 50 }}
         onPointerMissed={() => setSelected(null)}
-        style={{ background: "#e8ddd0" }}
+        style={{ background: bgHex }}
       >
-        <Scene />
+        <Scene dayNight={dayNight} />
         <OrbitControls
           enablePan
           enableZoom
@@ -121,7 +178,7 @@ export function Studio3D() {
           maxDistance={20}
           target={[0, 0, 0.5]}
         />
-        <fog attach="fog" args={["#e8ddd0", 14, 22]} />
+        <fog attach="fog" args={[dayNight.bgColor, 14, 22]} />
       </Canvas>
     </div>
   );
