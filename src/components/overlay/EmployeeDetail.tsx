@@ -34,7 +34,7 @@ export function EmployeeDetail() {
   const employee = useEmployeeStore((s) =>
     selectedId ? s.employees[selectedId] : null,
   );
-  const close = useEmployeeStore((s) => () => s.setSelectedEmployee(null));
+  const close = useEmployeeStore((s) => s.setSelectedEmployee);
 
   if (!selectedId || !employee) return null;
 
@@ -63,7 +63,7 @@ export function EmployeeDetail() {
           {badge.label}
         </span>
         <button
-          onClick={close}
+          onClick={() => close(null)}
           className="text-text-muted transition-colors hover:text-text-primary"
         >
           <X size={16} />

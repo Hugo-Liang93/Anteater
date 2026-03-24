@@ -7,6 +7,7 @@ import {
   fetchQuote,
   fetchStrategies,
 } from "@/api/endpoints";
+import { normalizeQuote, normalizeAccount, normalizeHealth, normalizeStrategies, normalizePositions } from "@/api/adapters";
 import { useMarketStore } from "@/store/market";
 import { useSignalStore } from "@/store/signals";
 import { syncAll } from "@/engine/sync";
@@ -31,16 +32,17 @@ export function usePolling() {
           fetchPositions(),
         ]);
 
-        if (quoteRes.status === "fulfilled" && quoteRes.value.data) {
-          useMarketStore
-            .getState()
-            .setQuote(config.symbols[0], quoteRes.value.data);
+        if (quoteRes.status === "fulfilled" && quoteRes.value.success) {
+          const quote = normalizeQuote(quoteRes.value as never);
+          if (quote) useMarketStore.getState().setQuote(config.symbols[0], quote);
         }
-        if (accountRes.status === "fulfilled" && accountRes.value.data) {
-          useMarketStore.getState().setAccount(accountRes.value.data);
+        if (accountRes.status === "fulfilled" && accountRes.value.success) {
+          const account = normalizeAccount(accountRes.value as never);
+          if (account) useMarketStore.getState().setAccount(account);
         }
-        if (posRes.status === "fulfilled" && posRes.value.data) {
-          useMarketStore.getState().setPositions(posRes.value.data);
+        if (posRes.status === "fulfilled" && posRes.value.success) {
+          const positions = normalizePositions(posRes.value as never);
+          useMarketStore.getState().setPositions(positions);
         }
         // 任何一个请求成功返回即视为已连接
         const anySuccess = [quoteRes, accountRes, posRes].some(
@@ -60,11 +62,14 @@ export function usePolling() {
           fetchStrategies(),
         ]);
 
-        if (healthRes.status === "fulfilled" && healthRes.value.data) {
-          useSignalStore.getState().setHealth(healthRes.value.data);
+        if (healthRes.status === "fulfilled") {
+          // /monitoring/health 返回裸对象（无 ApiResponse 包装）
+          const health = normalizeHealth(healthRes.value);
+          if (health) useSignalStore.getState().setHealth(health);
         }
-        if (stratRes.status === "fulfilled" && stratRes.value.data) {
-          useSignalStore.getState().setStrategies(stratRes.value.data);
+        if (stratRes.status === "fulfilled" && stratRes.value.success) {
+          const strats = normalizeStrategies(stratRes.value as never);
+          useSignalStore.getState().setStrategies(strats);
         }
       } catch {
         /* best effort */

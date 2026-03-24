@@ -69,6 +69,11 @@ export function StudioCanvas() {
 
     const dpr = window.devicePixelRatio || 1;
     const rect = container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      // 容器尚未布局完成，延迟重试
+      animFrameRef.current = requestAnimationFrame(draw);
+      return;
+    }
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
     canvas.style.width = `${rect.width}px`;
@@ -281,11 +286,11 @@ export function StudioCanvas() {
   };
 
   return (
-    <div ref={containerRef} className="h-full w-full">
+    <div ref={containerRef} className="absolute inset-0">
       <canvas
         ref={canvasRef}
         onClick={handleClick}
-        className="cursor-pointer"
+        className="absolute inset-0 cursor-pointer"
       />
     </div>
   );

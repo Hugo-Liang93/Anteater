@@ -28,17 +28,19 @@ export function TopBar() {
 
       {/* 中：行情 */}
       <div className="flex items-center gap-6 text-sm">
-        {quote ? (
+        {quote?.bid != null ? (
           <>
             <span className="font-mono text-text-primary">
               XAUUSD{" "}
               <span className="text-buy">{quote.bid.toFixed(2)}</span>
               {" / "}
-              <span className="text-sell">{quote.ask.toFixed(2)}</span>
+              <span className="text-sell">{quote.ask?.toFixed(2) ?? "—"}</span>
             </span>
-            <span className="text-text-muted">
-              spread {quote.spread.toFixed(1)}
-            </span>
+            {quote.spread != null && (
+              <span className="text-text-muted">
+                spread {quote.spread.toFixed(1)}
+              </span>
+            )}
           </>
         ) : (
           <span className="text-text-muted">等待行情...</span>
