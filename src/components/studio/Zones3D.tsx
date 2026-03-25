@@ -3,8 +3,11 @@
  *
  * 在地面渲染半透明区域标记 + 区域名牌，
  * 让 6 个功能区在 3D 场景中清晰可见。
+ *
+ * 材质/几何体通过 useMemo 缓存并在卸载时 dispose。
  */
 
+import { useEffect } from "react";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { SCENE_ZONES } from "@/config/layout";
@@ -17,6 +20,8 @@ function ZoneFloor({ center, size, color, label }: {
   color: string;
   label: string;
 }) {
+  const floorGeo = useMemo(() => new THREE.PlaneGeometry(size[0], size[1]), [size]);
+
   const mat = useMemo(() =>
     new THREE.MeshStandardMaterial({
       color,
@@ -44,17 +49,25 @@ function ZoneFloor({ center, size, color, label }: {
       new THREE.Vector3(-hw, 0, hd),
       new THREE.Vector3(-hw, 0, -hd),
     ];
-    const geo = new THREE.BufferGeometry().setFromPoints(points);
-    return geo;
+    return new THREE.BufferGeometry().setFromPoints(points);
   }, [size]);
+
+  // 组件卸载时释放材质和几何体
+  useEffect(() => {
+    return () => {
+      floorGeo.dispose();
+      mat.dispose();
+      borderMat.dispose();
+      borderGeo.dispose();
+    };
+  }, [floorGeo, mat, borderMat, borderGeo]);
 
   return (
     <group position={center}>
       {/* 半透明地面 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <planeGeometry args={[size[0], size[1]]} />
-        <primitive object={mat} attach="material" />
-      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}
+        geometry={floorGeo} material={mat}
+      />
 
       {/* 边框线 */}
       <line>

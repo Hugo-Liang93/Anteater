@@ -7,20 +7,21 @@
  * - warning/alert: 粒子变少，颜色偏黄
  * - error: 粒子中断/停止
  * - 事件演出: 信号通过时链路短暂增亮
+ *
+ * 几何体从 engine/shared3d.ts 共享注册表获取。
  */
 
 import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ActivityStatus } from "@/store/employees";
+import { FlowGeo } from "@/engine/shared3d";
 
 interface FlowProps {
   from: [number, number, number];
   to: [number, number, number];
   active: boolean;
-  /** 源角色状态，用于调整粒子行为 */
   sourceStatus?: ActivityStatus;
-  /** 目标角色状态，用于事件演出 */
   targetStatus?: ActivityStatus;
   color?: string;
 }
@@ -41,13 +42,10 @@ function getFlowParams(sourceStatus: ActivityStatus) {
     case "success":
       return { speed: 0.6, count: 3, color: "#66bb6a", opacity: 0.95, size: [0.07, 0.05, 0.04] };
     case "blocked":
-      // 被拦截：粒子停止
       return { speed: 0, count: 0, color: "#ff1744", opacity: 0, size: [] };
     case "disconnected":
-      // 失联：粒子完全中断
       return { speed: 0, count: 0, color: "#b71c1c", opacity: 0, size: [] };
     case "reconnecting":
-      // 重连：间歇性慢速粒子
       return { speed: 0.15, count: 1, color: "#ff9100", opacity: 0.5, size: [0.04] };
     default:
       return { speed: 0.3, count: 2, color: "#00d4aa", opacity: 0.7, size: [0.05, 0.04] };
@@ -57,7 +55,7 @@ function getFlowParams(sourceStatus: ActivityStatus) {
 export function DataFlowParticle({ from, to, active, sourceStatus = "idle", color }: FlowProps) {
   const meshRefs = useRef<(THREE.Mesh | null)[]>([null, null, null]);
 
-  // 预创建 3 个粒子 mesh 材质（空依赖数组 — 生命周期与组件一致）
+  // 预创建 3 个粒子 mesh 材质（生命周期与组件一致）
   const materials = useMemo(() => [
     new THREE.MeshStandardMaterial({ transparent: true }),
     new THREE.MeshStandardMaterial({ transparent: true }),
@@ -88,7 +86,6 @@ export function DataFlowParticle({ from, to, active, sourceStatus = "idle", colo
 
       mesh.visible = true;
 
-      // 每个粒子错开相位
       const phase = i / params.count;
       const p = (t + phase) % 1;
 
@@ -98,12 +95,10 @@ export function DataFlowParticle({ from, to, active, sourceStatus = "idle", colo
         from[2] + (to[2] - from[2]) * p,
       );
 
-      // 粒子大小脉动
       const sz = params.size[i] ?? 0.04;
       const pulseSz = sz * (1 + Math.sin(t * 6 + i) * 0.15);
-      mesh.scale.setScalar(pulseSz / 0.06); // 归一化到基础几何尺寸
+      mesh.scale.setScalar(pulseSz / 0.06);
 
-      // 材质颜色和亮度
       mat.color.set(flowColor);
       mat.emissive.set(flowColor);
       mat.emissiveIntensity = 1.5 + Math.sin(t * 4 + i * 2) * 0.5;
@@ -118,8 +113,8 @@ export function DataFlowParticle({ from, to, active, sourceStatus = "idle", colo
           key={i}
           ref={(el) => { meshRefs.current[i] = el; }}
           visible={false}
+          geometry={FlowGeo.particle}
         >
-          <sphereGeometry args={[0.06, 8, 8]} />
           <primitive object={mat} attach="material" />
         </mesh>
       ))}
@@ -131,10 +126,12 @@ export function DataFlowParticle({ from, to, active, sourceStatus = "idle", colo
 export function FlowLine({ from, to, highlight }: {
   from: [number, number, number];
   to: [number, number, number];
-  /** 是否高亮（事件演出时短暂增亮） */
   highlight?: boolean;
 }) {
   const lineObjRef = useRef<THREE.Line | null>(null);
+  // 缓存上一次 highlight 值，避免每帧重复设置
+  const prevHighlightRef = useRef<boolean | undefined>(undefined);
+
   const geo = useMemo(() => {
     const points = [
       new THREE.Vector3(from[0], 0.3, from[2]),
@@ -162,12 +159,12 @@ export function FlowLine({ from, to, highlight }: {
     return line;
   }, [geo, mat]);
 
-  // 保存引用以便 useFrame 访问
   lineObjRef.current = lineObj;
 
   useFrame(() => {
-    const line = lineObjRef.current;
-    if (!line) return;
+    // 仅在 highlight 变化时更新材质，避免每帧冗余操作
+    if (highlight === prevHighlightRef.current) return;
+    prevHighlightRef.current = highlight;
     if (highlight) {
       mat.color.set("#00d4aa");
       mat.opacity = 0.8;

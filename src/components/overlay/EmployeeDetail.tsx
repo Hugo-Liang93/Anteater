@@ -224,19 +224,19 @@ function RoleMetrics({ roleId }: { roleId: string }) {
       }
       break;
 
-    case EmployeeRole.STRATEGIST:
-      if (signals.length > 0) {
-        const latest = signals[0]!;
+    case EmployeeRole.STRATEGIST: {
+      const latestSignal = signals[0];
+      if (latestSignal) {
         content = (
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <KV k="最新策略" v={latest.strategy} />
-              <KV k="方向" v={latest.direction.toUpperCase()} color={latest.direction === "buy" ? "text-buy" : latest.direction === "sell" ? "text-sell" : undefined} />
-              <KV k="置信度" v={`${(latest.confidence * 100).toFixed(0)}%`} />
+              <KV k="最新策略" v={latestSignal.strategy} />
+              <KV k="方向" v={latestSignal.direction.toUpperCase()} color={latestSignal.direction === "buy" ? "text-buy" : latestSignal.direction === "sell" ? "text-sell" : undefined} />
+              <KV k="置信度" v={`${(latestSignal.confidence * 100).toFixed(0)}%`} />
               <KV k="活跃策略" v={String(strategies.length)} />
             </div>
-            {latest.reason && (
-              <div className="text-[10px] text-text-muted">原因: {latest.reason}</div>
+            {latestSignal.reason && (
+              <div className="text-[10px] text-text-muted">原因: {latestSignal.reason}</div>
             )}
           </div>
         );
@@ -244,12 +244,18 @@ function RoleMetrics({ roleId }: { roleId: string }) {
         content = <Empty text={strategies.length > 0 ? `${strategies.length} 个策略评估中` : "等待策略加载"} />;
       }
       break;
+    }
 
     case EmployeeRole.VOTER:
       if (signals.length > 0) {
-        const buy = signals.filter((s) => s.direction === "buy").length;
-        const sell = signals.filter((s) => s.direction === "sell").length;
-        const hold = signals.filter((s) => s.direction === "hold").length;
+        // 单次遍历统计方向分布，替代 3 次 filter
+        const dirs = signals.reduce(
+          (acc, s) => { acc[s.direction] = (acc[s.direction] ?? 0) + 1; return acc; },
+          {} as Record<string, number>,
+        );
+        const buy = dirs["buy"] ?? 0;
+        const sell = dirs["sell"] ?? 0;
+        const hold = dirs["hold"] ?? 0;
         const total = signals.length;
         content = (
           <div className="space-y-2">
