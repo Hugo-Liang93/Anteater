@@ -19,9 +19,14 @@ import { useSignalStore } from "@/store/signals";
 const statusBadge: Record<ActivityStatus, { label: string; cls: string }> = {
   idle: { label: "空闲", cls: "bg-text-muted/20 text-text-muted" },
   working: { label: "工作中", cls: "bg-success/20 text-success" },
+  thinking: { label: "思考中", cls: "bg-blue-400/20 text-blue-400" },
+  reviewing: { label: "审核中", cls: "bg-purple-400/20 text-purple-400" },
   alert: { label: "告警", cls: "bg-warning/20 text-warning" },
   success: { label: "完成", cls: "bg-success/20 text-success" },
   error: { label: "异常", cls: "bg-danger/20 text-danger" },
+  blocked: { label: "已拦截", cls: "bg-danger/20 text-danger" },
+  disconnected: { label: "失联", cls: "bg-danger/20 text-danger" },
+  reconnecting: { label: "重连中", cls: "bg-warning/20 text-warning" },
 };
 
 const logTypeColor: Record<ActionLog["type"], string> = {

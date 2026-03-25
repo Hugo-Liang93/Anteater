@@ -10,7 +10,7 @@ function useAlertRoles(): EmployeeRoleType[] {
     const roles: EmployeeRoleType[] = [];
     for (const cfg of employeeConfigs) {
       const emp = s.employees[cfg.id];
-      if (emp && (emp.status === "alert" || emp.status === "error")) {
+      if (emp && (emp.status === "alert" || emp.status === "error" || emp.status === "blocked" || emp.status === "disconnected")) {
         roles.push(cfg.id);
       }
     }
@@ -90,7 +90,7 @@ function AlertEmployeeRow({ role }: { role: EmployeeRoleType }) {
       color={cfg.color}
       title={cfg.name}
       message={emp.currentTask}
-      level={emp.status === "error" ? "error" : "warning"}
+      level={emp.status === "error" || emp.status === "blocked" || emp.status === "disconnected" ? "error" : "warning"}
     />
   );
 }

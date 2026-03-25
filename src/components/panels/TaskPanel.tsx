@@ -5,17 +5,27 @@ import { useEmployeeStore, selectEmployee, type ActivityStatus } from "@/store/e
 const statusLabel: Record<ActivityStatus, string> = {
   idle: "空闲",
   working: "工作中",
+  thinking: "思考中",
+  reviewing: "审核中",
   alert: "告警",
   success: "完成",
   error: "异常",
+  blocked: "已拦截",
+  disconnected: "失联",
+  reconnecting: "重连中",
 };
 
 const statusDot: Record<ActivityStatus, string> = {
   idle: "bg-text-muted",
   working: "bg-success animate-pulse",
+  thinking: "bg-blue-400 animate-pulse",
+  reviewing: "bg-purple-400 animate-pulse",
   alert: "bg-warning animate-pulse",
   success: "bg-success",
   error: "bg-danger animate-pulse",
+  blocked: "bg-danger",
+  disconnected: "bg-danger",
+  reconnecting: "bg-warning animate-pulse",
 };
 
 export function TaskPanel() {

@@ -25,17 +25,30 @@ interface FlowProps {
   color?: string;
 }
 
-/** 根据状态返回粒子参数 */
+/** 根据状态返回粒子参数 — 按 ANIMATION_SPEC 完整映射 */
 function getFlowParams(sourceStatus: ActivityStatus) {
   switch (sourceStatus) {
     case "working":
       return { speed: 0.5, count: 3, color: "#00d4aa", opacity: 0.9, size: [0.06, 0.05, 0.04] };
+    case "thinking":
+      return { speed: 0.2, count: 2, color: "#90caf9", opacity: 0.6, size: [0.04, 0.03] };
+    case "reviewing":
+      return { speed: 0.15, count: 2, color: "#ce93d8", opacity: 0.5, size: [0.04, 0.03] };
     case "alert":
       return { speed: 0.25, count: 2, color: "#ffa726", opacity: 0.7, size: [0.05, 0.04] };
     case "error":
       return { speed: 0.1, count: 1, color: "#ff4757", opacity: 0.4, size: [0.03] };
     case "success":
       return { speed: 0.6, count: 3, color: "#66bb6a", opacity: 0.95, size: [0.07, 0.05, 0.04] };
+    case "blocked":
+      // 被拦截：粒子停止
+      return { speed: 0, count: 0, color: "#ff1744", opacity: 0, size: [] };
+    case "disconnected":
+      // 失联：粒子完全中断
+      return { speed: 0, count: 0, color: "#b71c1c", opacity: 0, size: [] };
+    case "reconnecting":
+      // 重连：间歇性慢速粒子
+      return { speed: 0.15, count: 1, color: "#ff9100", opacity: 0.5, size: [0.04] };
     default:
       return { speed: 0.3, count: 2, color: "#00d4aa", opacity: 0.7, size: [0.05, 0.04] };
   }

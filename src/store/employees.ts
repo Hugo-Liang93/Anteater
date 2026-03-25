@@ -1,8 +1,18 @@
 import { create } from "zustand";
 import type { EmployeeRoleType } from "@/config/employees";
 
-/** 员工活动状态 */
-export type ActivityStatus = "idle" | "working" | "alert" | "success" | "error";
+/** 员工活动状态 — 按 ANIMATION_SPEC.md 完整定义 */
+export type ActivityStatus =
+  | "idle"
+  | "working"
+  | "thinking"      // 思考/决策中
+  | "reviewing"     // 审核中（风控）
+  | "alert"         // 警告（黄灯）
+  | "success"       // 成功/已执行/已通过
+  | "error"         // 异常（红灯）
+  | "blocked"       // 被拦截（风控拒绝）
+  | "disconnected"  // 失联
+  | "reconnecting"; // 重连中
 
 /** 运行时员工状态 */
 export interface EmployeeState {

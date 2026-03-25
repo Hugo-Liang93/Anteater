@@ -106,85 +106,211 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
     }
     sa.lastStatus = status;
 
+    // ─── 整体透明度（disconnected 变暗） ───
+    if (groupRef.current) {
+      // disconnected 时降低整体可见度
+      const dimming = status === "disconnected" ? 0.5 : 1.0;
+      materials.skin.opacity = dimming;
+      materials.skin.transparent = dimming < 1;
+      materials.shirt.opacity = dimming;
+      materials.shirt.transparent = true; // 始终 transparent 以支持 emissive
+      materials.pants.opacity = dimming;
+      materials.pants.transparent = dimming < 1;
+    }
+
     // ─── 身体动画 ───
     if (bodyGroupRef.current) {
       const body = bodyGroupRef.current;
 
-      if (status === "error") {
-        // error: 抖动
-        body.position.x = Math.sin(t * 30) * 0.015;
-        body.position.y = Math.sin(t * 2) * 0.005;
-        body.rotation.z = 0;
-        body.rotation.x = 0;
-      } else if (status === "working") {
-        // working: 加速浮动 + 前倾
-        body.position.x = 0;
-        body.position.y = Math.abs(Math.sin(t * 5)) * 0.02;
-        body.rotation.x = 0.06; // 前倾
-        body.rotation.z = 0;
-      } else if (status === "alert") {
-        // alert/warning: 轻微停顿感
-        body.position.x = 0;
-        body.position.y = Math.sin(t * 1.5) * 0.005;
-        body.rotation.x = 0;
-        body.rotation.z = 0;
-      } else {
-        // idle: 呼吸浮动 + 身体左右微摆
-        body.position.x = 0;
-        body.position.y = Math.sin(t * 2) * 0.01;
-        body.rotation.z = Math.sin(t * 1.2) * 0.02; // 左右微摆
-        body.rotation.x = 0;
+      switch (status) {
+        case "error":
+          // 抖动
+          body.position.x = Math.sin(t * 30) * 0.015;
+          body.position.y = Math.sin(t * 2) * 0.005;
+          body.rotation.z = 0;
+          body.rotation.x = 0;
+          break;
+        case "working":
+          // 加速浮动 + 前倾
+          body.position.x = 0;
+          body.position.y = Math.abs(Math.sin(t * 5)) * 0.02;
+          body.rotation.x = 0.06;
+          body.rotation.z = 0;
+          break;
+        case "thinking":
+          // 思考：短暂停顿 + 微前后摇
+          body.position.x = 0;
+          body.position.y = Math.sin(t * 1) * 0.005;
+          body.rotation.x = Math.sin(t * 0.8) * 0.03;
+          body.rotation.z = 0;
+          break;
+        case "reviewing":
+          // 审核：减弱动作，略前倾
+          body.position.x = 0;
+          body.position.y = Math.sin(t * 1.5) * 0.005;
+          body.rotation.x = 0.04;
+          body.rotation.z = 0;
+          break;
+        case "blocked":
+          // 被拦截：轻微后仰
+          body.position.x = 0;
+          body.position.y = 0;
+          body.rotation.x = -0.05;
+          body.rotation.z = 0;
+          break;
+        case "alert":
+          // 警告：轻微停顿感
+          body.position.x = 0;
+          body.position.y = Math.sin(t * 1.5) * 0.005;
+          body.rotation.x = 0;
+          body.rotation.z = 0;
+          break;
+        case "disconnected":
+          // 失联：完全停止，微下沉
+          body.position.x = 0;
+          body.position.y = -0.02;
+          body.rotation.x = 0.03;
+          body.rotation.z = 0;
+          break;
+        case "reconnecting":
+          // 重连：周期性闪动尝试
+          body.position.x = 0;
+          body.position.y = Math.abs(Math.sin(t * 3)) * 0.01;
+          body.rotation.x = 0;
+          body.rotation.z = Math.sin(t * 2) * 0.01;
+          break;
+        default:
+          // idle: 呼吸浮动 + 身体左右微摆
+          body.position.x = 0;
+          body.position.y = Math.sin(t * 2) * 0.01;
+          body.rotation.z = Math.sin(t * 1.2) * 0.02;
+          body.rotation.x = 0;
+          break;
       }
     }
 
-    // ─── 头部动画 (thinking 摆头) ───
+    // ─── 头部动画 ───
     if (headRef.current) {
-      if (status === "success") {
-        // success: 轻微抬升
-        headRef.current.position.y = 1.35 + Math.max(0, 0.03 * Math.sin((t - sa.startTime) * 4));
-        headRef.current.rotation.y = 0;
-      } else {
-        headRef.current.position.y = 1.35;
-        headRef.current.rotation.y = 0;
+      switch (status) {
+        case "thinking":
+          // 思考：左右缓慢摆头
+          headRef.current.position.y = 1.35;
+          headRef.current.rotation.y = Math.sin(t * 1.5) * 0.15;
+          headRef.current.rotation.x = Math.sin(t * 0.7) * 0.05;
+          break;
+        case "reviewing":
+          // 审核：点头动作
+          headRef.current.position.y = 1.35;
+          headRef.current.rotation.y = 0;
+          headRef.current.rotation.x = Math.sin(t * 2) * 0.06;
+          break;
+        case "success": {
+          // 轻微抬升
+          const elapsed = t - sa.startTime;
+          headRef.current.position.y = 1.35 + Math.max(0, 0.03 * Math.sin(elapsed * 4));
+          headRef.current.rotation.y = 0;
+          headRef.current.rotation.x = 0;
+          break;
+        }
+        case "blocked":
+          // 被拦截：轻微左右摇头（拒绝感）
+          headRef.current.position.y = 1.35;
+          headRef.current.rotation.y = Math.sin(t * 6) * 0.08;
+          headRef.current.rotation.x = 0;
+          break;
+        case "disconnected":
+          // 低头
+          headRef.current.position.y = 1.33;
+          headRef.current.rotation.y = 0;
+          headRef.current.rotation.x = 0.1;
+          break;
+        default:
+          headRef.current.position.y = 1.35;
+          headRef.current.rotation.y = 0;
+          headRef.current.rotation.x = 0;
+          break;
       }
     }
 
     // ─── 四肢动画 ───
-    const isWorking = status === "working";
-    const isReviewing = status === "success"; // reviewing 用减弱的动作
-    const speed = isWorking ? 5 : isReviewing ? 1 : 1.5;
-    const armAmp = isWorking ? 0.5 : status === "alert" ? 0.02 : 0.04;
-    const legAmp = isWorking ? 0.3 : 0.02;
-    if (leftArmRef.current) leftArmRef.current.rotation.x = Math.sin(t * speed) * armAmp;
-    if (rightArmRef.current) rightArmRef.current.rotation.x = -Math.sin(t * speed) * armAmp;
-    if (leftLegRef.current) leftLegRef.current.rotation.x = -Math.sin(t * speed) * legAmp;
-    if (rightLegRef.current) rightLegRef.current.rotation.x = Math.sin(t * speed) * legAmp;
+    let limbSpeed = 1.5;
+    let armAmp = 0.04;
+    let legAmp = 0.02;
+    switch (status) {
+      case "working": limbSpeed = 5; armAmp = 0.5; legAmp = 0.3; break;
+      case "thinking": limbSpeed = 0.8; armAmp = 0.02; legAmp = 0.01; break;
+      case "reviewing": limbSpeed = 1; armAmp = 0.03; legAmp = 0.01; break;
+      case "alert": limbSpeed = 1.5; armAmp = 0.02; legAmp = 0.02; break;
+      case "error": limbSpeed = 0.5; armAmp = 0.01; legAmp = 0.01; break;
+      case "blocked": limbSpeed = 0; armAmp = 0; legAmp = 0; break;
+      case "disconnected": limbSpeed = 0; armAmp = 0; legAmp = 0; break;
+      case "reconnecting": limbSpeed = 3; armAmp = 0.1; legAmp = 0.05; break;
+    }
+    if (leftArmRef.current) leftArmRef.current.rotation.x = Math.sin(t * limbSpeed) * armAmp;
+    if (rightArmRef.current) rightArmRef.current.rotation.x = -Math.sin(t * limbSpeed) * armAmp;
+    if (leftLegRef.current) leftLegRef.current.rotation.x = -Math.sin(t * limbSpeed) * legAmp;
+    if (rightLegRef.current) rightLegRef.current.rotation.x = Math.sin(t * limbSpeed) * legAmp;
 
-    // ─── 衣服发光（warning 黄 / error 红 / alert 红） ───
-    if (status === "alert") {
-      // warning 级别：黄灯闪烁
-      const flash = Math.sin(t * 4) > 0;
-      materials.shirt.emissive.set(flash ? "#ffaa00" : "#000000");
-      materials.shirt.emissiveIntensity = flash ? 0.35 : 0;
-    } else if (status === "error") {
-      // error 级别：红灯快速闪烁
-      const flash = Math.sin(t * 8) > 0;
-      materials.shirt.emissive.set(flash ? "#ff2222" : "#000000");
-      materials.shirt.emissiveIntensity = flash ? 0.5 : 0;
-    } else if (status === "success") {
-      // success: 绿色短闪
-      const elapsed = t - sa.startTime;
-      if (elapsed < 1.5) {
-        const intensity = Math.max(0, 0.5 * (1 - elapsed / 1.5));
-        materials.shirt.emissive.set("#00ff88");
-        materials.shirt.emissiveIntensity = intensity;
-      } else {
+    // ─── 衣服发光 ───
+    switch (status) {
+      case "alert": {
+        const flash = Math.sin(t * 4) > 0;
+        materials.shirt.emissive.set(flash ? "#ffaa00" : "#000000");
+        materials.shirt.emissiveIntensity = flash ? 0.35 : 0;
+        break;
+      }
+      case "error": {
+        const flash = Math.sin(t * 8) > 0;
+        materials.shirt.emissive.set(flash ? "#ff2222" : "#000000");
+        materials.shirt.emissiveIntensity = flash ? 0.5 : 0;
+        break;
+      }
+      case "success": {
+        const elapsed = t - sa.startTime;
+        if (elapsed < 1.5) {
+          materials.shirt.emissive.set("#00ff88");
+          materials.shirt.emissiveIntensity = Math.max(0, 0.5 * (1 - elapsed / 1.5));
+        } else {
+          materials.shirt.emissive.set("#000000");
+          materials.shirt.emissiveIntensity = 0;
+        }
+        break;
+      }
+      case "blocked": {
+        // 被拦截：红色持续微弱发光
+        materials.shirt.emissive.set("#ff1744");
+        materials.shirt.emissiveIntensity = 0.3 + Math.sin(t * 2) * 0.1;
+        break;
+      }
+      case "thinking": {
+        // 思考：蓝色微弱脉冲
+        materials.shirt.emissive.set("#42a5f5");
+        materials.shirt.emissiveIntensity = 0.1 + Math.sin(t * 2) * 0.08;
+        break;
+      }
+      case "reviewing": {
+        // 审核：紫色微弱脉冲
+        materials.shirt.emissive.set("#ab47bc");
+        materials.shirt.emissiveIntensity = 0.1 + Math.sin(t * 1.5) * 0.08;
+        break;
+      }
+      case "disconnected": {
+        // 失联：红色恒亮
+        materials.shirt.emissive.set("#b71c1c");
+        materials.shirt.emissiveIntensity = 0.2;
+        break;
+      }
+      case "reconnecting": {
+        // 重连：橙色/蓝色交替闪烁
+        const phase = Math.sin(t * 3) > 0;
+        materials.shirt.emissive.set(phase ? "#ff9100" : "#42a5f5");
+        materials.shirt.emissiveIntensity = 0.3;
+        break;
+      }
+      default:
         materials.shirt.emissive.set("#000000");
         materials.shirt.emissiveIntensity = 0;
-      }
-    } else {
-      materials.shirt.emissive.set("#000000");
-      materials.shirt.emissiveIntensity = 0;
+        break;
     }
 
     // ─── 状态灯颜色 ───
@@ -225,24 +351,41 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
       }
     }
 
-    // ─── 警告脉冲环 ───
+    // ─── 状态脉冲环（alert/error/blocked/reconnecting） ───
     if (warningRingRef.current) {
+      const mat = warningRingRef.current.material as THREE.MeshStandardMaterial;
       if (status === "alert") {
         warningRingRef.current.visible = true;
-        const pulse = (t * 1.5) % 1; // 0..1 循环
-        const scale = 0.6 + pulse * 1.0;
-        warningRingRef.current.scale.set(scale, scale, scale);
-        const mat = warningRingRef.current.material as THREE.MeshStandardMaterial;
+        const pulse = (t * 1.5) % 1;
+        warningRingRef.current.scale.setScalar(0.6 + pulse * 1.0);
+        mat.color.set("#ffa726"); mat.emissive.set("#ffa726");
         mat.opacity = Math.max(0, 0.5 * (1 - pulse));
       } else if (status === "error") {
         warningRingRef.current.visible = true;
         const pulse = (t * 2.5) % 1;
-        const scale = 0.6 + pulse * 1.2;
-        warningRingRef.current.scale.set(scale, scale, scale);
-        const mat = warningRingRef.current.material as THREE.MeshStandardMaterial;
-        mat.color.set("#ff4444");
-        mat.emissive.set("#ff4444");
+        warningRingRef.current.scale.setScalar(0.6 + pulse * 1.2);
+        mat.color.set("#ff4444"); mat.emissive.set("#ff4444");
         mat.opacity = Math.max(0, 0.6 * (1 - pulse));
+      } else if (status === "blocked") {
+        // 被拦截：红色快速收缩脉冲（拦截墙感）
+        warningRingRef.current.visible = true;
+        const pulse = (t * 3) % 1;
+        warningRingRef.current.scale.setScalar(1.2 - pulse * 0.6);
+        mat.color.set("#ff1744"); mat.emissive.set("#ff1744");
+        mat.opacity = 0.4 + Math.sin(t * 6) * 0.2;
+      } else if (status === "reconnecting") {
+        // 重连：橙色慢速脉冲
+        warningRingRef.current.visible = true;
+        const pulse = (t * 1) % 1;
+        warningRingRef.current.scale.setScalar(0.5 + pulse * 0.8);
+        mat.color.set("#ff9100"); mat.emissive.set("#ff9100");
+        mat.opacity = Math.max(0, 0.4 * (1 - pulse));
+      } else if (status === "disconnected") {
+        // 失联：红色恒定环（不脉冲）
+        warningRingRef.current.visible = true;
+        warningRingRef.current.scale.setScalar(0.8);
+        mat.color.set("#b71c1c"); mat.emissive.set("#b71c1c");
+        mat.opacity = 0.3;
       } else {
         warningRingRef.current.visible = false;
       }

@@ -2,6 +2,7 @@
  * 后端数据 → 员工状态同步引擎
  *
  * 每次 syncAll() 用真实后端数据驱动所有 10 个角色的状态。
+ * 按 ANIMATION_SPEC.md 映射完整的 ActivityStatus 状态集。
  */
 
 import { EmployeeRole, type EmployeeRoleType } from "@/config/employees";
@@ -23,7 +24,6 @@ function addAction(
 ) {
   useEmployeeStore.getState().addAction(role, log);
 }
-
 
 export function syncAll() {
   try {
@@ -49,7 +49,7 @@ function _syncAllInner() {
     });
   } else {
     update(EmployeeRole.COLLECTOR, {
-      status: connected ? "idle" : "error",
+      status: connected ? "idle" : "disconnected",
       currentTask: connected ? "等待行情数据" : "后端未连接",
     });
   }
@@ -68,9 +68,9 @@ function _syncAllInner() {
       stats: { indicators: count, rsi: rsi ?? 0, atr: atr ?? 0 },
     });
   } else if (connected) {
-    update(EmployeeRole.ANALYST, { status: "working", currentTask: "计算指标中..." });
+    update(EmployeeRole.ANALYST, { status: "thinking", currentTask: "计算指标中..." });
   } else {
-    update(EmployeeRole.ANALYST, { status: "idle", currentTask: "等待后端连接" });
+    update(EmployeeRole.ANALYST, { status: "disconnected", currentTask: "等待后端连接" });
   }
 
   // ─── 策略师：信号评估 ───
@@ -101,8 +101,8 @@ function _syncAllInner() {
     }
   } else if (strategies.length > 0) {
     update(EmployeeRole.STRATEGIST, {
-      status: "working",
-      currentTask: `${strategies.length} 个策略监听中`,
+      status: "thinking",
+      currentTask: `${strategies.length} 个策略评估中`,
       stats: { total_strategies: strategies.length },
     });
   } else {
@@ -127,7 +127,7 @@ function _syncAllInner() {
     });
   } else {
     update(EmployeeRole.VOTER, {
-      status: strategies.length > 0 ? "working" : "idle",
+      status: strategies.length > 0 ? "thinking" : "idle",
       currentTask: strategies.length > 0 ? `汇总 ${strategies.length} 策略投票` : "等待策略投票",
     });
   }
@@ -136,13 +136,26 @@ function _syncAllInner() {
   const queueDrops = queues.reduce((s, q) => s + q.drops_oldest + q.drops_newest, 0);
   const queueWarning = queues.some((q) => q.status !== "normal");
   if (connected && strategies.length > 0) {
-    update(EmployeeRole.RISK_OFFICER, {
-      status: queueWarning ? "alert" : "working",
-      currentTask: queueWarning
-        ? `队列异常 | ${queueDrops} 次丢弃`
-        : `风控监控中 | ${queues.length} 队列正常`,
-      stats: { queues: queues.length, drops: queueDrops },
-    });
+    if (queueDrops > 10) {
+      // 严重丢弃 → blocked
+      update(EmployeeRole.RISK_OFFICER, {
+        status: "blocked",
+        currentTask: `风控拦截 | ${queueDrops} 次丢弃`,
+        stats: { queues: queues.length, drops: queueDrops },
+      });
+    } else if (queueWarning) {
+      update(EmployeeRole.RISK_OFFICER, {
+        status: "alert",
+        currentTask: `队列异常 | ${queueDrops} 次丢弃`,
+        stats: { queues: queues.length, drops: queueDrops },
+      });
+    } else {
+      update(EmployeeRole.RISK_OFFICER, {
+        status: "reviewing",
+        currentTask: `风控审核中 | ${queues.length} 队列正常`,
+        stats: { queues: queues.length, drops: queueDrops },
+      });
+    }
   } else {
     update(EmployeeRole.RISK_OFFICER, { status: "idle", currentTask: "待命" });
   }
@@ -160,8 +173,8 @@ function _syncAllInner() {
       (s) => s.direction !== "hold" && s.confidence > 0.5,
     );
     update(EmployeeRole.TRADER, {
-      status: hasSignal ? "working" : "idle",
-      currentTask: hasSignal ? "信号待执行" : "等待交易信号",
+      status: hasSignal ? "thinking" : "idle",
+      currentTask: hasSignal ? "信号评估中，准备执行" : "等待交易信号",
     });
   }
 
@@ -194,13 +207,16 @@ function _syncAllInner() {
       },
     });
   } else {
-    update(EmployeeRole.ACCOUNTANT, { status: "idle", currentTask: "等待账户数据" });
+    update(EmployeeRole.ACCOUNTANT, {
+      status: connected ? "idle" : "disconnected",
+      currentTask: connected ? "等待账户数据" : "后端未连接",
+    });
   }
 
   // ─── 日历员 ───
   update(EmployeeRole.CALENDAR_REPORTER, {
-    status: connected ? "working" : "idle",
-    currentTask: connected ? "监控经济日历" : "等待连接",
+    status: connected ? "working" : "disconnected",
+    currentTask: connected ? "监控经济日历" : "后端未连接",
   });
 
   // ─── 巡检员：系统健康 ───
@@ -208,16 +224,16 @@ function _syncAllInner() {
     const compCount = Object.keys(health.components).length;
     const issues = Object.values(health.components).filter((c) => c.status !== "healthy").length;
     update(EmployeeRole.INSPECTOR, {
-      status: issues > 0 ? "alert" : "working",
+      status: issues > 0 ? "alert" : "reviewing",
       currentTask: issues > 0
         ? `${issues}/${compCount} 组件异常`
-        : `${compCount} 组件正常`,
+        : `${compCount} 组件巡检中`,
       stats: { components: compCount, issues },
     });
   } else {
     update(EmployeeRole.INSPECTOR, {
-      status: connected ? "working" : "idle",
-      currentTask: connected ? "巡检中" : "等待连接",
+      status: connected ? "thinking" : "disconnected",
+      currentTask: connected ? "巡检准备中" : "后端未连接",
     });
   }
 }
