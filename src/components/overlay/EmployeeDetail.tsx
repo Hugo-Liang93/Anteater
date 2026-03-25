@@ -23,7 +23,8 @@ import { useSignalStore } from "@/store/signals";
 /** 区域中文名映射 */
 const ZONE_LABELS: Record<string, string> = {
   collection: "采集区", analysis: "分析区", strategy: "策略室",
-  risk: "风控台", trading: "交易台", support: "支持区",
+  voting: "投票区", risk: "风控台", trading: "交易台",
+  position: "持仓区", accounting: "财务区", inspection: "巡检台", calendar: "日历区",
 };
 
 const DEFAULT_BADGE = { label: "未知", cls: "bg-text-muted/20 text-text-muted" };

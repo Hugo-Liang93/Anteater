@@ -184,15 +184,19 @@ function PottedPlant({ position }: { position: [number, number, number] }) {
 // ─── 工位布局 ───
 
 const DESKS: { pos: [number, number, number]; screens: number; deskColor?: string }[] = [
-  { pos: [-3, 0, -1], screens: 3, deskColor: "#a08060" },
-  { pos: [-1, 0, -1], screens: 3, deskColor: "#9a7a5a" },
-  { pos: [1, 0, -1.5], screens: 3, deskColor: "#a08060" },
-  { pos: [1, 0, 0.2], screens: 2, deskColor: "#9a7a5a" },
-  { pos: [3, 0, -1], screens: 2, deskColor: "#8a6a4a" },
-  { pos: [3, 0, 1], screens: 2, deskColor: "#a08060" },
-  { pos: [1, 0, 2], screens: 2, deskColor: "#9a7a5a" },
-  { pos: [-2.5, 0, 2], screens: 1, deskColor: "#a08060" },
-  { pos: [-1, 0, 2], screens: 1, deskColor: "#9a7a5a" },
+  // ── Row 1: 采集 / 分析 / 策略（桌子在角色身后，Z 偏负） ──
+  { pos: [-3.5, 0, -3.1], screens: 3, deskColor: "#a08060" },
+  { pos: [0,    0, -3.1], screens: 3, deskColor: "#9a7a5a" },
+  { pos: [3.5,  0, -3.1], screens: 3, deskColor: "#a08060" },
+  // ── Row 2: 投票 / 风控 / 交易 ──
+  { pos: [3.5,  0, -0.1], screens: 2, deskColor: "#9a7a5a" },
+  { pos: [0,    0, -0.1], screens: 2, deskColor: "#8a6a4a" },
+  { pos: [-3.5, 0, -0.1], screens: 2, deskColor: "#a08060" },
+  // ── Row 3: 支持角色 ──
+  { pos: [-3.5, 0,  2.4], screens: 2, deskColor: "#9a7a5a" },
+  { pos: [-1,   0,  2.4], screens: 1, deskColor: "#a08060" },
+  { pos: [1.5,  0,  2.4], screens: 1, deskColor: "#9a7a5a" },
+  { pos: [4,    0,  2.4], screens: 1, deskColor: "#a08060" },
 ];
 
 const ROOM_W = 12;
@@ -258,12 +262,20 @@ export function Office3D({ dayNight }: { dayNight: DayNightParams }) {
         color={dayNight.sunColor}
       />
 
-      {/* 地板区域色带 */}
-      <FloorStripe position={[-3, 0.005, -1]} size={[2.8, 2.2]} color="#4fc3f7" />
-      <FloorStripe position={[-1, 0.005, -1]} size={[2.4, 2.2]} color="#ab47bc" />
-      <FloorStripe position={[1, 0.005, -0.6]} size={[2.8, 3.6]} color="#ffb74d" />
-      <FloorStripe position={[3, 0.005, 0]} size={[2.4, 4]} color="#ef5350" />
-      <FloorStripe position={[-0.5, 0.005, 2]} size={[6, 2.2]} color="#78909c" />
+      {/* 地板区域色带 — 对齐 S 形 3 行布局 */}
+      {/* Row 1 */}
+      <FloorStripe position={[-3.5, 0.005, -2.5]} size={[2.4, 2.4]} color="#4298d4" />
+      <FloorStripe position={[0,    0.005, -2.5]} size={[2.4, 2.4]} color="#4caf50" />
+      <FloorStripe position={[3.5,  0.005, -2.5]} size={[2.4, 2.4]} color="#ab47bc" />
+      {/* Row 2 */}
+      <FloorStripe position={[3.5,  0.005,  0.5]} size={[2.4, 2.4]} color="#7e57c2" />
+      <FloorStripe position={[0,    0.005,  0.5]} size={[2.4, 2.4]} color="#ef5350" />
+      <FloorStripe position={[-3.5, 0.005,  0.5]} size={[2.4, 2.4]} color="#f9a825" />
+      {/* Row 3 */}
+      <FloorStripe position={[-3.5, 0.005,  3.0]} size={[2.1, 1.9]} color="#26a69a" />
+      <FloorStripe position={[-1,   0.005,  3.0]} size={[2.1, 1.9]} color="#42a5f5" />
+      <FloorStripe position={[1.5,  0.005,  3.0]} size={[2.1, 1.9]} color="#ffa726" />
+      <FloorStripe position={[4,    0.005,  3.0]} size={[2.1, 1.9]} color="#78909c" />
 
       {/* LED行情墙 */}
       <TickerWall position={[0, 0.65, -(ROOM_D / 2 + 0.35)]} />
