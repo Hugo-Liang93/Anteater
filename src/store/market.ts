@@ -29,3 +29,12 @@ export const useMarketStore = create<MarketState>((set) => ({
   setPositions: (positions) => set({ positions }),
   setConnected: (connected) => set({ connected }),
 }));
+
+/** 选择器 */
+export const selectQuote = (symbol: string) =>
+  (s: MarketState) => s.quotes[symbol];
+export const selectAccount = (s: MarketState) => s.account;
+export const selectPositions = (s: MarketState) => s.positions;
+export const selectConnected = (s: MarketState) => s.connected;
+export const selectTotalPnL = (s: MarketState) =>
+  s.positions.reduce((sum, p) => sum + p.profit, 0);

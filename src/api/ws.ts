@@ -7,21 +7,9 @@
  */
 
 import { config } from "@/config";
+import type { WsMessage } from "@/types/protocol";
 
-/** WebSocket 消息类型 — 与 API_CONTRACT.md 对齐 */
-export type WsMessageType =
-  | "snapshot"
-  | "agent_update"
-  | "event_append"
-  | "summary_update"
-  | "connection_status"
-  | "pong";
-
-export interface WsMessage {
-  type: WsMessageType;
-  payload: unknown;
-  timestamp?: string;
-}
+export type { WsMessage };
 
 type MessageHandler = (msg: WsMessage) => void;
 

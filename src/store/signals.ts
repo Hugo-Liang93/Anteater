@@ -35,3 +35,9 @@ export const useSignalStore = create<SignalState>((set) => ({
   setHealth: (health) => set({ health }),
   setLastLoggedSignalId: (lastLoggedSignalId) => set({ lastLoggedSignalId }),
 }));
+
+/** 选择器 */
+export const selectStrategies = (s: SignalState) => s.strategies;
+export const selectHealth = (s: SignalState) => s.health;
+export const selectHealthStatus = (s: SignalState) => s.health?.status ?? "unknown";
+export const selectRecentSignals = (s: SignalState) => s.recentSignals;

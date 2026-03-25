@@ -8,37 +8,13 @@ import { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
 import { employeeConfigs } from "@/config/employees";
+import { AGENT_POSITIONS, DATA_FLOWS } from "@/config/layout";
 import { useEmployeeStore } from "@/store/employees";
 import { Character3D } from "./Character3D";
 import { Office3D } from "./Office3D";
 import { DataFlowParticle, FlowLine } from "./DataFlow3D";
 import { computeDayNight, type DayNightParams } from "@/engine/daynight";
-import type { EmployeeRoleType } from "@/config/employees";
 import * as THREE from "three";
-
-/** 角色位置 */
-const POSITIONS: Record<EmployeeRoleType, [number, number, number]> = {
-  collector:         [-3, 0, -0.4],
-  analyst:           [-1, 0, -0.4],
-  strategist:        [1, 0, -0.9],
-  voter:             [1, 0, 0.8],
-  risk_officer:      [3, 0, -0.4],
-  trader:            [3, 0, 1.6],
-  position_manager:  [1, 0, 2.6],
-  accountant:        [-2.5, 0, 2.6],
-  calendar_reporter: [-3.5, 0, 1.6],
-  inspector:         [-1, 0, 2.6],
-};
-
-/** 数据流 */
-const FLOWS: { from: EmployeeRoleType; to: EmployeeRoleType }[] = [
-  { from: "collector", to: "analyst" },
-  { from: "analyst", to: "strategist" },
-  { from: "strategist", to: "voter" },
-  { from: "voter", to: "risk_officer" },
-  { from: "risk_officer", to: "trader" },
-  { from: "trader", to: "position_manager" },
-];
 
 /** 动态光照组件 — 每帧根据真实时间更新 */
 function DynamicLighting({ params }: { params: DayNightParams }) {
@@ -110,9 +86,9 @@ function Scene({ dayNight }: { dayNight: DayNightParams }) {
       <Office3D dayNight={dayNight} />
 
       {/* 数据流 */}
-      {FLOWS.map(({ from, to }, i) => {
-        const fromPos = POSITIONS[from];
-        const toPos = POSITIONS[to];
+      {DATA_FLOWS.map(({ from, to }, i) => {
+        const fromPos = AGENT_POSITIONS[from];
+        const toPos = AGENT_POSITIONS[to];
         const fromEmp = employees[from];
         const toEmp = employees[to];
         const fromStatus = fromEmp?.status ?? "idle";
@@ -134,7 +110,7 @@ function Scene({ dayNight }: { dayNight: DayNightParams }) {
 
       {/* 角色 */}
       {employeeConfigs.map((cfg) => {
-        const pos = POSITIONS[cfg.id];
+        const pos = AGENT_POSITIONS[cfg.id];
         if (!pos) return null;
         return (
           <Character3D
