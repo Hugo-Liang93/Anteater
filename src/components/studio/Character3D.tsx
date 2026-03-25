@@ -19,6 +19,7 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { EmployeeRoleType } from "@/config/employees";
 import { employeeConfigMap, statusColor } from "@/config/employees";
+import { CHARACTER_APPEARANCES } from "@/config/assets";
 import { useEmployeeStore } from "@/store/employees";
 
 interface Character3DProps {
@@ -26,19 +27,6 @@ interface Character3DProps {
   position: [number, number, number];
   onClick?: () => void;
 }
-
-const ROLE_COLORS: Record<EmployeeRoleType, { shirt: string; pants: string; hair: string; skin: string }> = {
-  collector:        { shirt: "#4fc3f7", pants: "#37474f", hair: "#5d4037", skin: "#ffe0c0" },
-  analyst:          { shirt: "#ab47bc", pants: "#263238", hair: "#212121", skin: "#ffe0c0" },
-  strategist:       { shirt: "#ffb74d", pants: "#37474f", hair: "#3e2723", skin: "#ffd8b0" },
-  voter:            { shirt: "#fdd835", pants: "#455a64", hair: "#424242", skin: "#ffe0c0" },
-  risk_officer:     { shirt: "#ef5350", pants: "#263238", hair: "#1a1a2e", skin: "#e8c4a0" },
-  trader:           { shirt: "#66bb6a", pants: "#37474f", hair: "#4e342e", skin: "#ffe0c0" },
-  position_manager: { shirt: "#26a69a", pants: "#37474f", hair: "#3e2723", skin: "#ffd8b0" },
-  accountant:       { shirt: "#78909c", pants: "#263238", hair: "#616161", skin: "#ffe0c0" },
-  calendar_reporter:{ shirt: "#7e57c2", pants: "#37474f", hair: "#4a148c", skin: "#e8c4a0" },
-  inspector:        { shirt: "#8d6e63", pants: "#3e2723", hair: "#5d4037", skin: "#ffe0c0" },
-};
 
 /** 所有角色共享的材质（模块级单例，避免重复创建） */
 const SHARED_MATERIALS = {
@@ -79,7 +67,7 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
   // 成功扩散效果的状态追踪
   const successAnimRef = useRef({ active: false, startTime: 0, lastStatus: "" });
 
-  const colors = ROLE_COLORS[role];
+  const colors = CHARACTER_APPEARANCES[role];
   const cfg = employeeConfigMap.get(role);
 
   const materials = useMemo(() => {

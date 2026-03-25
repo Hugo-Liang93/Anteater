@@ -8,20 +8,15 @@
 
 import type { EmployeeRoleType } from "@/config/employees";
 import type { ActivityStatus } from "@/store/employees";
+import { CHARACTER_APPEARANCES, type HairStyle } from "@/config/assets";
 
-/** 角色外观定义 */
-interface CharacterAppearance {
-  /** 肤色 */
+/** 2D 角色外观（继承自 config，附加 drawProp） */
+interface CharacterAppearance2D {
   skin: string;
-  /** 上衣颜色 */
   shirt: string;
-  /** 裤子颜色 */
   pants: string;
-  /** 头发颜色 */
   hair: string;
-  /** 头发类型 */
-  hairStyle: "short" | "long" | "bald" | "spiky" | "ponytail";
-  /** 角色专属道具绘制函数 */
+  hairStyle: HairStyle;
   drawProp: (ctx: CanvasRenderingContext2D, x: number, y: number, t: number, working: boolean) => void;
 }
 
@@ -29,7 +24,7 @@ const SCALE = 1.8;
 
 // ─── 角色绘制基础 ───
 
-function drawHead(ctx: CanvasRenderingContext2D, x: number, y: number, app: CharacterAppearance) {
+function drawHead(ctx: CanvasRenderingContext2D, x: number, y: number, app: CharacterAppearance2D) {
   const s = SCALE;
   // 头部
   ctx.fillStyle = app.skin;
@@ -71,7 +66,7 @@ function drawBody(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  app: CharacterAppearance,
+  app: CharacterAppearance2D,
   t: number,
   working: boolean,
 ) {
@@ -284,50 +279,37 @@ function drawCalculator(ctx: CanvasRenderingContext2D, x: number, y: number, t: 
   }
 }
 
-// ─── 角色外观映射 ───
+// ─── 道具类型映射 ───
 
-const APPEARANCES: Record<EmployeeRoleType, CharacterAppearance> = {
-  collector: {
-    skin: "#f5d0a9", shirt: "#4fc3f7", pants: "#37474f",
-    hair: "#5d4037", hairStyle: "short", drawProp: drawBox,
-  },
-  analyst: {
-    skin: "#f5d0a9", shirt: "#ab47bc", pants: "#263238",
-    hair: "#212121", hairStyle: "spiky", drawProp: drawMonitor,
-  },
-  strategist: {
-    skin: "#e8c49a", shirt: "#ffb74d", pants: "#37474f",
-    hair: "#3e2723", hairStyle: "long", drawProp: drawMonitor,
-  },
-  voter: {
-    skin: "#f5d0a9", shirt: "#fff176", pants: "#455a64",
-    hair: "#424242", hairStyle: "bald", drawProp: drawGavel,
-  },
-  risk_officer: {
-    skin: "#d7a98c", shirt: "#ef5350", pants: "#263238",
-    hair: "#1a1a2e", hairStyle: "short", drawProp: drawShield,
-  },
-  trader: {
-    skin: "#f5d0a9", shirt: "#66bb6a", pants: "#37474f",
-    hair: "#4e342e", hairStyle: "short", drawProp: drawBriefcase,
-  },
-  position_manager: {
-    skin: "#e8c49a", shirt: "#26a69a", pants: "#37474f",
-    hair: "#3e2723", hairStyle: "ponytail", drawProp: drawClipboard,
-  },
-  accountant: {
-    skin: "#f5d0a9", shirt: "#78909c", pants: "#263238",
-    hair: "#616161", hairStyle: "short", drawProp: drawCalculator,
-  },
-  calendar_reporter: {
-    skin: "#d7a98c", shirt: "#7e57c2", pants: "#37474f",
-    hair: "#4a148c", hairStyle: "long", drawProp: drawCalendar,
-  },
-  inspector: {
-    skin: "#f5d0a9", shirt: "#8d6e63", pants: "#3e2723",
-    hair: "#5d4037", hairStyle: "bald", drawProp: drawMagnifier,
-  },
+const PROP_DRAW_MAP: Record<string, (ctx: CanvasRenderingContext2D, x: number, y: number, t: number, working: boolean) => void> = {
+  box: drawBox,
+  monitor: drawMonitor,
+  gavel: drawGavel,
+  shield: drawShield,
+  briefcase: drawBriefcase,
+  clipboard: drawClipboard,
+  calculator: drawCalculator,
+  calendar: drawCalendar,
+  magnifier: drawMagnifier,
 };
+
+// ─── 角色外观映射（从 config/assets.ts 派生，附加 drawProp） ───
+
+const APPEARANCES: Record<EmployeeRoleType, CharacterAppearance2D> = Object.fromEntries(
+  (Object.entries(CHARACTER_APPEARANCES) as [EmployeeRoleType, typeof CHARACTER_APPEARANCES[EmployeeRoleType]][]).map(
+    ([role, cfg]) => [
+      role,
+      {
+        skin: cfg.skin,
+        shirt: cfg.shirt,
+        pants: cfg.pants,
+        hair: cfg.hair,
+        hairStyle: cfg.hairStyle,
+        drawProp: PROP_DRAW_MAP[cfg.propType] ?? drawBox,
+      },
+    ],
+  ),
+) as Record<EmployeeRoleType, CharacterAppearance2D>;
 
 // ─── 主绘制函数 ───
 

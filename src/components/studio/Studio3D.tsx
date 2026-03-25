@@ -10,7 +10,7 @@ import { OrbitControls, Stars } from "@react-three/drei";
 import { employeeConfigs } from "@/config/employees";
 import { AGENT_POSITIONS, DATA_FLOWS } from "@/config/layout";
 import { useEmployeeStore } from "@/store/employees";
-import { Character3D } from "./Character3D";
+import { CharacterModel } from "./CharacterModel";
 import { Office3D } from "./Office3D";
 import { DataFlowParticle, FlowLine } from "./DataFlow3D";
 import { computeDayNight, type DayNightParams } from "@/engine/daynight";
@@ -113,7 +113,7 @@ function Scene({ dayNight }: { dayNight: DayNightParams }) {
         const pos = AGENT_POSITIONS[cfg.id];
         if (!pos) return null;
         return (
-          <Character3D
+          <CharacterModel
             key={cfg.id}
             role={cfg.id}
             position={pos}
