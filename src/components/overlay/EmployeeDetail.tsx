@@ -1,12 +1,16 @@
 /**
- * 员工详情浮窗 — 点击工作室中的员工弹出
+ * 员工详情浮窗 — 对齐 UI_SPEC.md Section 5
  *
- * 显示：角色信息、当前任务、角色专属后端数据、最近动作日志。
+ * 5.1 基本信息区（名称、状态、区域、品种）
+ * 5.2 当前任务区
+ * 5.3 核心指标区（角色专属 KPI）
+ * 5.4 最近活动
+ * 5.5 异常/告警区
  */
 
-import { X } from "lucide-react";
+import { X, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { employeeConfigMap, EmployeeRole } from "@/config/employees";
+import { employeeConfigMap, EmployeeRole, statusColor } from "@/config/employees";
 import {
   useEmployeeStore,
   type ActionLog,
@@ -15,6 +19,12 @@ import {
 import { useMarketStore } from "@/store/market";
 import { useLiveStore } from "@/store/live";
 import { useSignalStore } from "@/store/signals";
+
+/** 区域中文名映射 */
+const ZONE_LABELS: Record<string, string> = {
+  collection: "采集区", analysis: "分析区", strategy: "策略室",
+  risk: "风控台", trading: "交易台", support: "支持区",
+};
 
 const DEFAULT_BADGE = { label: "未知", cls: "bg-text-muted/20 text-text-muted" };
 const statusBadge: Partial<Record<ActivityStatus, { label: string; cls: string }>> = {
@@ -59,10 +69,13 @@ export function EmployeeDetail() {
   if (!cfg) return null;
 
   const badge = statusBadge[employee.status] ?? DEFAULT_BADGE;
+  const isAbnormal = employee.status === "error" || employee.status === "alert"
+    || employee.status === "blocked" || employee.status === "disconnected"
+    || employee.status === "warning";
 
   return (
     <div className="absolute right-4 top-4 z-50 w-80 rounded-xl border border-border bg-bg-panel shadow-2xl">
-      {/* Header */}
+      {/* ─── 5.1 基本信息区 ─── */}
       <div className="flex items-center gap-3 border-b border-border p-4">
         <div
           className="flex h-10 w-10 items-center justify-center rounded-lg text-lg font-bold text-bg-primary"
@@ -85,33 +98,44 @@ export function EmployeeDetail() {
         </button>
       </div>
 
-      {/* 当前任务 */}
+      {/* 区域 + 品种 + 后端模块 */}
+      <div className="flex gap-3 border-b border-border px-4 py-2 text-[10px] text-text-muted">
+        <span>{ZONE_LABELS[cfg.zone] ?? cfg.zone}</span>
+        <span>·</span>
+        <span>XAUUSD</span>
+        <span>·</span>
+        <span>{cfg.backendComponent}</span>
+      </div>
+
+      {/* ─── 5.2 当前任务区 ─── */}
       <div className="border-b border-border px-4 py-3">
         <Label>当前任务</Label>
         <p className="mt-1 text-sm text-text-primary">{employee.currentTask}</p>
       </div>
 
-      {/* 角色专属数据 */}
-      <RoleSpecificData roleId={selectedId} />
+      {/* ─── 5.3 核心指标区（角色专属） ─── */}
+      <RoleMetrics roleId={selectedId} />
 
-      {/* 统计数据 */}
-      {Object.keys(employee.stats).length > 0 && (
+      {/* ─── 5.5 异常/告警区 ─── */}
+      {isAbnormal && (
         <div className="border-b border-border px-4 py-3">
-          <Label>统计</Label>
-          <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">
-            {Object.entries(employee.stats).map(([k, v]) => (
-              <div key={k} className="flex justify-between text-xs">
-                <span className="text-text-muted">{k}</span>
-                <span className="font-mono text-text-primary">
-                  {typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : v}
-                </span>
-              </div>
-            ))}
+          <Label>异常信息</Label>
+          <div className="mt-1 flex items-start gap-2 rounded-md bg-danger/10 p-2">
+            <AlertTriangle size={14} style={{ color: statusColor(employee.status) }} className="mt-0.5 shrink-0" />
+            <div className="text-xs">
+              <span className="font-medium" style={{ color: statusColor(employee.status) }}>
+                {badge.label}
+              </span>
+              <p className="mt-0.5 text-text-muted">{employee.currentTask}</p>
+              {employee.recentActions.length > 0 && employee.recentActions[0]?.type === "error" && (
+                <p className="mt-1 text-danger">{employee.recentActions[0].message}</p>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* 最近动作 */}
+      {/* ─── 5.4 最近活动 ─── */}
       <div className="max-h-40 overflow-y-auto px-4 py-3">
         <Label>最近活动</Label>
         {employee.recentActions.length === 0 ? (
@@ -132,7 +156,7 @@ export function EmployeeDetail() {
 
       <div className="border-t border-border px-4 py-2">
         <p className="text-center text-[10px] text-text-muted">
-          点击空白处关闭 · 对话功能即将上线
+          点击空白处关闭
         </p>
       </div>
     </div>
@@ -145,12 +169,14 @@ function Label({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** 角色专属后端数据面板 */
-function RoleSpecificData({ roleId }: { roleId: string }) {
+/** 角色专属核心指标面板 — 对齐 UI_SPEC Section 5.3 */
+function RoleMetrics({ roleId }: { roleId: string }) {
   const quote = useMarketStore((s) => s.quotes["XAUUSD"]);
   const account = useMarketStore((s) => s.account);
   const positions = useMarketStore((s) => s.positions);
+  const connected = useMarketStore((s) => s.connected);
   const strategies = useSignalStore((s) => s.strategies);
+  const health = useSignalStore((s) => s.health);
   const indicators = useLiveStore((s) => s.indicators["M5"]);
   const signals = useLiveStore((s) => s.signals);
   const queues = useLiveStore((s) => s.queues);
@@ -159,54 +185,63 @@ function RoleSpecificData({ roleId }: { roleId: string }) {
 
   switch (roleId) {
     case EmployeeRole.COLLECTOR:
-      if (quote) {
-        content = (
+      content = quote ? (
+        <div className="space-y-2">
           <div className="grid grid-cols-3 gap-2 text-xs">
             <KV k="Bid" v={quote.bid.toFixed(2)} color="text-buy" />
             <KV k="Ask" v={quote.ask.toFixed(2)} color="text-sell" />
             <KV k="Spread" v={quote.spread.toFixed(1)} />
           </div>
-        );
-      }
+          <div className="text-[10px] text-text-muted">
+            更新时间: {quote.time || "—"}
+          </div>
+        </div>
+      ) : <Empty text="等待行情数据" />;
       break;
 
     case EmployeeRole.ANALYST:
       if (indicators) {
         const ind = indicators.indicators;
-        const keys = Object.keys(ind).slice(0, 8);
+        const rsi = ind["rsi14"]?.["rsi"];
+        const atr = ind["atr14"]?.["atr"];
+        const adx = ind["adx14"]?.["adx"];
+        const macd = ind["macd"]?.["macd"];
         content = (
-          <div className="grid grid-cols-2 gap-1 text-xs">
-            {keys.map((k) => {
-              const vals = ind[k];
-              const mainVal = vals ? Object.values(vals).find((v) => v != null) : null;
-              return (
-                <div key={k} className="flex justify-between">
-                  <span className="text-text-muted">{k}</span>
-                  <span className="font-mono text-text-primary">
-                    {mainVal != null ? (mainVal as number).toFixed(2) : "—"}
-                  </span>
-                </div>
-              );
-            })}
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <KV k="RSI(14)" v={rsi != null ? rsi.toFixed(1) : "—"} color={rsi != null && rsi > 70 ? "text-sell" : rsi != null && rsi < 30 ? "text-buy" : undefined} />
+              <KV k="ATR(14)" v={atr != null ? atr.toFixed(2) : "—"} />
+              <KV k="ADX(14)" v={adx != null ? adx.toFixed(1) : "—"} />
+              <KV k="MACD" v={macd != null ? macd.toFixed(4) : "—"} color={macd != null && macd > 0 ? "text-buy" : macd != null && macd < 0 ? "text-sell" : undefined} />
+            </div>
+            <div className="text-[10px] text-text-muted">
+              共 {Object.keys(ind).length} 个指标 · TF: M5
+            </div>
           </div>
         );
+      } else {
+        content = <Empty text="指标计算中..." />;
       }
       break;
 
     case EmployeeRole.STRATEGIST:
       if (signals.length > 0) {
+        const latest = signals[0]!;
         content = (
-          <div className="space-y-1 text-xs">
-            {signals.slice(0, 5).map((s) => (
-              <div key={s.signal_id} className="flex justify-between">
-                <span className="text-text-muted">{s.strategy}</span>
-                <span className={s.direction === "buy" ? "text-buy" : s.direction === "sell" ? "text-sell" : "text-text-muted"}>
-                  {s.direction} {(s.confidence * 100).toFixed(0)}%
-                </span>
-              </div>
-            ))}
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <KV k="最新策略" v={latest.strategy} />
+              <KV k="方向" v={latest.direction.toUpperCase()} color={latest.direction === "buy" ? "text-buy" : latest.direction === "sell" ? "text-sell" : undefined} />
+              <KV k="置信度" v={`${(latest.confidence * 100).toFixed(0)}%`} />
+              <KV k="活跃策略" v={String(strategies.length)} />
+            </div>
+            {latest.reason && (
+              <div className="text-[10px] text-text-muted">原因: {latest.reason}</div>
+            )}
           </div>
         );
+      } else {
+        content = <Empty text={strategies.length > 0 ? `${strategies.length} 个策略评估中` : "等待策略加载"} />;
       }
       break;
 
@@ -215,79 +250,141 @@ function RoleSpecificData({ roleId }: { roleId: string }) {
         const buy = signals.filter((s) => s.direction === "buy").length;
         const sell = signals.filter((s) => s.direction === "sell").length;
         const hold = signals.filter((s) => s.direction === "hold").length;
+        const total = signals.length;
         content = (
-          <div className="grid grid-cols-3 gap-2 text-xs text-center">
-            <div><div className="text-buy text-lg font-bold">{buy}</div><div className="text-text-muted">买入</div></div>
-            <div><div className="text-sell text-lg font-bold">{sell}</div><div className="text-text-muted">卖出</div></div>
-            <div><div className="text-text-secondary text-lg font-bold">{hold}</div><div className="text-text-muted">观望</div></div>
+          <div className="space-y-2">
+            <div className="grid grid-cols-3 gap-2 text-xs text-center">
+              <div><div className="text-buy text-lg font-bold">{buy}</div><div className="text-text-muted">买入</div></div>
+              <div><div className="text-sell text-lg font-bold">{sell}</div><div className="text-text-muted">卖出</div></div>
+              <div><div className="text-text-secondary text-lg font-bold">{hold}</div><div className="text-text-muted">观望</div></div>
+            </div>
+            <div className="text-[10px] text-text-muted">
+              共 {total} 票 · 共识: {buy > sell ? "偏多" : sell > buy ? "偏空" : "分歧"}
+            </div>
           </div>
         );
+      } else {
+        content = <Empty text="等待投票数据" />;
       }
       break;
 
-    case EmployeeRole.RISK_OFFICER:
-      if (queues.length > 0) {
-        content = (
+    case EmployeeRole.RISK_OFFICER: {
+      const totalDrops = queues.reduce((s, q) => s + q.drops_oldest + q.drops_newest, 0);
+      content = queues.length > 0 ? (
+        <div className="space-y-2">
           <div className="space-y-1 text-xs">
             {queues.map((q) => (
-              <div key={q.name} className="flex justify-between">
+              <div key={q.name} className="flex items-center justify-between">
                 <span className="text-text-muted">{q.name}</span>
-                <span className={q.status === "normal" ? "text-success" : "text-warning"}>
-                  {q.utilization_pct.toFixed(0)}%
-                </span>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-12 overflow-hidden rounded-full bg-bg-secondary">
+                    <div className="h-full rounded-full" style={{
+                      width: `${Math.min(q.utilization_pct, 100)}%`,
+                      backgroundColor: q.utilization_pct > 80 ? "#ff4757" : q.utilization_pct > 50 ? "#ffa726" : "#00d4aa",
+                    }} />
+                  </div>
+                  <span className={q.status === "normal" ? "text-success" : "text-warning"}>
+                    {q.utilization_pct.toFixed(0)}%
+                  </span>
+                </div>
               </div>
             ))}
           </div>
-        );
-      }
+          {totalDrops > 0 && (
+            <div className="text-[10px] text-warning">累计丢弃: {totalDrops} 次</div>
+          )}
+        </div>
+      ) : <Empty text="无队列数据" />;
       break;
+    }
 
     case EmployeeRole.TRADER:
     case EmployeeRole.POSITION_MANAGER:
       if (positions.length > 0) {
+        const totalPnL = positions.reduce((s, p) => s + p.profit, 0);
         content = (
-          <div className="space-y-1 text-xs">
-            {positions.map((p) => (
-              <div key={p.ticket} className="flex justify-between">
-                <span>
-                  <span className={p.type === "buy" ? "text-buy" : "text-sell"}>
-                    {p.type === "buy" ? "多" : "空"}
-                  </span>{" "}
-                  {p.volume}手
-                </span>
-                <span className={p.profit >= 0 ? "text-buy" : "text-sell"}>
-                  {p.profit >= 0 ? "+" : ""}{p.profit.toFixed(2)}
-                </span>
-              </div>
-            ))}
+          <div className="space-y-2">
+            <div className="space-y-1 text-xs">
+              {positions.slice(0, 5).map((p) => (
+                <div key={p.ticket} className="flex justify-between">
+                  <span>
+                    <span className={p.type === "buy" ? "text-buy" : "text-sell"}>
+                      {p.type === "buy" ? "多" : "空"}
+                    </span>{" "}
+                    {p.volume}手 @{p.price_open.toFixed(2)}
+                  </span>
+                  <span className={p.profit >= 0 ? "text-buy" : "text-sell"}>
+                    {p.profit >= 0 ? "+" : ""}{p.profit.toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between text-xs font-medium">
+              <span className="text-text-muted">总 P&L</span>
+              <span className={totalPnL >= 0 ? "text-buy" : "text-sell"}>
+                {totalPnL >= 0 ? "+" : ""}{totalPnL.toFixed(2)}
+              </span>
+            </div>
           </div>
         );
+      } else {
+        content = <Empty text="无持仓" />;
       }
       break;
 
     case EmployeeRole.ACCOUNTANT:
-      if (account) {
+      content = account ? (
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <KV k="余额" v={`$${account.balance.toFixed(2)}`} />
+          <KV k="净值" v={`$${account.equity.toFixed(2)}`} />
+          <KV k="保证金" v={`$${account.margin.toFixed(2)}`} />
+          <KV k="可用" v={`$${account.free_margin.toFixed(2)}`} />
+          <KV k="盈亏" v={`$${account.profit.toFixed(2)}`} color={account.profit >= 0 ? "text-buy" : "text-sell"} />
+          <KV k="杠杆" v={`1:${account.leverage}`} />
+        </div>
+      ) : <Empty text="等待账户数据" />;
+      break;
+
+    case EmployeeRole.INSPECTOR:
+      if (health) {
+        const comps = Object.entries(health.components);
+        const issues = comps.filter(([, c]) => c.status !== "healthy");
         content = (
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <KV k="余额" v={`$${account.balance.toFixed(2)}`} />
-            <KV k="净值" v={`$${account.equity.toFixed(2)}`} />
-            <KV k="保证金" v={`$${account.margin.toFixed(2)}`} />
-            <KV k="可用" v={`$${account.free_margin.toFixed(2)}`} />
-            <KV k="杠杆" v={`1:${account.leverage}`} />
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-1 text-xs">
+              <KV k="总体状态" v={health.status} color={health.status === "healthy" ? "text-success" : health.status === "degraded" ? "text-warning" : "text-danger"} />
+              <KV k="组件数" v={String(comps.length)} />
+            </div>
+            {issues.length > 0 && (
+              <div className="space-y-1">
+                {issues.map(([name, comp]) => (
+                  <div key={name} className="flex justify-between text-xs">
+                    <span className="text-text-muted">{name}</span>
+                    <span className="text-warning">{comp.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
+      } else {
+        content = <Empty text={connected ? "巡检中..." : "等待连接"} />;
       }
       break;
 
+    case EmployeeRole.CALENDAR_REPORTER:
+      content = <Empty text={connected ? "监控经济日历中" : "等待连接"} />;
+      break;
+
     default:
-      content = <p className="text-xs text-text-muted">{strategies.length} 个策略就绪</p>;
+      content = <Empty text={`${strategies.length} 个策略就绪`} />;
   }
 
   if (!content) return null;
 
   return (
     <div className="border-b border-border px-4 py-3">
-      <Label>实时数据</Label>
+      <Label>核心指标</Label>
       <div className="mt-1">{content}</div>
     </div>
   );
@@ -300,4 +397,8 @@ function KV({ k, v, color }: { k: string; v: string; color?: string }) {
       <div className={`font-mono ${color ?? "text-text-primary"}`}>{v}</div>
     </div>
   );
+}
+
+function Empty({ text }: { text: string }) {
+  return <p className="text-xs text-text-muted">{text}</p>;
 }

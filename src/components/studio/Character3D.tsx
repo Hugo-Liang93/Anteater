@@ -13,7 +13,7 @@
  * - selected: 底部高亮环
  */
 
-import { useRef, useMemo, useEffect } from "react";
+import { useRef, useMemo, useEffect, useState, useCallback } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -66,6 +66,11 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
 
   // 成功扩散效果的状态追踪
   const successAnimRef = useRef({ active: false, startTime: 0, lastStatus: "" });
+
+  // Hover 状态
+  const [hovered, setHovered] = useState(false);
+  const onPointerOver = useCallback(() => setHovered(true), []);
+  const onPointerOut = useCallback(() => setHovered(false), []);
 
   const colors = CHARACTER_APPEARANCES[role];
   const cfg = employeeConfigMap.get(role);
@@ -399,7 +404,7 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
   });
 
   return (
-    <group ref={groupRef} position={position} onClick={(e) => { e.stopPropagation(); onClick?.(); }}>
+    <group ref={groupRef} position={position} onClick={(e) => { e.stopPropagation(); onClick?.(); }} onPointerOver={onPointerOver} onPointerOut={onPointerOut}>
       {/* 选中高亮环（底部） */}
       <mesh ref={selectRingRef} position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
         <ringGeometry args={[0.35, 0.5, 32]} />
@@ -528,14 +533,16 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
         </mesh>
 
         {/* 名牌 */}
-        <NameTag role={role} color={cfg?.color ?? "#888"} name={cfg?.name ?? role} />
+        <NameTag role={role} color={cfg?.color ?? "#888"} name={cfg?.name ?? role} title={cfg?.title ?? ""} hovered={hovered} />
       </group>
     </group>
   );
 }
 
-/** 名牌组件 — 独立从 store 读取，确保响应性 */
-function NameTag({ role, color, name }: { role: EmployeeRoleType; color: string; name: string }) {
+/** 名牌组件 — 独立从 store 读取，hover 时显示扩展信息 */
+function NameTag({ role, color, name, title, hovered }: {
+  role: EmployeeRoleType; color: string; name: string; title: string; hovered: boolean;
+}) {
   const currentTask = useEmployeeStore((s) => s.employees[role]?.currentTask ?? "");
   const status = useEmployeeStore((s) => s.employees[role]?.status ?? "idle");
 
@@ -543,15 +550,16 @@ function NameTag({ role, color, name }: { role: EmployeeRoleType; color: string;
     <Html position={[0, 1.95, 0]} center distanceFactor={7} sprite>
       <div
         style={{
-          background: "rgba(15,25,35,0.88)",
+          background: hovered ? "rgba(10,20,30,0.95)" : "rgba(15,25,35,0.88)",
           border: `1.5px solid ${color}`,
           borderRadius: 8,
-          padding: "4px 10px",
+          padding: hovered ? "6px 12px" : "4px 10px",
           whiteSpace: "nowrap",
           pointerEvents: "none",
           userSelect: "none",
-          minWidth: 80,
+          minWidth: hovered ? 120 : 80,
           textAlign: "center",
+          transition: "all 0.2s ease",
         }}
       >
         <div style={{
@@ -575,16 +583,35 @@ function NameTag({ role, color, name }: { role: EmployeeRoleType; color: string;
           />
           {name}
         </div>
+        {/* Hover 时显示职称 */}
+        {hovered && title && (
+          <div style={{ color: "#667788", fontSize: 9, marginTop: 1 }}>
+            {title}
+          </div>
+        )}
         <div style={{
           color: "#8899aa",
           fontSize: 9,
-          maxWidth: 150,
+          maxWidth: hovered ? 200 : 150,
           overflow: "hidden",
           textOverflow: "ellipsis",
           marginTop: 1,
         }}>
-          {currentTask.length > 22 ? currentTask.slice(0, 21) + "…" : currentTask}
+          {hovered
+            ? currentTask
+            : currentTask.length > 22 ? currentTask.slice(0, 21) + "…" : currentTask}
         </div>
+        {/* Hover 时显示状态文字 */}
+        {hovered && (
+          <div style={{
+            color: statusColor(status),
+            fontSize: 8,
+            marginTop: 2,
+            fontWeight: 600,
+          }}>
+            {status.toUpperCase()}
+          </div>
+        )}
       </div>
     </Html>
   );
