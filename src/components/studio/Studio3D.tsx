@@ -114,13 +114,19 @@ function Scene({ dayNight }: { dayNight: DayNightParams }) {
         const fromPos = POSITIONS[from];
         const toPos = POSITIONS[to];
         const fromEmp = employees[from];
+        const toEmp = employees[to];
+        const fromStatus = fromEmp?.status ?? "idle";
+        const isActive = fromStatus !== "idle";
+        const isHighlight = fromStatus === "success" || toEmp?.status === "success";
         return (
           <group key={i}>
-            <FlowLine from={fromPos} to={toPos} />
+            <FlowLine from={fromPos} to={toPos} highlight={isHighlight} />
             <DataFlowParticle
               from={fromPos}
               to={toPos}
-              active={fromEmp?.status === "working"}
+              active={isActive}
+              sourceStatus={fromStatus}
+              targetStatus={toEmp?.status}
             />
           </group>
         );

@@ -1,82 +1,166 @@
 /**
  * 3D 数据流粒子
  *
- * 在工位之间绘制发光粒子流动效果。
+ * 按 ANIMATION_SPEC.md 实现状态驱动的粒子流动效果：
+ * - normal/working: 稳定流动，中等速度
+ * - busy: 粒子密度增加，速度加快
+ * - warning/alert: 粒子变少，颜色偏黄
+ * - error: 粒子中断/停止
+ * - 事件演出: 信号通过时链路短暂增亮
  */
 
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import type { ActivityStatus } from "@/store/employees";
 
 interface FlowProps {
   from: [number, number, number];
   to: [number, number, number];
   active: boolean;
+  /** 源角色状态，用于调整粒子行为 */
+  sourceStatus?: ActivityStatus;
+  /** 目标角色状态，用于事件演出 */
+  targetStatus?: ActivityStatus;
   color?: string;
 }
 
-export function DataFlowParticle({ from, to, active, color = "#00d4aa" }: FlowProps) {
-  const ref1 = useRef<THREE.Mesh>(null);
-  const ref2 = useRef<THREE.Mesh>(null);
+/** 根据状态返回粒子参数 */
+function getFlowParams(sourceStatus: ActivityStatus) {
+  switch (sourceStatus) {
+    case "working":
+      return { speed: 0.5, count: 3, color: "#00d4aa", opacity: 0.9, size: [0.06, 0.05, 0.04] };
+    case "alert":
+      return { speed: 0.25, count: 2, color: "#ffa726", opacity: 0.7, size: [0.05, 0.04] };
+    case "error":
+      return { speed: 0.1, count: 1, color: "#ff4757", opacity: 0.4, size: [0.03] };
+    case "success":
+      return { speed: 0.6, count: 3, color: "#66bb6a", opacity: 0.95, size: [0.07, 0.05, 0.04] };
+    default:
+      return { speed: 0.3, count: 2, color: "#00d4aa", opacity: 0.7, size: [0.05, 0.04] };
+  }
+}
+
+export function DataFlowParticle({ from, to, active, sourceStatus = "idle", color }: FlowProps) {
+  const meshRefs = useRef<(THREE.Mesh | null)[]>([null, null, null]);
+
+  // 预创建 3 个粒子 mesh 材质
+  const materials = useMemo(() => [
+    new THREE.MeshStandardMaterial({ transparent: true }),
+    new THREE.MeshStandardMaterial({ transparent: true }),
+    new THREE.MeshStandardMaterial({ transparent: true }),
+  ], []);
 
   useFrame(() => {
-    if (!active) {
-      if (ref1.current) ref1.current.visible = false;
-      if (ref2.current) ref2.current.visible = false;
+    if (!active && sourceStatus === "idle") {
+      for (let i = 0; i < 3; i++) {
+        if (meshRefs.current[i]) meshRefs.current[i]!.visible = false;
+      }
       return;
     }
 
-    const t = (performance.now() / 1000) * 0.4;
+    const params = getFlowParams(sourceStatus);
+    const flowColor = color ?? params.color;
+    const t = (performance.now() / 1000) * params.speed;
 
-    // 粒子 1
-    if (ref1.current) {
-      ref1.current.visible = true;
-      const p1 = t % 1;
-      ref1.current.position.set(
-        from[0] + (to[0] - from[0]) * p1,
-        0.8 + Math.sin(p1 * Math.PI) * 0.3,
-        from[2] + (to[2] - from[2]) * p1,
-      );
-    }
+    for (let i = 0; i < 3; i++) {
+      const mesh = meshRefs.current[i];
+      const mat = materials[i];
+      if (!mesh || !mat) continue;
 
-    // 粒子 2（偏移半周期）
-    if (ref2.current) {
-      ref2.current.visible = true;
-      const p2 = (t + 0.5) % 1;
-      ref2.current.position.set(
-        from[0] + (to[0] - from[0]) * p2,
-        0.8 + Math.sin(p2 * Math.PI) * 0.3,
-        from[2] + (to[2] - from[2]) * p2,
+      if (i >= params.count) {
+        mesh.visible = false;
+        continue;
+      }
+
+      mesh.visible = true;
+
+      // 每个粒子错开相位
+      const phase = i / params.count;
+      const p = (t + phase) % 1;
+
+      mesh.position.set(
+        from[0] + (to[0] - from[0]) * p,
+        0.8 + Math.sin(p * Math.PI) * 0.3,
+        from[2] + (to[2] - from[2]) * p,
       );
+
+      // 粒子大小脉动
+      const sz = params.size[i] ?? 0.04;
+      const pulseSz = sz * (1 + Math.sin(t * 6 + i) * 0.15);
+      mesh.scale.setScalar(pulseSz / 0.06); // 归一化到基础几何尺寸
+
+      // 材质颜色和亮度
+      mat.color.set(flowColor);
+      mat.emissive.set(flowColor);
+      mat.emissiveIntensity = 1.5 + Math.sin(t * 4 + i * 2) * 0.5;
+      mat.opacity = params.opacity;
     }
   });
 
   return (
     <>
-      <mesh ref={ref1}>
-        <sphereGeometry args={[0.06, 8, 8]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2} transparent opacity={0.9} />
-      </mesh>
-      <mesh ref={ref2}>
-        <sphereGeometry args={[0.04, 8, 8]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.5} transparent opacity={0.7} />
-      </mesh>
+      {materials.map((mat, i) => (
+        <mesh
+          key={i}
+          ref={(el) => { meshRefs.current[i] = el; }}
+          visible={false}
+        >
+          <sphereGeometry args={[0.06, 8, 8]} />
+          <primitive object={mat} attach="material" />
+        </mesh>
+      ))}
     </>
   );
 }
 
 /** 两点之间的虚线连接 */
-export function FlowLine({ from, to }: { from: [number, number, number]; to: [number, number, number] }) {
-  const points = [
-    new THREE.Vector3(from[0], 0.3, from[2]),
-    new THREE.Vector3(to[0], 0.3, to[2]),
-  ];
-  const geo = new THREE.BufferGeometry().setFromPoints(points);
+export function FlowLine({ from, to, highlight }: {
+  from: [number, number, number];
+  to: [number, number, number];
+  /** 是否高亮（事件演出时短暂增亮） */
+  highlight?: boolean;
+}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lineRef = useRef<any>(null);
+  const geo = useMemo(() => {
+    const points = [
+      new THREE.Vector3(from[0], 0.3, from[2]),
+      new THREE.Vector3(to[0], 0.3, to[2]),
+    ];
+    const g = new THREE.BufferGeometry().setFromPoints(points);
+    g.computeBoundingSphere();
+    return g;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from[0], from[2], to[0], to[2]]);
+
+  const mat = useMemo(() =>
+    new THREE.LineDashedMaterial({
+      color: "#2a3f52",
+      dashSize: 0.15,
+      gapSize: 0.1,
+      transparent: true,
+      opacity: 0.4,
+    }),
+  []);
+
+  useFrame(() => {
+    if (!lineRef.current) return;
+    if (highlight) {
+      mat.color.set("#00d4aa");
+      mat.opacity = 0.8;
+    } else {
+      mat.color.set("#2a3f52");
+      mat.opacity = 0.4;
+    }
+    // lineDashedMaterial requires computeLineDistances
+    lineRef.current.computeLineDistances();
+  });
 
   return (
-    <line>
-      <bufferGeometry attach="geometry" {...geo} />
-      <lineDashedMaterial color="#2a3f52" dashSize={0.15} gapSize={0.1} transparent opacity={0.4} />
+    <line ref={lineRef}>
+      <primitive object={geo} attach="geometry" />
+      <primitive object={mat} attach="material" />
     </line>
   );
 }

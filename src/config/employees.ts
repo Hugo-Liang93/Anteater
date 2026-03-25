@@ -138,6 +138,7 @@ export const employeeConfigMap = new Map(
 export function statusColor(status: string): string {
   switch (status) {
     case "working": return "#00d4aa";
+    case "success": return "#66bb6a";
     case "alert": return "#ffa726";
     case "error": return "#ff4757";
     default: return "#5a6d7e";
