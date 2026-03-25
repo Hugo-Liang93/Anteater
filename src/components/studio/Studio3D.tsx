@@ -17,15 +17,23 @@ import { Zones3D } from "./Zones3D";
 import { computeDayNight, type DayNightParams } from "@/engine/daynight";
 import * as THREE from "three";
 
-/** 动态光照组件 — 每帧根据真实时间更新 */
+/** 动态光照组件 — 每秒更新一次日夜参数（节流，避免每帧创建新对象） */
 function DynamicLighting({ params }: { params: DayNightParams }) {
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const sunRef = useRef<THREE.DirectionalLight>(null);
   const hemiRef = useRef<THREE.HemisphereLight>(null);
   const { scene } = useThree();
+  const cachedParamsRef = useRef<DayNightParams>(params);
+  const lastUpdateRef = useRef(0);
 
   useFrame(() => {
-    const p = computeDayNight();
+    // 每秒重新计算一次日夜参数，而不是每帧
+    const now = performance.now();
+    if (now - lastUpdateRef.current > 1000) {
+      lastUpdateRef.current = now;
+      cachedParamsRef.current = computeDayNight();
+    }
+    const p = cachedParamsRef.current;
 
     if (ambientRef.current) {
       ambientRef.current.color.copy(p.ambientColor);

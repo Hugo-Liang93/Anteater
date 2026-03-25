@@ -107,14 +107,12 @@ export function usePolling() {
     // Mock 模式：填充数据 + 定期生成事件
     if (config.mockMode) {
       initMockMode();
-      const syncTimer = setInterval(syncAll, 2_000);
-      // 每 3-6 秒生成一条模拟事件
+      // 每 3-6 秒生成一条模拟事件并同步（不再需要独立 sync 定时器）
       const eventTimer = setInterval(() => {
         emitMockEvent();
         syncAll();
       }, 3_000 + Math.random() * 3_000);
       return () => {
-        clearInterval(syncTimer);
         clearInterval(eventTimer);
       };
     }
@@ -150,6 +148,7 @@ export function usePolling() {
           (r) => r.status === "fulfilled" && r.value.success,
         );
         useMarketStore.getState().setConnected(anySuccess);
+        syncAll();
       } catch {
         useMarketStore.getState().setConnected(false);
       }
@@ -174,6 +173,7 @@ export function usePolling() {
           const strats = normalizeStrategies(stratRes.value);
           useSignalStore.getState().setStrategies(strats);
         }
+        syncAll();
       } catch { /* best effort */ }
     };
 
@@ -218,6 +218,7 @@ export function usePolling() {
             useLiveStore.getState().setSignals(signals);
           }
         }
+        syncAll();
       } catch { /* best effort */ }
     };
 
@@ -247,6 +248,7 @@ export function usePolling() {
             useLiveStore.getState().setQueues(list);
           }
         }
+        syncAll();
       } catch { /* best effort */ }
     };
 
@@ -260,7 +262,7 @@ export function usePolling() {
     const healthTimer = setInterval(() => void pollHealth(), config.polling.health);
     const liveTimer = setInterval(() => void pollLive(), config.polling.signals);
     const queueTimer = setInterval(() => void pollQueues(), 10_000);
-    const syncTimer = setInterval(syncAll, 2_000);
+    // syncAll 现在在每个 poll 完成后触发，不再需要独立定时器
 
     return () => {
       cancelled = true;
@@ -268,7 +270,6 @@ export function usePolling() {
       clearInterval(healthTimer);
       clearInterval(liveTimer);
       clearInterval(queueTimer);
-      clearInterval(syncTimer);
     };
   }, []);
 }

@@ -13,7 +13,7 @@
  * - selected: 底部高亮环
  */
 
-import { useRef, useMemo, useEffect, useState, useCallback } from "react";
+import { useRef, useMemo, useEffect, useState, useCallback, memo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -22,6 +22,7 @@ import { employeeConfigMap, statusColor } from "@/config/employees";
 import { CHARACTER_APPEARANCES } from "@/config/assets";
 import { useEmployeeStore } from "@/store/employees";
 import { useLiveStore } from "@/store/live";
+import type { ActivityStatus } from "@/store/employees";
 
 interface Character3DProps {
   role: EmployeeRoleType;
@@ -52,7 +53,7 @@ const SHARED_MATERIALS = {
   }),
 };
 
-export function Character3D({ role, position, onClick }: Character3DProps) {
+export const Character3D = memo(function Character3D({ role, position, onClick }: Character3DProps) {
   const groupRef = useRef<THREE.Group>(null);
   const leftArmRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
@@ -67,6 +68,39 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
 
   // 成功扩散效果的状态追踪
   const successAnimRef = useRef({ active: false, startTime: 0, lastStatus: "" });
+
+  // 缓存 store 状态到 ref，避免 useFrame 中每帧调用 getState()
+  const cachedStateRef = useRef<{ status: ActivityStatus; isSelected: boolean }>({
+    status: "idle",
+    isSelected: false,
+  });
+  // 缓存状态灯颜色，仅在 status 变化时更新
+  const cachedStatusColorRef = useRef<string>(statusColor("idle"));
+  const prevStatusRef = useRef<ActivityStatus>("idle");
+
+  // 订阅 store 变化，更新 ref（不触发 React 重渲染）
+  useEffect(() => {
+    const unsub = useEmployeeStore.subscribe((state) => {
+      const emp = state.employees[role];
+      const newStatus = emp?.status ?? "idle";
+      const newSelected = state.selectedEmployee === role;
+      cachedStateRef.current.status = newStatus;
+      cachedStateRef.current.isSelected = newSelected;
+      // 仅在 status 变化时重新计算颜色
+      if (newStatus !== prevStatusRef.current) {
+        prevStatusRef.current = newStatus;
+        cachedStatusColorRef.current = statusColor(newStatus);
+      }
+    });
+    // 初始化
+    const state = useEmployeeStore.getState();
+    const emp = state.employees[role];
+    cachedStateRef.current.status = emp?.status ?? "idle";
+    cachedStateRef.current.isSelected = state.selectedEmployee === role;
+    cachedStatusColorRef.current = statusColor(cachedStateRef.current.status);
+    prevStatusRef.current = cachedStateRef.current.status;
+    return unsub;
+  }, [role]);
 
   // Hover 状态
   const [hovered, setHovered] = useState(false);
@@ -105,10 +139,7 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
   useFrame(() => {
     if (!groupRef.current) return;
     const t = performance.now() / 1000;
-    const store = useEmployeeStore.getState();
-    const emp = store.employees[role];
-    const status = emp?.status ?? "idle";
-    const isSelected = store.selectedEmployee === role;
+    const { status, isSelected } = cachedStateRef.current;
 
     // ─── 成功扩散光圈触发检测 ───
     const sa = successAnimRef.current;
@@ -325,10 +356,10 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
         break;
     }
 
-    // ─── 状态灯颜色 ───
+    // ─── 状态灯颜色（使用缓存颜色，避免每帧转换） ───
     if (statusLightRef.current) {
       const mat = statusLightRef.current.material as THREE.MeshStandardMaterial;
-      const c = statusColor(status);
+      const c = cachedStatusColorRef.current;
       mat.color.set(c);
       mat.emissive.set(c);
       mat.emissiveIntensity = status === "idle" ? 0.3 : 0.8 + Math.sin(t * 4) * 0.2;
@@ -544,14 +575,17 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
       </group>
     </group>
   );
-}
+});
 
 /** 名牌组件 — 独立从 store 读取，hover 时显示扩展信息 */
 function NameTag({ role, color, name, title, hovered }: {
   role: EmployeeRoleType; color: string; name: string; title: string; hovered: boolean;
 }) {
-  const currentTask = useEmployeeStore((s) => s.employees[role]?.currentTask ?? "");
-  const status = useEmployeeStore((s) => s.employees[role]?.status ?? "idle");
+  // 合并为单个 selector，减少订阅次数
+  const { currentTask, status } = useEmployeeStore((s) => ({
+    currentTask: s.employees[role]?.currentTask ?? "",
+    status: s.employees[role]?.status ?? "idle" as ActivityStatus,
+  }));
 
   return (
     <Html position={[0, 1.95, 0]} center distanceFactor={7} sprite>

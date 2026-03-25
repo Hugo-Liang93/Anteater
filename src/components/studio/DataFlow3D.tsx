@@ -57,7 +57,7 @@ function getFlowParams(sourceStatus: ActivityStatus) {
 export function DataFlowParticle({ from, to, active, sourceStatus = "idle", color }: FlowProps) {
   const meshRefs = useRef<(THREE.Mesh | null)[]>([null, null, null]);
 
-  // 预创建 3 个粒子 mesh 材质
+  // 预创建 3 个粒子 mesh 材质（空依赖数组 — 生命周期与组件一致）
   const materials = useMemo(() => [
     new THREE.MeshStandardMaterial({ transparent: true }),
     new THREE.MeshStandardMaterial({ transparent: true }),

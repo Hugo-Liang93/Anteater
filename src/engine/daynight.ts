@@ -91,12 +91,14 @@ export function computeDayNight(now?: Date): DayNightParams {
   const hourFrac = d.getHours() + d.getMinutes() / 60;
 
   // 找到前后两个关键帧
-  let prev = KEYFRAMES[0]!;
-  let next = KEYFRAMES[1]!;
+  let prev = KEYFRAMES[0] ?? KEYFRAMES[KEYFRAMES.length - 1]!;
+  let next = KEYFRAMES[1] ?? prev;
   for (let i = 0; i < KEYFRAMES.length - 1; i++) {
-    if (hourFrac >= KEYFRAMES[i]!.hour && hourFrac < KEYFRAMES[i + 1]!.hour) {
-      prev = KEYFRAMES[i]!;
-      next = KEYFRAMES[i + 1]!;
+    const cur = KEYFRAMES[i];
+    const nxt = KEYFRAMES[i + 1];
+    if (cur && nxt && hourFrac >= cur.hour && hourFrac < nxt.hour) {
+      prev = cur;
+      next = nxt;
       break;
     }
   }

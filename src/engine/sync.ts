@@ -84,8 +84,8 @@ export function computeSync(input: SyncInput): SyncOutput {
   // ─── 策略师 ───
   const buySignals = signals.filter((s) => s.direction === "buy");
   const sellSignals = signals.filter((s) => s.direction === "sell");
-  if (signals.length > 0) {
-    const latest = signals[0]!;
+  const latest = signals[0];
+  if (latest) {
     patches.set(EmployeeRole.STRATEGIST, {
       status: "working",
       currentTask: `${strategies.length} 策略 | ${buySignals.length} 买 ${sellSignals.length} 卖`,
