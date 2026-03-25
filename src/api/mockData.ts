@@ -5,7 +5,7 @@
  * 通过 config.mockMode 开关控制。
  */
 
-import type { Quote, AccountInfo, Position, HealthStatus, StrategyInfo } from "./types";
+import type { Quote, AccountInfo, Position, HealthStatus, RiskWindow, StrategyInfo } from "./types";
 import type { LiveSignal, QueueInfo } from "@/store/live";
 
 export const MOCK_QUOTE: Quote = {
@@ -130,4 +130,36 @@ export const MOCK_QUEUES: QueueInfo[] = [
   { name: "signal_queue", size: 3, max: 100, utilization_pct: 3, status: "normal", drops_oldest: 0, drops_newest: 0 },
   { name: "trade_queue", size: 1, max: 50, utilization_pct: 2, status: "normal", drops_oldest: 0, drops_newest: 0 },
   { name: "monitor_queue", size: 5, max: 200, utilization_pct: 2.5, status: "normal", drops_oldest: 0, drops_newest: 0 },
+];
+
+/** 模拟经济日历风险窗口 — 包含不同影响级别和时间距离 */
+export const MOCK_RISK_WINDOWS: RiskWindow[] = [
+  {
+    event_name: "Non-Farm Payrolls",
+    currency: "USD",
+    impact: "high",
+    datetime: new Date(Date.now() + 45 * 60_000).toISOString(), // 45 分钟后
+    guard_active: true,
+  },
+  {
+    event_name: "CPI Year-over-Year",
+    currency: "USD",
+    impact: "high",
+    datetime: new Date(Date.now() + 3 * 3600_000).toISOString(), // 3 小时后
+    guard_active: false,
+  },
+  {
+    event_name: "Initial Jobless Claims",
+    currency: "USD",
+    impact: "medium",
+    datetime: new Date(Date.now() + 6 * 3600_000).toISOString(), // 6 小时后
+    guard_active: false,
+  },
+  {
+    event_name: "ECB Interest Rate Decision",
+    currency: "EUR",
+    impact: "high",
+    datetime: new Date(Date.now() + 24 * 3600_000).toISOString(), // 明天
+    guard_active: false,
+  },
 ];

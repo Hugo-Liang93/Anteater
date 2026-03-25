@@ -8,6 +8,7 @@ import {
   fetchQueues,
   fetchQuote,
   fetchRecentSignals,
+  fetchRiskWindows,
   fetchStrategies,
 } from "@/api/endpoints";
 import {
@@ -24,6 +25,7 @@ import { syncAll } from "@/engine/sync";
 import {
   MOCK_QUOTE, MOCK_ACCOUNT, MOCK_POSITIONS, MOCK_HEALTH,
   MOCK_STRATEGIES, MOCK_INDICATORS, MOCK_SIGNALS, MOCK_QUEUES,
+  MOCK_RISK_WINDOWS,
 } from "@/api/mockData";
 import { useEventStore } from "@/store/events";
 import { useEmployeeStore, type ActivityStatus } from "@/store/employees";
@@ -93,6 +95,7 @@ function initMockMode() {
   });
   useLiveStore.getState().setSignals(MOCK_SIGNALS);
   useLiveStore.getState().setQueues(MOCK_QUEUES);
+  useSignalStore.getState().setRiskWindows(MOCK_RISK_WINDOWS);
 
   // 初始注入 3 条事件
   emitMockEvent();
@@ -154,13 +157,14 @@ export function usePolling() {
       }
     };
 
-    // ─── 健康 & 策略（5s） ───
+    // ─── 健康 & 策略 & 经济日历（5s） ───
     const pollHealth = async () => {
       if (cancelled) return;
       try {
-        const [healthRes, stratRes] = await Promise.allSettled([
+        const [healthRes, stratRes, calRes] = await Promise.allSettled([
           fetchHealth(),
           fetchStrategies(),
+          fetchRiskWindows(),
         ]);
 
         if (cancelled) return;
@@ -172,6 +176,21 @@ export function usePolling() {
         if (stratRes.status === "fulfilled" && stratRes.value.success) {
           const strats = normalizeStrategies(stratRes.value);
           useSignalStore.getState().setStrategies(strats);
+        }
+        if (calRes.status === "fulfilled" && calRes.value.success) {
+          const raw = calRes.value.data;
+          if (Array.isArray(raw)) {
+            useSignalStore.getState().setRiskWindows(
+              raw.map((w: Record<string, unknown>) => ({
+                event_name: String(w.event_name ?? ""),
+                currency: String(w.currency ?? ""),
+                impact: (["high", "medium", "low"].includes(w.impact as string)
+                  ? w.impact : "low") as "high" | "medium" | "low",
+                datetime: String(w.datetime ?? ""),
+                guard_active: Boolean(w.guard_active),
+              })),
+            );
+          }
         }
         syncAll();
       } catch { /* best effort */ }
