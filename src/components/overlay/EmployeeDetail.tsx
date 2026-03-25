@@ -379,9 +379,62 @@ function RoleMetrics({ roleId }: { roleId: string }) {
       }
       break;
 
-    case EmployeeRole.CALENDAR_REPORTER:
-      content = <Empty text={connected ? "监控经济日历中" : "等待连接"} />;
+    case EmployeeRole.CALENDAR_REPORTER: {
+      const riskWindows = useSignalStore.getState().riskWindows;
+      if (riskWindows.length > 0) {
+        const now = Date.now();
+        const highImpact = riskWindows.filter((w) => w.impact === "high");
+        const activeGuards = riskWindows.filter((w) => w.guard_active);
+        // 按时间排序，过滤未来事件
+        const upcoming = riskWindows
+          .map((w) => ({ ...w, ms: new Date(w.datetime).getTime() - now }))
+          .filter((w) => w.ms > 0)
+          .sort((a, b) => a.ms - b.ms);
+
+        content = (
+          <div className="space-y-2">
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <KV k="总事件" v={String(riskWindows.length)} />
+              <KV k="高影响" v={String(highImpact.length)} color={highImpact.length > 0 ? "text-warning" : undefined} />
+              <KV k="防护中" v={String(activeGuards.length)} color={activeGuards.length > 0 ? "text-danger" : undefined} />
+            </div>
+            {upcoming.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-[10px] text-text-muted">即将公布</div>
+                {upcoming.slice(0, 3).map((w, i) => {
+                  const timeStr = w.ms < 3600_000
+                    ? `${Math.round(w.ms / 60_000)}分钟`
+                    : `${Math.round(w.ms / 3600_000)}小时`;
+                  return (
+                    <div key={i} className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1">
+                        <span className={cn(
+                          "inline-block h-1.5 w-1.5 rounded-full",
+                          w.impact === "high" ? "bg-danger" : w.impact === "medium" ? "bg-warning" : "bg-text-muted",
+                        )} />
+                        <span className="text-text-secondary">{w.event_name}</span>
+                        <span className="text-[10px] text-text-muted">{w.currency}</span>
+                      </span>
+                      <span className={w.ms < 3600_000 ? "font-medium text-warning" : "text-text-muted"}>
+                        {timeStr}后
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {activeGuards.length > 0 && (
+              <div className="rounded bg-danger/10 p-1.5 text-[10px] text-danger">
+                风险防护已激活: {activeGuards.map((w) => w.event_name).join(", ")}
+              </div>
+            )}
+          </div>
+        );
+      } else {
+        content = <Empty text={connected ? "经济日历无近期事件" : "等待连接"} />;
+      }
       break;
+    }
 
     default:
       content = <Empty text={`${strategies.length} 个策略就绪`} />;
