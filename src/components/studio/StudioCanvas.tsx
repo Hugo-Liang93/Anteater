@@ -269,6 +269,8 @@ export function StudioCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef(0);
   const cachedRectRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
+  const particlesRef = useRef<Particle[]>([]);
+  const lastWorkingKeyRef = useRef("");
   const setSelected = useEmployeeStore((s) => s.setSelectedEmployee);
 
   const updateCachedRect = useCallback(() => {
@@ -313,8 +315,14 @@ export function StudioCanvas() {
 
     // ─── 数据流 ───
     drawFlowLines(ctx, W, H);
-    const particles = createFlowParticles(DATA_FLOWS, employees, W, H);
-    drawParticles(ctx, particles, t);
+
+    // 仅在工作状态集合或尺寸变化时重建粒子数组
+    const workingKey = DATA_FLOWS.map(([from]) => (employees as Record<string, { status: string }>)[from]?.status === "working" ? "1" : "0").join("") + `|${W}|${H}`;
+    if (workingKey !== lastWorkingKeyRef.current) {
+      lastWorkingKeyRef.current = workingKey;
+      particlesRef.current = createFlowParticles(DATA_FLOWS, employees, W, H);
+    }
+    drawParticles(ctx, particlesRef.current, t);
 
     // ─── 角色 ───
     for (const cfg of employeeConfigs) {

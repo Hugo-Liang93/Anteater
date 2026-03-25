@@ -6,7 +6,7 @@
  */
 
 import { useMemo } from "react";
-import { useEmployeeStore } from "@/store/employees";
+import { useEmployeeStore, selectAllEmployees } from "@/store/employees";
 import { employeeConfigMap, type EmployeeRoleType } from "@/config/employees";
 
 interface FeedItem {
@@ -25,7 +25,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export function BottomEventFeed() {
-  const employees = useEmployeeStore((s) => s.employees);
+  const employees = useEmployeeStore(selectAllEmployees);
 
   const items: FeedItem[] = useMemo(() => {
     const all: FeedItem[] = [];
