@@ -78,18 +78,25 @@ export interface CharacterAppearance {
   propType: string;
 }
 
-/** 角色外观映射 — 10 个角色的视觉差异化定义 */
+/**
+ * 角色外观映射 — 对齐 CHARACTER_ROSTER.md 颜色规范
+ *
+ * 采集员: 蓝(Blue)     分析师: 绿(Green)     策略师: 紫(Purple)
+ * 投票主席: 金(Gold)    风控官: 红(Red)       交易员: 金(Warm Gold)
+ * 仓管员: 青(Teal)     会计: 蓝灰(Blue-grey) 日历员: 紫罗兰(Violet)
+ * 巡检员: 青(Cyan)
+ */
 export const CHARACTER_APPEARANCES: Record<EmployeeRoleType, CharacterAppearance> = {
   collector: {
-    shirt: "#4fc3f7", pants: "#37474f", hair: "#5d4037", skin: "#ffe0c0",
+    shirt: "#4298d4", pants: "#37474f", hair: "#5d4037", skin: "#ffe0c0",
     hairStyle: "short", propType: "box",
   },
   analyst: {
-    shirt: "#ab47bc", pants: "#263238", hair: "#212121", skin: "#ffe0c0",
+    shirt: "#4caf50", pants: "#263238", hair: "#212121", skin: "#ffe0c0",
     hairStyle: "spiky", propType: "monitor",
   },
   strategist: {
-    shirt: "#ffb74d", pants: "#37474f", hair: "#3e2723", skin: "#ffd8b0",
+    shirt: "#ab47bc", pants: "#37474f", hair: "#3e2723", skin: "#ffd8b0",
     hairStyle: "long", propType: "monitor",
   },
   voter: {
@@ -101,7 +108,7 @@ export const CHARACTER_APPEARANCES: Record<EmployeeRoleType, CharacterAppearance
     hairStyle: "short", propType: "shield",
   },
   trader: {
-    shirt: "#66bb6a", pants: "#37474f", hair: "#4e342e", skin: "#ffe0c0",
+    shirt: "#f9a825", pants: "#37474f", hair: "#4e342e", skin: "#ffe0c0",
     hairStyle: "short", propType: "briefcase",
   },
   position_manager: {
@@ -117,7 +124,7 @@ export const CHARACTER_APPEARANCES: Record<EmployeeRoleType, CharacterAppearance
     hairStyle: "long", propType: "calendar",
   },
   inspector: {
-    shirt: "#8d6e63", pants: "#3e2723", hair: "#5d4037", skin: "#ffe0c0",
+    shirt: "#26c6da", pants: "#37474f", hair: "#5d4037", skin: "#ffe0c0",
     hairStyle: "bald", propType: "magnifier",
   },
 };

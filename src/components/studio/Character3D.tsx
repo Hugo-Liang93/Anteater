@@ -21,6 +21,7 @@ import type { EmployeeRoleType } from "@/config/employees";
 import { employeeConfigMap, statusColor } from "@/config/employees";
 import { CHARACTER_APPEARANCES } from "@/config/assets";
 import { useEmployeeStore } from "@/store/employees";
+import { useLiveStore } from "@/store/live";
 
 interface Character3DProps {
   role: EmployeeRoleType;
@@ -479,6 +480,9 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
             <sphereGeometry args={[0.025, 8, 8, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
             <meshStandardMaterial color="#e07070" />
           </mesh>
+
+          {/* ─── 角色专属头部配件 ─── */}
+          <RoleAccessory role={role} />
         </group>
 
         {/* ─── 小身体 ─── */}
@@ -531,6 +535,9 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
           <sphereGeometry args={[0.05, 8, 8]} />
           <meshStandardMaterial color="#5a6d7e" emissive="#5a6d7e" emissiveIntensity={0.3} />
         </mesh>
+
+        {/* 策略师 BUY/SELL/HOLD 指示器 */}
+        {role === "strategist" && <SignalIndicator />}
 
         {/* 名牌 */}
         <NameTag role={role} color={cfg?.color ?? "#888"} name={cfg?.name ?? role} title={cfg?.title ?? ""} hovered={hovered} />
@@ -612,6 +619,129 @@ function NameTag({ role, color, name, title, hovered }: {
             {status.toUpperCase()}
           </div>
         )}
+      </div>
+    </Html>
+  );
+}
+
+/** 角色专属头部配件 — 对齐 CHARACTER_ROSTER 识别元素 */
+function RoleAccessory({ role }: { role: EmployeeRoleType }) {
+  switch (role) {
+    case "collector":
+      // 通信耳机：左右耳罩 + 头顶连接条
+      return (
+        <group>
+          <mesh position={[-0.32, 0, 0]}>
+            <boxGeometry args={[0.06, 0.1, 0.08]} />
+            <meshStandardMaterial color="#37474f" />
+          </mesh>
+          <mesh position={[0.32, 0, 0]}>
+            <boxGeometry args={[0.06, 0.1, 0.08]} />
+            <meshStandardMaterial color="#37474f" />
+          </mesh>
+          <mesh position={[0, 0.18, 0]}>
+            <capsuleGeometry args={[0.02, 0.5, 4, 8]} />
+            <meshStandardMaterial color="#546e7a" />
+          </mesh>
+          {/* 麦克风 */}
+          <mesh position={[-0.28, -0.08, 0.12]}>
+            <capsuleGeometry args={[0.015, 0.1, 4, 6]} />
+            <meshStandardMaterial color="#455a64" />
+          </mesh>
+        </group>
+      );
+
+    case "analyst":
+      // 眼镜：两个镜片 + 镜桥
+      return (
+        <group position={[0, 0, 0.02]}>
+          <mesh position={[-0.1, 0.01, 0.25]}>
+            <torusGeometry args={[0.065, 0.01, 6, 12]} />
+            <meshStandardMaterial color="#90a4ae" metalness={0.6} />
+          </mesh>
+          <mesh position={[0.1, 0.01, 0.25]}>
+            <torusGeometry args={[0.065, 0.01, 6, 12]} />
+            <meshStandardMaterial color="#90a4ae" metalness={0.6} />
+          </mesh>
+          {/* 鼻梁 */}
+          <mesh position={[0, 0, 0.27]}>
+            <boxGeometry args={[0.06, 0.01, 0.01]} />
+            <meshStandardMaterial color="#90a4ae" metalness={0.6} />
+          </mesh>
+        </group>
+      );
+
+    case "risk_officer":
+      // 胸章/印章：胸前的圆形徽章
+      return (
+        <group position={[0.1, -0.35, 0.16]}>
+          <mesh>
+            <cylinderGeometry args={[0.04, 0.04, 0.01, 12]} />
+            <meshStandardMaterial color="#ff5252" emissive="#ff5252" emissiveIntensity={0.3} metalness={0.4} />
+          </mesh>
+        </group>
+      );
+
+    case "inspector":
+      // 手持平板：右手位置的小平板
+      return (
+        <group position={[0.28, -0.2, 0.1]} rotation={[0.2, -0.3, 0]}>
+          <mesh>
+            <boxGeometry args={[0.12, 0.16, 0.015]} />
+            <meshStandardMaterial color="#263238" />
+          </mesh>
+          {/* 屏幕 */}
+          <mesh position={[0, 0, 0.008]}>
+            <boxGeometry args={[0.1, 0.13, 0.002]} />
+            <meshStandardMaterial color="#4dd0e1" emissive="#4dd0e1" emissiveIntensity={0.5} />
+          </mesh>
+        </group>
+      );
+
+    case "trader":
+      // 胸前执行按钮
+      return (
+        <group position={[0, -0.35, 0.17]}>
+          <mesh>
+            <cylinderGeometry args={[0.03, 0.03, 0.02, 8]} />
+            <meshStandardMaterial color="#f9a825" emissive="#f9a825" emissiveIntensity={0.4} metalness={0.5} />
+          </mesh>
+        </group>
+      );
+
+    default:
+      return null;
+  }
+}
+
+/** 策略师 BUY/SELL/HOLD 头顶指示器 */
+function SignalIndicator() {
+  const signals = useLiveStore((s) => s.signals);
+  const latest = signals[0];
+
+  if (!latest || latest.direction === "hold") return null;
+
+  const isBuy = latest.direction === "buy";
+  const color = isBuy ? "#00d4aa" : "#ff4757";
+  const label = isBuy ? "BUY" : "SELL";
+
+  return (
+    <Html position={[0, 2.15, 0]} center distanceFactor={7} sprite>
+      <div
+        style={{
+          background: color,
+          color: "#fff",
+          fontSize: 9,
+          fontWeight: 800,
+          padding: "2px 6px",
+          borderRadius: 4,
+          pointerEvents: "none",
+          userSelect: "none",
+          boxShadow: `0 0 8px ${color}`,
+          letterSpacing: 1,
+        }}
+      >
+        {label}
       </div>
     </Html>
   );

@@ -43,7 +43,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     title: "数据采集专员",
     backendComponent: "BackgroundIngestor",
     zone: "collection",
-    color: "#4fc3f7",
+    color: "#4298d4",
     icon: "Download",
   },
   {
@@ -52,7 +52,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     title: "技术指标分析师",
     backendComponent: "UnifiedIndicatorManager",
     zone: "analysis",
-    color: "#ab47bc",
+    color: "#4caf50",
     icon: "BarChart3",
   },
   {
@@ -61,7 +61,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     title: "信号策略评估师",
     backendComponent: "SignalModule",
     zone: "strategy",
-    color: "#ffb74d",
+    color: "#ab47bc",
     icon: "Brain",
   },
   {
@@ -88,7 +88,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     title: "交易执行员",
     backendComponent: "TradeExecutor",
     zone: "trading",
-    color: "#66bb6a",
+    color: "#f9a825",
     icon: "ArrowLeftRight",
   },
   {
@@ -124,7 +124,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     title: "系统健康巡检员",
     backendComponent: "MonitoringManager",
     zone: "support",
-    color: "#8d6e63",
+    color: "#26c6da",
     icon: "ScanSearch",
   },
 ];
