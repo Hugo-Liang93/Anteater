@@ -13,6 +13,7 @@ import { useEmployeeStore } from "@/store/employees";
 import { CharacterModel } from "./CharacterModel";
 import { Office3D } from "./Office3D";
 import { DataFlowParticle, FlowLine } from "./DataFlow3D";
+import { Zones3D } from "./Zones3D";
 import { computeDayNight, type DayNightParams } from "@/engine/daynight";
 import * as THREE from "three";
 
@@ -81,6 +82,9 @@ function Scene({ dayNight }: { dayNight: DayNightParams }) {
       {dayNight.isNight && (
         <Stars radius={50} depth={30} count={800} factor={3} fade speed={0.5} />
       )}
+
+      {/* 功能区域标记 */}
+      <Zones3D />
 
       {/* 办公室（传入日夜参数） */}
       <Office3D dayNight={dayNight} />

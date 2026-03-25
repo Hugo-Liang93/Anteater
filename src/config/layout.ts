@@ -65,3 +65,24 @@ export const ZONE_LABELS = [
   { label: "持 仓 区", x: 0.56, y: 0.60 },
   { label: "支 持 区", x: 0.20, y: 0.58 },
 ] as const;
+
+/** 3D 场景功能区域定义 */
+export interface Zone3D {
+  id: string;
+  label: string;
+  /** 区域中心位置 [x, y, z] */
+  center: [number, number, number];
+  /** 区域尺寸 [width, depth] */
+  size: [number, number];
+  /** 区域地面颜色 */
+  color: string;
+}
+
+export const SCENE_ZONES: Zone3D[] = [
+  { id: "collection", label: "采集区",   center: [-3,   0, -0.4], size: [2.5, 2.5], color: "#4298d4" },
+  { id: "analysis",   label: "分析区",   center: [-1,   0, -0.4], size: [2.5, 2.5], color: "#4caf50" },
+  { id: "strategy",   label: "策略室",   center: [1,    0,  0],   size: [2.5, 3.5], color: "#ab47bc" },
+  { id: "risk",       label: "风控台",   center: [3,    0, -0.4], size: [2.5, 2.5], color: "#ef5350" },
+  { id: "trading",    label: "交易台",   center: [3,    0,  1.6], size: [2.5, 2.5], color: "#f9a825" },
+  { id: "support",    label: "支持区",   center: [-1.5, 0,  2.6], size: [5,   2.5], color: "#78909c" },
+];

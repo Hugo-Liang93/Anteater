@@ -21,9 +21,38 @@ import { useMarketStore } from "@/store/market";
 import { useSignalStore } from "@/store/signals";
 import { useLiveStore, type LiveSignal, type QueueInfo } from "@/store/live";
 import { syncAll } from "@/engine/sync";
+import {
+  MOCK_QUOTE, MOCK_ACCOUNT, MOCK_POSITIONS, MOCK_HEALTH,
+  MOCK_STRATEGIES, MOCK_INDICATORS, MOCK_SIGNALS, MOCK_QUEUES,
+} from "@/api/mockData";
+
+/** Mock 模式：填充模拟数据并定期 sync */
+function initMockMode() {
+  useMarketStore.getState().setQuote(config.symbols[0], MOCK_QUOTE);
+  useMarketStore.getState().setAccount(MOCK_ACCOUNT);
+  useMarketStore.getState().setPositions(MOCK_POSITIONS);
+  useMarketStore.getState().setConnected(true);
+  useSignalStore.getState().setHealth(MOCK_HEALTH);
+  useSignalStore.getState().setStrategies(MOCK_STRATEGIES);
+  useLiveStore.getState().setIndicators("M5", {
+    timeframe: "M5",
+    timestamp: new Date().toISOString(),
+    indicators: MOCK_INDICATORS,
+  });
+  useLiveStore.getState().setSignals(MOCK_SIGNALS);
+  useLiveStore.getState().setQueues(MOCK_QUEUES);
+  syncAll();
+}
 
 export function usePolling() {
   useEffect(() => {
+    // Mock 模式：填充数据后只运行 sync
+    if (config.mockMode) {
+      initMockMode();
+      const syncTimer = setInterval(syncAll, 2_000);
+      return () => clearInterval(syncTimer);
+    }
+
     let cancelled = false;
 
     // ─── 行情 & 账户（5s） ───
