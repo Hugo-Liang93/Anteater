@@ -1,8 +1,7 @@
 /**
- * 全局事件 Store — 按 ARCHITECTURE.md 要求
+ * 全局事件 Store — 对齐 API_CONTRACT + ARCHITECTURE.md
  *
- * 统一聚合所有系统事件（信号、状态变更、告警、交易），
- * 供 BottomEventFeed 和未来的事件回放功能消费。
+ * 统一聚合所有系统事件，使用 StudioEvent 协议对象。
  */
 
 import { create } from "zustand";
@@ -15,8 +14,8 @@ interface EventStore {
   /** 全局事件列表（最新在前） */
   events: StudioEvent[];
 
-  /** 追加事件 */
-  appendEvent: (event: Omit<StudioEvent, "id">) => void;
+  /** 追加事件（接受完整 StudioEvent 或不含 eventId 的新事件） */
+  appendEvent: (event: StudioEvent | Omit<StudioEvent, "eventId">) => void;
 
   /** 清空所有事件 */
   clearEvents: () => void;
@@ -27,7 +26,9 @@ export const useEventStore = create<EventStore>((set) => ({
 
   appendEvent: (event) =>
     set((s) => {
-      const newEvent: StudioEvent = { ...event, id: `evt-${++eventSeq}` };
+      const newEvent: StudioEvent = "eventId" in event
+        ? event
+        : { ...event, eventId: `evt-${++eventSeq}` };
       const events = s.events.length >= MAX_EVENTS
         ? [newEvent, ...s.events.slice(0, MAX_EVENTS - 1)]
         : [newEvent, ...s.events];

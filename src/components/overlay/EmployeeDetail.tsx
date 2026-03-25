@@ -16,11 +16,21 @@ import { useMarketStore } from "@/store/market";
 import { useLiveStore } from "@/store/live";
 import { useSignalStore } from "@/store/signals";
 
-const statusBadge: Record<ActivityStatus, { label: string; cls: string }> = {
+const DEFAULT_BADGE = { label: "未知", cls: "bg-text-muted/20 text-text-muted" };
+const statusBadge: Partial<Record<ActivityStatus, { label: string; cls: string }>> = {
   idle: { label: "空闲", cls: "bg-text-muted/20 text-text-muted" },
   working: { label: "工作中", cls: "bg-success/20 text-success" },
+  walking: { label: "移动中", cls: "bg-success/20 text-success" },
   thinking: { label: "思考中", cls: "bg-blue-400/20 text-blue-400" },
+  judging: { label: "判断中", cls: "bg-blue-400/20 text-blue-400" },
+  waiting: { label: "等待中", cls: "bg-text-muted/20 text-text-muted" },
+  signal_ready: { label: "信号就绪", cls: "bg-warning/20 text-warning" },
   reviewing: { label: "审核中", cls: "bg-purple-400/20 text-purple-400" },
+  approved: { label: "已通过", cls: "bg-success/20 text-success" },
+  submitting: { label: "提交中", cls: "bg-blue-400/20 text-blue-400" },
+  executed: { label: "已执行", cls: "bg-success/20 text-success" },
+  rejected: { label: "已拒绝", cls: "bg-danger/20 text-danger" },
+  warning: { label: "警告", cls: "bg-warning/20 text-warning" },
   alert: { label: "告警", cls: "bg-warning/20 text-warning" },
   success: { label: "完成", cls: "bg-success/20 text-success" },
   error: { label: "异常", cls: "bg-danger/20 text-danger" },
@@ -48,7 +58,7 @@ export function EmployeeDetail() {
   const cfg = employeeConfigMap.get(selectedId);
   if (!cfg) return null;
 
-  const badge = statusBadge[employee.status];
+  const badge = statusBadge[employee.status] ?? DEFAULT_BADGE;
 
   return (
     <div className="absolute right-4 top-4 z-50 w-80 rounded-xl border border-border bg-bg-panel shadow-2xl">

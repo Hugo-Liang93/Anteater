@@ -134,13 +134,22 @@ export const employeeConfigMap = new Map(
   employeeConfigs.map((c) => [c.id, c]),
 );
 
-/** 统一的状态颜色映射 — 按 ANIMATION_SPEC.md 完整定义 */
+/** 统一的状态颜色映射 — 对齐 API_CONTRACT + ANIMATION_SPEC */
 export function statusColor(status: string): string {
   switch (status) {
     case "working": return "#00d4aa";
+    case "walking": return "#00d4aa";
     case "thinking": return "#90caf9";
+    case "judging": return "#90caf9";
+    case "waiting": return "#78909c";
+    case "signal_ready": return "#ffb74d";
     case "reviewing": return "#ce93d8";
+    case "approved": return "#66bb6a";
+    case "submitting": return "#4fc3f7";
+    case "executed": return "#66bb6a";
+    case "rejected": return "#ff4757";
     case "success": return "#66bb6a";
+    case "warning": return "#ffa726";
     case "alert": return "#ffa726";
     case "error": return "#ff4757";
     case "blocked": return "#ff1744";

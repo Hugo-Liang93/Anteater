@@ -93,3 +93,21 @@ export function fetchTradePrecheck(params: {
 }) {
   return apiClient.post<unknown>("/trade/precheck", params);
 }
+
+// ─── Studio 协议端点 (API_CONTRACT) ───
+
+export function fetchStudioAgents() {
+  return apiClient.get<unknown>("/studio/agents");
+}
+
+export function fetchStudioEvents(limit = 50) {
+  return apiClient.get<unknown>(`/studio/events?limit=${limit}`);
+}
+
+export function fetchStudioSummary() {
+  return apiClient.get<unknown>("/studio/summary");
+}
+
+export function fetchStudioAgentDetail(agentId: string) {
+  return apiClient.get<unknown>(`/studio/agents/${agentId}`);
+}

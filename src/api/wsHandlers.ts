@@ -1,83 +1,117 @@
 /**
- * WebSocket 消息处理器 — 按 ARCHITECTURE.md 的 Services 层
+ * WebSocket 消息处理器 — 对齐 API_CONTRACT.md
  *
- * 接收 WS 消息并分发到对应的 Store，
- * 实现 Backend → Mapper → Store 的单向数据流。
+ * 使用 studioAdapters 安全解析所有 payload，
+ * 不使用 unsafe `as` 类型断言。
  */
 
-import type {
-  WsMessage,
-  AgentUpdatePayload,
-  EventAppendPayload,
-  SnapshotPayload,
-  SummaryPayload,
-} from "@/types/protocol";
+import type { WsMessage } from "@/types/protocol";
+import {
+  normalizeStudioAgent,
+  normalizeStudioAgents,
+  normalizeStudioEvent,
+  normalizeStudioEvents,
+  normalizeSummary,
+  normalizeConnectionStatus,
+} from "@/api/studioAdapters";
 import { useEmployeeStore } from "@/store/employees";
 import { useEventStore } from "@/store/events";
 import { useMarketStore } from "@/store/market";
 import type { EmployeeRoleType } from "@/config/employees";
-import type { ActivityStatus } from "@/store/employees";
 
-/** 处理 WebSocket 消息并分发到 Store */
+/** 处理 WebSocket 消息并安全分发到 Store */
 export function handleWsMessage(msg: WsMessage): void {
   switch (msg.type) {
     case "snapshot":
-      handleSnapshot(msg.payload as SnapshotPayload);
+      handleSnapshot(msg.payload);
       break;
     case "agent_update":
-      handleAgentUpdate(msg.payload as AgentUpdatePayload);
+      handleAgentUpdate(msg.payload);
       break;
     case "event_append":
-      handleEventAppend(msg.payload as EventAppendPayload);
+      handleEventAppend(msg.payload);
       break;
     case "summary_update":
-      handleSummaryUpdate(msg.payload as SummaryPayload);
+      handleSummaryUpdate(msg.payload);
       break;
     case "connection_status":
-      handleConnectionStatus(msg.payload as { connected: boolean });
+      handleConnectionStatus(msg.payload);
       break;
+    // unknown types silently ignored (API_CONTRACT Section 8)
   }
 }
 
-function handleSnapshot(payload: SnapshotPayload): void {
-  const empStore = useEmployeeStore.getState();
-  const evtStore = useEventStore.getState();
+function handleSnapshot(payload: unknown): void {
+  if (payload == null || typeof payload !== "object") return;
+  const raw = payload as Record<string, unknown>;
 
-  // 更新所有 agent 状态
-  for (const agent of payload.agents) {
-    empStore.updateEmployee(agent.role, {
+  // 安全解析 agents
+  const agents = normalizeStudioAgents(raw.agents);
+  const empStore = useEmployeeStore.getState();
+  for (const agent of agents) {
+    empStore.updateEmployee(agent.id as EmployeeRoleType, {
       status: agent.status,
-      currentTask: agent.currentTask,
-      stats: agent.metrics,
+      currentTask: agent.task,
+      stats: (agent.metrics ?? {}) as Record<string, number | string>,
     });
   }
 
-  // 加载历史事件
-  for (const event of payload.events) {
-    evtStore.appendEvent(event);
+  // 安全解析 events
+  const events = normalizeStudioEvents(raw.events);
+  const evtStore = useEventStore.getState();
+  for (const event of events) {
+    evtStore.appendEvent({
+      eventId: event.eventId,
+      type: event.type,
+      source: event.source,
+      target: event.target,
+      symbol: event.symbol,
+      level: event.level,
+      message: event.message,
+      createdAt: event.createdAt,
+    });
+  }
+
+  // 安全解析 summary
+  if (raw.summary != null) {
+    const summary = normalizeSummary(raw.summary);
+    useMarketStore.getState().setConnected(summary.activeAgents > 0);
   }
 }
 
-function handleAgentUpdate(payload: AgentUpdatePayload): void {
-  useEmployeeStore.getState().updateEmployee(
-    payload.role as EmployeeRoleType,
-    {
-      status: payload.status as ActivityStatus,
-      currentTask: payload.currentTask,
-      stats: payload.metrics ?? {},
-    },
-  );
+function handleAgentUpdate(payload: unknown): void {
+  const agent = normalizeStudioAgent(payload);
+  if (!agent) return;
+
+  useEmployeeStore.getState().updateEmployee(agent.id as EmployeeRoleType, {
+    status: agent.status,
+    currentTask: agent.task,
+    stats: (agent.metrics ?? {}) as Record<string, number | string>,
+  });
 }
 
-function handleEventAppend(payload: EventAppendPayload): void {
-  useEventStore.getState().appendEvent(payload);
+function handleEventAppend(payload: unknown): void {
+  const event = normalizeStudioEvent(payload);
+  if (!event) return;
+
+  useEventStore.getState().appendEvent({
+    eventId: event.eventId,
+    type: event.type,
+    source: event.source,
+    target: event.target,
+    symbol: event.symbol,
+    level: event.level,
+    message: event.message,
+    createdAt: event.createdAt,
+  });
 }
 
-function handleSummaryUpdate(payload: SummaryPayload): void {
-  // 将汇总数据写入 market store 的连接状态
-  useMarketStore.getState().setConnected(payload.onlineAgents > 0);
+function handleSummaryUpdate(payload: unknown): void {
+  const summary = normalizeSummary(payload);
+  useMarketStore.getState().setConnected(summary.activeAgents > 0);
 }
 
-function handleConnectionStatus(payload: { connected: boolean }): void {
-  useMarketStore.getState().setConnected(payload.connected);
+function handleConnectionStatus(payload: unknown): void {
+  const status = normalizeConnectionStatus(payload);
+  useMarketStore.getState().setConnected(status.backendConnected);
 }

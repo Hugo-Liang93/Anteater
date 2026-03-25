@@ -2,30 +2,27 @@ import { cn } from "@/lib/utils";
 import { employeeConfigs, type EmployeeRoleType } from "@/config/employees";
 import { useEmployeeStore, selectEmployee, type ActivityStatus } from "@/store/employees";
 
-const statusLabel: Record<ActivityStatus, string> = {
-  idle: "空闲",
-  working: "工作中",
-  thinking: "思考中",
-  reviewing: "审核中",
-  alert: "告警",
-  success: "完成",
-  error: "异常",
-  blocked: "已拦截",
-  disconnected: "失联",
-  reconnecting: "重连中",
+const statusLabel: Partial<Record<ActivityStatus, string>> = {
+  idle: "空闲", working: "工作中", walking: "移动中",
+  thinking: "思考中", judging: "判断中", waiting: "等待中",
+  signal_ready: "信号就绪", reviewing: "审核中",
+  approved: "已通过", submitting: "提交中",
+  executed: "已执行", rejected: "已拒绝",
+  warning: "警告", alert: "告警",
+  success: "完成", error: "异常",
+  blocked: "已拦截", disconnected: "失联", reconnecting: "重连中",
 };
 
-const statusDot: Record<ActivityStatus, string> = {
-  idle: "bg-text-muted",
-  working: "bg-success animate-pulse",
-  thinking: "bg-blue-400 animate-pulse",
-  reviewing: "bg-purple-400 animate-pulse",
-  alert: "bg-warning animate-pulse",
-  success: "bg-success",
-  error: "bg-danger animate-pulse",
-  blocked: "bg-danger",
-  disconnected: "bg-danger",
-  reconnecting: "bg-warning animate-pulse",
+const statusDot: Partial<Record<ActivityStatus, string>> = {
+  idle: "bg-text-muted", working: "bg-success animate-pulse",
+  walking: "bg-success", thinking: "bg-blue-400 animate-pulse",
+  judging: "bg-blue-400 animate-pulse", waiting: "bg-text-muted animate-pulse",
+  signal_ready: "bg-warning animate-pulse", reviewing: "bg-purple-400 animate-pulse",
+  approved: "bg-success", submitting: "bg-blue-400 animate-pulse",
+  executed: "bg-success", rejected: "bg-danger",
+  warning: "bg-warning animate-pulse", alert: "bg-warning animate-pulse",
+  success: "bg-success", error: "bg-danger animate-pulse",
+  blocked: "bg-danger", disconnected: "bg-danger", reconnecting: "bg-warning animate-pulse",
 };
 
 export function TaskPanel() {

@@ -265,11 +265,11 @@ export function syncAll() {
       });
       // 同时推送到全局事件流
       useEventStore.getState().appendEvent({
-        timestamp: Date.now(),
         type: "signal_generated",
         source: output.newSignalLog.role,
         message: output.newSignalLog.message,
-        severity: output.newSignalLog.type === "success" ? "success" : "info",
+        level: output.newSignalLog.type === "success" ? "success" : "info",
+        createdAt: new Date().toISOString(),
       });
     }
   } catch (err) {
