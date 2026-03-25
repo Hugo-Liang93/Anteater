@@ -38,14 +38,12 @@ export interface SyncPatch {
 export interface SyncOutput {
   patches: Map<EmployeeRoleType, SyncPatch>;
   newSignalLog: { role: EmployeeRoleType; message: string; type: "info" | "success"; signalId: string } | null;
-  events: { source: EmployeeRoleType; message: string; severity: "info" | "success" | "warning" | "error" }[];
 }
 
 /** 纯函数：根据输入计算所有角色的状态补丁 */
 export function computeSync(input: SyncInput): SyncOutput {
   const { quote, account, positions, connected, health, strategies, lastLoggedSignalId, indicators, signals, queues } = input;
   const patches = new Map<EmployeeRoleType, SyncPatch>();
-  const events: SyncOutput["events"] = [];
   let newSignalLog: SyncOutput["newSignalLog"] = null;
   const m5 = indicators["M5"];
 
@@ -229,7 +227,7 @@ export function computeSync(input: SyncInput): SyncOutput {
     });
   }
 
-  return { patches, newSignalLog, events };
+  return { patches, newSignalLog };
 }
 
 // ─── 入口：从 store 收集输入 → 计算 → 写回 ───

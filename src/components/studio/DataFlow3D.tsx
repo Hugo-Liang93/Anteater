@@ -134,8 +134,7 @@ export function FlowLine({ from, to, highlight }: {
   /** 是否高亮（事件演出时短暂增亮） */
   highlight?: boolean;
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const lineRef = useRef<any>(null);
+  const lineObjRef = useRef<THREE.Line | null>(null);
   const geo = useMemo(() => {
     const points = [
       new THREE.Vector3(from[0], 0.3, from[2]),
@@ -157,8 +156,18 @@ export function FlowLine({ from, to, highlight }: {
     }),
   []);
 
+  const lineObj = useMemo(() => {
+    const line = new THREE.Line(geo, mat);
+    line.computeLineDistances();
+    return line;
+  }, [geo, mat]);
+
+  // 保存引用以便 useFrame 访问
+  lineObjRef.current = lineObj;
+
   useFrame(() => {
-    if (!lineRef.current) return;
+    const line = lineObjRef.current;
+    if (!line) return;
     if (highlight) {
       mat.color.set("#00d4aa");
       mat.opacity = 0.8;
@@ -166,14 +175,7 @@ export function FlowLine({ from, to, highlight }: {
       mat.color.set("#2a3f52");
       mat.opacity = 0.4;
     }
-    // lineDashedMaterial requires computeLineDistances
-    lineRef.current.computeLineDistances();
   });
 
-  return (
-    <line ref={lineRef}>
-      <primitive object={geo} attach="geometry" />
-      <primitive object={mat} attach="material" />
-    </line>
-  );
+  return <primitive object={lineObj} />;
 }

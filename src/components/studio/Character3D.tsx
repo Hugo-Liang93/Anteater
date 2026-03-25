@@ -13,7 +13,7 @@
  * - selected: 底部高亮环
  */
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -82,13 +82,31 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
   const colors = ROLE_COLORS[role];
   const cfg = employeeConfigMap.get(role);
 
-  const materials = useMemo(() => ({
-    skin: new THREE.MeshStandardMaterial({ color: colors.skin }),
-    shirt: new THREE.MeshStandardMaterial({ color: colors.shirt }),
-    pants: new THREE.MeshStandardMaterial({ color: colors.pants }),
-    hair: new THREE.MeshStandardMaterial({ color: colors.hair }),
+  const materials = useMemo(() => {
+    const mats = {
+      skin: new THREE.MeshStandardMaterial({ color: colors.skin }),
+      shirt: new THREE.MeshStandardMaterial({ color: colors.shirt }),
+      pants: new THREE.MeshStandardMaterial({ color: colors.pants }),
+      hair: new THREE.MeshStandardMaterial({ color: colors.hair }),
+      // 每个角色独立的效果材质（不在 render 中 clone）
+      successRing: SHARED_MATERIALS.successRing.clone(),
+      warningRing: SHARED_MATERIALS.warningRing.clone(),
+    };
+    return mats;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [role]);
+  }, [role]);
+
+  // 组件卸载时释放材质，防止内存泄漏
+  useEffect(() => {
+    return () => {
+      materials.skin.dispose();
+      materials.shirt.dispose();
+      materials.pants.dispose();
+      materials.hair.dispose();
+      materials.successRing.dispose();
+      materials.warningRing.dispose();
+    };
+  }, [materials]);
 
   useFrame(() => {
     if (!groupRef.current) return;
@@ -403,13 +421,13 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
       {/* 成功扩散光圈 */}
       <mesh ref={successRingRef} position={[0, 0.9, 0]} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
         <ringGeometry args={[0.3, 0.4, 32]} />
-        <primitive object={SHARED_MATERIALS.successRing.clone()} attach="material" />
+        <primitive object={materials.successRing} attach="material" />
       </mesh>
 
       {/* 警告/错误脉冲环 */}
       <mesh ref={warningRingRef} position={[0, 0.9, 0]} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
         <ringGeometry args={[0.25, 0.35, 32]} />
-        <primitive object={SHARED_MATERIALS.warningRing.clone()} attach="material" />
+        <primitive object={materials.warningRing} attach="material" />
       </mesh>
 
       <group ref={bodyGroupRef}>

@@ -132,10 +132,14 @@ export function usePolling() {
       try {
         const res = await fetchQueues();
         if (cancelled) return;
-        if (res.success && res.data) {
-          const raw = res.data as unknown as Record<string, unknown>;
-          const queuesObj = (raw.queues ?? raw) as Record<string, Record<string, unknown>>;
-          if (queuesObj && typeof queuesObj === "object") {
+        if (res.success && res.data != null) {
+          const raw = res.data as unknown;
+          const rawObj = (typeof raw === "object" && raw !== null) ? raw as Record<string, unknown> : null;
+          const queuesSource = rawObj && "queues" in rawObj && typeof rawObj.queues === "object" && rawObj.queues !== null
+            ? rawObj.queues as Record<string, Record<string, unknown>>
+            : rawObj as Record<string, Record<string, unknown>> | null;
+          const queuesObj = queuesSource;
+          if (queuesObj) {
             const list: QueueInfo[] = Object.entries(queuesObj).map(([name, q]) => ({
               name,
               size: Number(q.size ?? 0),
