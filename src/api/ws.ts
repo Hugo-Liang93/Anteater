@@ -116,6 +116,11 @@ export class StudioWebSocket {
 
   private scheduleReconnect() {
     if (this.disposed) return;
+    // 先清除任何残留的重连定时器，防止快速重连时定时器泄漏
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     const delay = RECONNECT_DELAYS[Math.min(this.reconnectAttempt, RECONNECT_DELAYS.length - 1)];
     this.reconnectAttempt++;
     console.log(`[WS] reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})`);

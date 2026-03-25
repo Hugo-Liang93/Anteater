@@ -5,6 +5,7 @@
  * 支持级别过滤（全部 / 警告+ / 异常）。
  */
 
+import { useMemo } from "react";
 import { useEventStore } from "@/store/events";
 import { useUIStore } from "@/store/ui";
 import { useEmployeeStore } from "@/store/employees";
@@ -38,7 +39,10 @@ export function BottomEventFeed() {
   const setSelected = useEmployeeStore((s) => s.setSelectedEmployee);
   const setDetailOpen = useUIStore((s) => s.setDetailPanelOpen);
 
-  const items = filterEvents(allEvents, alertFilter).slice(0, 20);
+  const items = useMemo(
+    () => filterEvents(allEvents, alertFilter).slice(0, 20),
+    [allEvents, alertFilter],
+  );
 
   return (
     <div className="flex h-8 items-center border-t border-white/5 bg-[#0a0f1a]/90">
