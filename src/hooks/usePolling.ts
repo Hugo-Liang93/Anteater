@@ -25,6 +25,58 @@ import {
   MOCK_QUOTE, MOCK_ACCOUNT, MOCK_POSITIONS, MOCK_HEALTH,
   MOCK_STRATEGIES, MOCK_INDICATORS, MOCK_SIGNALS, MOCK_QUEUES,
 } from "@/api/mockData";
+import { useEventStore } from "@/store/events";
+import { useEmployeeStore, type ActivityStatus } from "@/store/employees";
+import type { EmployeeRoleType } from "@/config/employees";
+import type { StudioEventType, EventLevel } from "@/types/protocol";
+
+/** Mock 事件模板 — 模拟真实交易链路事件 */
+const MOCK_EVENT_TEMPLATES: {
+  source: EmployeeRoleType;
+  type: StudioEventType;
+  level: EventLevel;
+  message: string;
+  status: ActivityStatus;
+  task: string;
+}[] = [
+  { source: "collector",        type: "status_change",     level: "info",    message: "XAUUSD 行情刷新 bid=2345.67",              status: "working",  task: "采集 XAUUSD M5 K线" },
+  { source: "analyst",          type: "status_change",     level: "info",    message: "指标计算完成: RSI=58.3, ATR=12.45",        status: "working",  task: "计算技术指标" },
+  { source: "strategist",       type: "signal_generated",  level: "success", message: "MA_Cross 产生 BUY 信号 (置信度 0.78)",     status: "signal_ready", task: "策略信号生成" },
+  { source: "voter",            type: "vote_completed",    level: "info",    message: "投票结果: 2 BUY / 1 HOLD → 方向 BUY",      status: "judging",  task: "多策略投票" },
+  { source: "risk_officer",     type: "risk_approved",     level: "success", message: "风控通过: 仓位 0.1 手在限额内",             status: "approved",  task: "风控审核" },
+  { source: "trader",           type: "trade_executed",    level: "success", message: "XAUUSD BUY 0.1 手 @ 2345.67 已成交",       status: "executed",  task: "执行交易" },
+  { source: "position_manager", type: "status_change",     level: "info",    message: "持仓更新: 2 笔活跃仓位, 净利 $622.50",     status: "working",  task: "持仓监控" },
+  { source: "accountant",       type: "status_change",     level: "info",    message: "账户快照: 余额 $50,000 净值 $51,234",      status: "working",  task: "账户记录" },
+  { source: "calendar_reporter",type: "calendar_alert",    level: "warning", message: "⚠ 20:30 非农就业数据即将公布",              status: "warning",  task: "日历监控" },
+  { source: "inspector",        type: "status_change",     level: "info",    message: "巡检正常: 全部 7 组件健康",                 status: "working",  task: "系统巡检" },
+  { source: "risk_officer",     type: "risk_rejected",     level: "error",   message: "风控拦截: 日内亏损接近限额 (-$480)",        status: "rejected", task: "风控拦截" },
+  { source: "collector",        type: "module_error",      level: "error",   message: "MT5 连接中断，尝试重连...",                  status: "error",    task: "MT5 重连" },
+  { source: "collector",        type: "module_recovered",  level: "success", message: "MT5 连接已恢复",                             status: "working",  task: "采集 XAUUSD 行情" },
+];
+
+let mockEventSeq = 0;
+let mockTemplateIdx = 0;
+
+/** 生成一条模拟事件并更新角色状态 */
+function emitMockEvent() {
+  const tpl = MOCK_EVENT_TEMPLATES[mockTemplateIdx % MOCK_EVENT_TEMPLATES.length]!;
+  mockTemplateIdx++;
+
+  useEventStore.getState().appendEvent({
+    eventId: `mock-evt-${++mockEventSeq}`,
+    type: tpl.type,
+    source: tpl.source,
+    level: tpl.level,
+    message: tpl.message,
+    symbol: "XAUUSD",
+    createdAt: new Date().toISOString(),
+  });
+
+  useEmployeeStore.getState().updateEmployee(tpl.source, {
+    status: tpl.status,
+    currentTask: tpl.task,
+  });
+}
 
 /** Mock 模式：填充模拟数据并定期 sync */
 function initMockMode() {
@@ -41,16 +93,30 @@ function initMockMode() {
   });
   useLiveStore.getState().setSignals(MOCK_SIGNALS);
   useLiveStore.getState().setQueues(MOCK_QUEUES);
+
+  // 初始注入 3 条事件
+  emitMockEvent();
+  emitMockEvent();
+  emitMockEvent();
+
   syncAll();
 }
 
 export function usePolling() {
   useEffect(() => {
-    // Mock 模式：填充数据后只运行 sync
+    // Mock 模式：填充数据 + 定期生成事件
     if (config.mockMode) {
       initMockMode();
       const syncTimer = setInterval(syncAll, 2_000);
-      return () => clearInterval(syncTimer);
+      // 每 3-6 秒生成一条模拟事件
+      const eventTimer = setInterval(() => {
+        emitMockEvent();
+        syncAll();
+      }, 3_000 + Math.random() * 3_000);
+      return () => {
+        clearInterval(syncTimer);
+        clearInterval(eventTimer);
+      };
     }
 
     let cancelled = false;

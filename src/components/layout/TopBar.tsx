@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { config } from "@/config";
 import { useMarketStore } from "@/store/market";
 import { useSignalStore } from "@/store/signals";
 import { Activity, Wifi, WifiOff } from "lucide-react";
@@ -24,6 +25,15 @@ export function TopBar() {
           ANTEATER
         </span>
         <span className="text-xs text-text-muted">Trading Studio</span>
+        {config.mockMode ? (
+          <span className="rounded bg-warning/20 px-1.5 py-0.5 text-[10px] font-semibold text-warning">
+            MOCK
+          </span>
+        ) : (
+          <span className="rounded bg-success/20 px-1.5 py-0.5 text-[10px] font-semibold text-success">
+            LIVE
+          </span>
+        )}
       </div>
 
       {/* 中：行情 */}

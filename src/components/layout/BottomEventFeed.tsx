@@ -7,6 +7,7 @@
 
 import { useEventStore } from "@/store/events";
 import { useUIStore } from "@/store/ui";
+import { useEmployeeStore } from "@/store/employees";
 import { employeeConfigMap, type EmployeeRoleType } from "@/config/employees";
 import type { StudioEvent } from "@/types/protocol";
 
@@ -34,6 +35,8 @@ export function BottomEventFeed() {
   const allEvents = useEventStore((s) => s.events);
   const alertFilter = useUIStore((s) => s.alertFilter);
   const setAlertFilter = useUIStore((s) => s.setAlertFilter);
+  const setSelected = useEmployeeStore((s) => s.setSelectedEmployee);
+  const setDetailOpen = useUIStore((s) => s.setDetailPanelOpen);
 
   const items = filterEvents(allEvents, alertFilter).slice(0, 20);
 
@@ -65,9 +68,19 @@ export function BottomEventFeed() {
         <div className="flex flex-1 items-center gap-6 overflow-hidden px-3">
           <div className="animate-ticker flex items-center gap-6 whitespace-nowrap">
             {items.map((item) => {
-              const cfg = employeeConfigMap.get(item.source as EmployeeRoleType);
+              const role = item.source as EmployeeRoleType;
+              const cfg = employeeConfigMap.get(role);
               return (
-                <span key={item.eventId} className="flex items-center gap-1.5 text-xs">
+                <span
+                  key={item.eventId}
+                  className="flex cursor-pointer items-center gap-1.5 text-xs hover:brightness-125"
+                  onClick={() => {
+                    if (cfg) {
+                      setSelected(role);
+                      setDetailOpen(true);
+                    }
+                  }}
+                >
                   <span
                     className="inline-block h-1.5 w-1.5 rounded-full"
                     style={{ backgroundColor: LEVEL_COLORS[item.level] ?? "#888" }}
