@@ -24,8 +24,6 @@ function addAction(
   useEmployeeStore.getState().addAction(role, log);
 }
 
-/** 上次推送到日志的信号 ID，避免重复 */
-let lastLoggedSignalId = "";
 
 export function syncAll() {
   try {
@@ -37,7 +35,7 @@ export function syncAll() {
 
 function _syncAllInner() {
   const { quotes, account, positions, connected } = useMarketStore.getState();
-  const { health, strategies } = useSignalStore.getState();
+  const { health, strategies, lastLoggedSignalId } = useSignalStore.getState();
   const { indicators, signals, queues } = useLiveStore.getState();
   const quote = quotes["XAUUSD"];
   const m5 = indicators["M5"];
@@ -94,7 +92,7 @@ function _syncAllInner() {
 
     // 推送最新信号到日志
     if (latest.signal_id !== lastLoggedSignalId) {
-      lastLoggedSignalId = latest.signal_id;
+      useSignalStore.getState().setLastLoggedSignalId(latest.signal_id);
       addAction(EmployeeRole.STRATEGIST, {
         timestamp: Date.now(),
         message: `${latest.strategy} → ${latest.direction} (${(latest.confidence * 100).toFixed(0)}%)`,

@@ -133,3 +133,13 @@ export const employeeConfigs: EmployeeConfig[] = [
 export const employeeConfigMap = new Map(
   employeeConfigs.map((c) => [c.id, c]),
 );
+
+/** 统一的状态颜色映射 */
+export function statusColor(status: string): string {
+  switch (status) {
+    case "working": return "#00d4aa";
+    case "alert": return "#ffa726";
+    case "error": return "#ff4757";
+    default: return "#5a6d7e";
+  }
+}

@@ -18,6 +18,9 @@ export const config = {
   /** SSE 实时流端点 */
   sseEndpoint: "/api/stream",
 
+  /** WebSocket 实时通道端点 */
+  wsEndpoint: `${typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:"}//${typeof window !== "undefined" ? window.location.host : "localhost:8808"}/ws/studio`,
+
   /** 交易品种（与后端 app.ini 对齐） */
   symbols: ["XAUUSD"] as const,
 

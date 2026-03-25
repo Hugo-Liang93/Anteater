@@ -268,29 +268,37 @@ export function StudioCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef(0);
+  const cachedRectRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
   const setSelected = useEmployeeStore((s) => s.setSelectedEmployee);
+
+  const updateCachedRect = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    cachedRectRef.current = { width: rect.width, height: rect.height };
+  }, []);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!canvas) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const rect = container.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) {
+    const { width, height } = cachedRectRef.current;
+    if (width === 0 || height === 0) {
+      updateCachedRect();
       animFrameRef.current = requestAnimationFrame(draw);
       return;
     }
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.scale(dpr, dpr);
-    const W = rect.width;
-    const H = rect.height;
+    const W = width;
+    const H = height;
     const t = Date.now() / 1000;
 
     const employees = useEmployeeStore.getState().employees;
@@ -331,12 +339,14 @@ export function StudioCanvas() {
     }
 
     animFrameRef.current = requestAnimationFrame(draw);
-  }, []);
+  }, [updateCachedRect]);
 
   useEffect(() => {
+    updateCachedRect();
     animFrameRef.current = requestAnimationFrame(draw);
 
     const onResize = () => {
+      updateCachedRect();
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = requestAnimationFrame(draw);
     };
@@ -346,7 +356,7 @@ export function StudioCanvas() {
       cancelAnimationFrame(animFrameRef.current);
       window.removeEventListener("resize", onResize);
     };
-  }, [draw]);
+  }, [draw, updateCachedRect]);
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

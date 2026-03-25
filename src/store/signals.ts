@@ -8,11 +8,14 @@ interface SignalState {
   strategies: StrategyInfo[];
   /** 系统健康 */
   health: HealthStatus | null;
+  /** 上次推送到日志的信号 ID，避免重复 */
+  lastLoggedSignalId: string;
 
   setRecentSignals: (signals: SignalEvent[]) => void;
   pushSignal: (signal: SignalEvent) => void;
   setStrategies: (list: StrategyInfo[]) => void;
   setHealth: (h: HealthStatus) => void;
+  setLastLoggedSignalId: (id: string) => void;
 }
 
 const MAX_RECENT = 200;
@@ -21,6 +24,7 @@ export const useSignalStore = create<SignalState>((set) => ({
   recentSignals: [],
   strategies: [],
   health: null,
+  lastLoggedSignalId: "",
 
   setRecentSignals: (signals) => set({ recentSignals: signals }),
   pushSignal: (signal) =>
@@ -29,4 +33,5 @@ export const useSignalStore = create<SignalState>((set) => ({
     })),
   setStrategies: (strategies) => set({ strategies }),
   setHealth: (health) => set({ health }),
+  setLastLoggedSignalId: (lastLoggedSignalId) => set({ lastLoggedSignalId }),
 }));

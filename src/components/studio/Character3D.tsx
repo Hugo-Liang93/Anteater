@@ -10,7 +10,7 @@ import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { EmployeeRoleType } from "@/config/employees";
-import { employeeConfigMap } from "@/config/employees";
+import { employeeConfigMap, statusColor } from "@/config/employees";
 import { useEmployeeStore } from "@/store/employees";
 
 interface Character3DProps {
@@ -32,14 +32,13 @@ const ROLE_COLORS: Record<EmployeeRoleType, { shirt: string; pants: string; hair
   inspector:        { shirt: "#8d6e63", pants: "#3e2723", hair: "#5d4037", skin: "#ffe0c0" },
 };
 
-function statusColor(status: string): string {
-  switch (status) {
-    case "working": return "#00d4aa";
-    case "alert": return "#ffa726";
-    case "error": return "#ff4757";
-    default: return "#5a6d7e";
-  }
-}
+/** 所有角色共享的材质（模块级单例，避免重复创建） */
+const SHARED_MATERIALS = {
+  shoe: new THREE.MeshStandardMaterial({ color: "#3a3a3a" }),
+  eye: new THREE.MeshStandardMaterial({ color: "#1a1a2e" }),
+  eyeWhite: new THREE.MeshStandardMaterial({ color: "#ffffff" }),
+  blush: new THREE.MeshStandardMaterial({ color: "#ffb0b0", transparent: true, opacity: 0.4 }),
+};
 
 export function Character3D({ role, position, onClick }: Character3DProps) {
   const groupRef = useRef<THREE.Group>(null);
@@ -53,24 +52,19 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
   const colors = ROLE_COLORS[role];
   const cfg = employeeConfigMap.get(role);
 
-  // 直接从 store 读取，避免 R3F prop 更新问题
-  const getEmployee = () => useEmployeeStore.getState().employees[role];
-
+  // 每个角色独有的材质（衣服颜色不同），使用稳定的字符串依赖
   const materials = useMemo(() => ({
     skin: new THREE.MeshStandardMaterial({ color: colors.skin }),
     shirt: new THREE.MeshStandardMaterial({ color: colors.shirt }),
     pants: new THREE.MeshStandardMaterial({ color: colors.pants }),
     hair: new THREE.MeshStandardMaterial({ color: colors.hair }),
-    shoe: new THREE.MeshStandardMaterial({ color: "#3a3a3a" }),
-    eye: new THREE.MeshStandardMaterial({ color: "#1a1a2e" }),
-    eyeWhite: new THREE.MeshStandardMaterial({ color: "#ffffff" }),
-    blush: new THREE.MeshStandardMaterial({ color: "#ffb0b0", transparent: true, opacity: 0.4 }),
-  }), [colors]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [role]);
 
   useFrame(() => {
     if (!groupRef.current) return;
     const t = performance.now() / 1000;
-    const emp = getEmployee();
+    const emp = useEmployeeStore.getState().employees[role];
     const status = emp?.status ?? "idle";
     const working = status === "working";
     const isAlert = status === "alert" || status === "error";
@@ -130,18 +124,18 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
         </mesh>
 
         {/* 眼白 */}
-        <mesh position={[-0.1, 1.36, 0.26]} material={materials.eyeWhite}>
+        <mesh position={[-0.1, 1.36, 0.26]} material={SHARED_MATERIALS.eyeWhite}>
           <sphereGeometry args={[0.06, 8, 8]} />
         </mesh>
-        <mesh position={[0.1, 1.36, 0.26]} material={materials.eyeWhite}>
+        <mesh position={[0.1, 1.36, 0.26]} material={SHARED_MATERIALS.eyeWhite}>
           <sphereGeometry args={[0.06, 8, 8]} />
         </mesh>
 
         {/* 瞳孔 */}
-        <mesh position={[-0.1, 1.36, 0.31]} material={materials.eye}>
+        <mesh position={[-0.1, 1.36, 0.31]} material={SHARED_MATERIALS.eye}>
           <sphereGeometry args={[0.035, 8, 8]} />
         </mesh>
-        <mesh position={[0.1, 1.36, 0.31]} material={materials.eye}>
+        <mesh position={[0.1, 1.36, 0.31]} material={SHARED_MATERIALS.eye}>
           <sphereGeometry args={[0.035, 8, 8]} />
         </mesh>
 
@@ -156,10 +150,10 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
         </mesh>
 
         {/* 腮红 */}
-        <mesh position={[-0.18, 1.3, 0.22]} material={materials.blush}>
+        <mesh position={[-0.18, 1.3, 0.22]} material={SHARED_MATERIALS.blush}>
           <sphereGeometry args={[0.04, 8, 8]} />
         </mesh>
-        <mesh position={[0.18, 1.3, 0.22]} material={materials.blush}>
+        <mesh position={[0.18, 1.3, 0.22]} material={SHARED_MATERIALS.blush}>
           <sphereGeometry args={[0.04, 8, 8]} />
         </mesh>
 
@@ -199,7 +193,7 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
           <mesh position={[0, -0.1, 0]} material={materials.pants} castShadow>
             <capsuleGeometry args={[0.06, 0.12, 6, 8]} />
           </mesh>
-          <mesh position={[0, -0.24, 0.02]} material={materials.shoe}>
+          <mesh position={[0, -0.24, 0.02]} material={SHARED_MATERIALS.shoe}>
             <boxGeometry args={[0.1, 0.06, 0.14]} />
           </mesh>
         </group>
@@ -209,7 +203,7 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
           <mesh position={[0, -0.1, 0]} material={materials.pants} castShadow>
             <capsuleGeometry args={[0.06, 0.12, 6, 8]} />
           </mesh>
-          <mesh position={[0, -0.24, 0.02]} material={materials.shoe}>
+          <mesh position={[0, -0.24, 0.02]} material={SHARED_MATERIALS.shoe}>
             <boxGeometry args={[0.1, 0.06, 0.14]} />
           </mesh>
         </group>
@@ -220,7 +214,7 @@ export function Character3D({ role, position, onClick }: Character3DProps) {
           <meshStandardMaterial color="#5a6d7e" emissive="#5a6d7e" emissiveIntensity={0.3} />
         </mesh>
 
-        {/* 名牌 — 直接从 store 读 */}
+        {/* 名牌 — 独立从 store 读取 */}
         <NameTag role={role} color={cfg?.color ?? "#888"} name={cfg?.name ?? role} />
       </group>
     </group>

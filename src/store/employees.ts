@@ -90,17 +90,28 @@ export const useEmployeeStore = create<EmployeeStore>((set) => ({
       const emp = s.employees[role];
       if (!emp) return s;
       const action: ActionLog = { ...log, id: `act-${++actionSeq}` };
+      const prev = emp.recentActions;
+      const recentActions = prev.length >= MAX_ACTIONS
+        ? [action, ...prev.slice(0, MAX_ACTIONS - 1)]
+        : [action, ...prev];
       return {
         employees: {
           ...s.employees,
-          [role]: {
-            ...emp,
-            recentActions: [action, ...emp.recentActions].slice(0, MAX_ACTIONS),
-            lastUpdate: Date.now(),
-          },
+          [role]: { ...emp, recentActions, lastUpdate: Date.now() },
         },
       };
     }),
 
   setSelectedEmployee: (selectedEmployee) => set({ selectedEmployee }),
 }));
+
+/** 选择单个员工状态 */
+export const selectEmployee = (role: EmployeeRoleType) =>
+  (s: EmployeeStore) => s.employees[role];
+
+/** 选择单个员工的 status 字段 */
+export const selectEmployeeStatus = (role: EmployeeRoleType) =>
+  (s: EmployeeStore) => s.employees[role]?.status ?? "idle";
+
+/** 选择所有员工 */
+export const selectAllEmployees = (s: EmployeeStore) => s.employees;

@@ -130,6 +130,7 @@ function drawMonitor(ctx: CanvasRenderingContext2D, x: number, y: number, t: num
   ctx.fillRect(x + 16 * s, y - 1 * s, 8 * s, 1.5 * s);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawClipboard(ctx: CanvasRenderingContext2D, x: number, y: number, _t: number, _working: boolean) {
   const s = SCALE;
   ctx.fillStyle = "#8d6e63";
@@ -174,6 +175,7 @@ function drawShield(ctx: CanvasRenderingContext2D, x: number, y: number, _t: num
   ctx.stroke();
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function drawBriefcase(ctx: CanvasRenderingContext2D, x: number, y: number, _t: number, _working: boolean) {
   const s = SCALE;
   ctx.fillStyle = "#66bb6a";
