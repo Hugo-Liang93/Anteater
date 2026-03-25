@@ -1,14 +1,15 @@
 import { cn } from "@/lib/utils";
 import { config } from "@/config";
 import { useMarketStore } from "@/store/market";
-import { useSignalStore } from "@/store/signals";
-import { Activity, Wifi, WifiOff } from "lucide-react";
+import { useSignalStore, selectRiskWindows } from "@/store/signals";
+import { Activity, CalendarClock, Wifi, WifiOff } from "lucide-react";
 
 export function TopBar() {
   const quote = useMarketStore((s) => s.quotes["XAUUSD"]);
   const account = useMarketStore((s) => s.account);
   const connected = useMarketStore((s) => s.connected);
   const health = useSignalStore((s) => s.health);
+  const riskWindows = useSignalStore(selectRiskWindows);
 
   const healthColor =
     health?.status === "healthy"
@@ -66,8 +67,9 @@ export function TopBar() {
         )}
       </div>
 
-      {/* 右：状态 */}
+      {/* 右：日历 + 状态 */}
       <div className="flex items-center gap-3 text-xs">
+        <CalendarAlert riskWindows={riskWindows} />
         <span className={cn("flex items-center gap-1", healthColor)}>
           <Activity size={14} />
           {health?.status ?? "unknown"}
@@ -79,5 +81,46 @@ export function TopBar() {
         )}
       </div>
     </header>
+  );
+}
+
+/** 经济日历预警指示器 */
+function CalendarAlert({ riskWindows }: { riskWindows: import("@/api/types").RiskWindow[] }) {
+  if (riskWindows.length === 0) return null;
+
+  const now = Date.now();
+  const activeGuards = riskWindows.filter((w) => w.guard_active);
+  const nearest = riskWindows
+    .filter((w) => w.impact === "high")
+    .map((w) => ({ ...w, ms: new Date(w.datetime).getTime() - now }))
+    .filter((w) => w.ms > 0)
+    .sort((a, b) => a.ms - b.ms)[0];
+
+  // 无高影响事件且无防护 → 静默
+  if (!nearest && activeGuards.length === 0) return null;
+
+  const isUrgent = activeGuards.length > 0 || (nearest && nearest.ms < 3600_000);
+  const timeStr = nearest
+    ? nearest.ms < 3600_000
+      ? `${Math.round(nearest.ms / 60_000)}m`
+      : `${Math.round(nearest.ms / 3600_000)}h`
+    : "";
+
+  const label = activeGuards.length > 0
+    ? `防护中`
+    : nearest
+      ? `${nearest.currency} ${nearest.event_name.length > 8 ? nearest.event_name.slice(0, 8) + "…" : nearest.event_name} ${timeStr}`
+      : "";
+
+  return (
+    <span className={cn(
+      "flex items-center gap-1 rounded px-1.5 py-0.5",
+      isUrgent
+        ? "bg-warning/20 text-warning animate-pulse"
+        : "bg-text-muted/10 text-text-muted",
+    )}>
+      <CalendarClock size={12} />
+      <span className="max-w-[120px] truncate">{label}</span>
+    </span>
   );
 }

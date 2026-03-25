@@ -28,7 +28,8 @@ export interface EmployeeConfig {
   /** 对应后端组件 */
   backendComponent: string;
   /** 工作室中的区域 */
-  zone: "collection" | "analysis" | "strategy" | "risk" | "trading" | "support";
+  zone: "collection" | "analysis" | "strategy" | "voting" | "risk" | "trading"
+      | "position" | "accounting" | "inspection" | "calendar";
   /** 角色颜色（用于头像/标签） */
   color: string;
   /** 角色图标名（lucide-react） */
@@ -69,7 +70,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "投票主席",
     title: "策略投票汇总",
     backendComponent: "VotingEngine",
-    zone: "strategy",
+    zone: "voting",
     color: "#fff176",
     icon: "Vote",
   },
@@ -96,7 +97,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "仓管员",
     title: "持仓管理员",
     backendComponent: "PositionManager",
-    zone: "trading",
+    zone: "position",
     color: "#26a69a",
     icon: "Briefcase",
   },
@@ -105,7 +106,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "会计",
     title: "账务核算员",
     backendComponent: "TradingModule",
-    zone: "support",
+    zone: "accounting",
     color: "#78909c",
     icon: "Calculator",
   },
@@ -114,7 +115,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "日历员",
     title: "经济日历播报员",
     backendComponent: "EconomicCalendarService",
-    zone: "support",
+    zone: "calendar",
     color: "#7e57c2",
     icon: "CalendarClock",
   },
@@ -123,7 +124,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "巡检员",
     title: "系统健康巡检员",
     backendComponent: "MonitoringManager",
-    zone: "support",
+    zone: "inspection",
     color: "#26c6da",
     icon: "ScanSearch",
   },

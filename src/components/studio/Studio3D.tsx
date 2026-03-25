@@ -179,8 +179,8 @@ export function Studio3D() {
           maxPolarAngle={Math.PI / 2.5}
           minPolarAngle={0.2}
           minDistance={5}
-          maxDistance={20}
-          target={[0, 0, 0.5]}
+          maxDistance={25}
+          target={[0, 0, 0.3]}
         />
         <fog attach="fog" args={[dayNight.bgColor, 14, 22]} />
       </Canvas>

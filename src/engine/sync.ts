@@ -12,7 +12,7 @@ import { useMarketStore } from "@/store/market";
 import { useSignalStore } from "@/store/signals";
 import { useLiveStore, type LiveSignal, type QueueInfo } from "@/store/live";
 import { useEventStore } from "@/store/events";
-import type { Quote, AccountInfo, Position, HealthStatus, StrategyInfo } from "@/api/types";
+import type { Quote, AccountInfo, Position, HealthStatus, RiskWindow, StrategyInfo } from "@/api/types";
 
 // ─── Sync 输入类型（解耦 store 依赖） ───
 
@@ -23,6 +23,7 @@ export interface SyncInput {
   connected: boolean;
   health: HealthStatus | null;
   strategies: StrategyInfo[];
+  riskWindows: RiskWindow[];
   lastLoggedSignalId: string;
   indicators: Record<string, { indicators: Record<string, Record<string, number | null>> }>;
   signals: LiveSignal[];
@@ -42,7 +43,7 @@ export interface SyncOutput {
 
 /** 纯函数：根据输入计算所有角色的状态补丁 */
 export function computeSync(input: SyncInput): SyncOutput {
-  const { quote, account, positions, connected, health, strategies, lastLoggedSignalId, indicators, signals, queues } = input;
+  const { quote, account, positions, connected, health, strategies, riskWindows, lastLoggedSignalId, indicators, signals, queues } = input;
   const patches = new Map<EmployeeRoleType, SyncPatch>();
   let newSignalLog: SyncOutput["newSignalLog"] = null;
   const m5 = indicators["M5"];
@@ -206,10 +207,59 @@ export function computeSync(input: SyncInput): SyncOutput {
   }
 
   // ─── 日历员 ───
-  patches.set(EmployeeRole.CALENDAR_REPORTER, {
-    status: connected ? "working" : "disconnected",
-    currentTask: connected ? "监控经济日历" : "后端未连接", stats: {},
-  });
+  if (!connected) {
+    patches.set(EmployeeRole.CALENDAR_REPORTER, {
+      status: "disconnected", currentTask: "后端未连接", stats: {},
+    });
+  } else if (riskWindows.length > 0) {
+    const now = Date.now();
+    const highImpact = riskWindows.filter((w) => w.impact === "high");
+    const activeGuards = riskWindows.filter((w) => w.guard_active);
+    // 找最近的高影响事件
+    const nearest = highImpact
+      .map((w) => ({ ...w, ms: new Date(w.datetime).getTime() - now }))
+      .filter((w) => w.ms > 0)
+      .sort((a, b) => a.ms - b.ms)[0];
+
+    let status: ActivityStatus;
+    let task: string;
+
+    if (activeGuards.length > 0) {
+      // 风险防护已激活 → 警告状态
+      status = "warning";
+      const guardNames = activeGuards.map((w) => w.event_name).join(", ");
+      task = `⚠ 风险防护中: ${guardNames}`;
+    } else if (nearest && nearest.ms < 60 * 60_000) {
+      // 1 小时内有高影响事件 → 警戒
+      const mins = Math.round(nearest.ms / 60_000);
+      status = "alert";
+      task = `${nearest.event_name} ${mins}分钟后公布`;
+    } else if (nearest) {
+      // 有高影响事件但较远 → 正常监控
+      const hours = Math.round(nearest.ms / 3600_000);
+      status = "working";
+      task = `监控 ${riskWindows.length} 事件 | 最近: ${nearest.event_name} (${hours}h)`;
+    } else {
+      status = "working";
+      task = `监控 ${riskWindows.length} 经济事件`;
+    }
+
+    patches.set(EmployeeRole.CALENDAR_REPORTER, {
+      status,
+      currentTask: task,
+      stats: {
+        total_events: riskWindows.length,
+        high_impact: highImpact.length,
+        active_guards: activeGuards.length,
+        nearest_event: nearest?.event_name ?? "",
+        nearest_mins: nearest ? Math.round(nearest.ms / 60_000) : -1,
+      },
+    });
+  } else {
+    patches.set(EmployeeRole.CALENDAR_REPORTER, {
+      status: "working", currentTask: "经济日历无近期事件", stats: { total_events: 0 },
+    });
+  }
 
   // ─── 巡检员 ───
   if (health) {
@@ -235,13 +285,13 @@ export function computeSync(input: SyncInput): SyncOutput {
 export function syncAll() {
   try {
     const { quotes, account, positions, connected } = useMarketStore.getState();
-    const { health, strategies, lastLoggedSignalId } = useSignalStore.getState();
+    const { health, strategies, riskWindows, lastLoggedSignalId } = useSignalStore.getState();
     const { indicators, signals, queues } = useLiveStore.getState();
 
     const input: SyncInput = {
       quote: quotes["XAUUSD"],
       account, positions, connected,
-      health, strategies, lastLoggedSignalId,
+      health, strategies, riskWindows, lastLoggedSignalId,
       indicators, signals, queues,
     };
 
