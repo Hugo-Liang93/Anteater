@@ -1,19 +1,27 @@
 import { useSignalStore } from "@/store/signals";
-import { useEmployeeStore } from "@/store/employees";
+import { useEmployeeStore, selectEmployee } from "@/store/employees";
 import { useLiveStore } from "@/store/live";
-import { employeeConfigs } from "@/config/employees";
+import { employeeConfigs, type EmployeeRoleType } from "@/config/employees";
 import { AlertTriangle, CheckCircle } from "lucide-react";
+
+/** 选择有异常的员工角色 ID 列表 — 只在异常角色集合变化时触发重渲染 */
+function useAlertRoles(): EmployeeRoleType[] {
+  return useEmployeeStore((s) => {
+    const roles: EmployeeRoleType[] = [];
+    for (const cfg of employeeConfigs) {
+      const emp = s.employees[cfg.id];
+      if (emp && (emp.status === "alert" || emp.status === "error" || emp.status === "blocked" || emp.status === "disconnected")) {
+        roles.push(cfg.id);
+      }
+    }
+    return roles;
+  });
+}
 
 export function AlertPanel() {
   const health = useSignalStore((s) => s.health);
-  const employees = useEmployeeStore((s) => s.employees);
+  const alertRoles = useAlertRoles();
   const queues = useLiveStore((s) => s.queues);
-
-  // 异常员工
-  const alertEmployees = employeeConfigs.filter((cfg) => {
-    const emp = employees[cfg.id];
-    return emp && (emp.status === "alert" || emp.status === "error");
-  });
 
   // 组件健康问题
   const componentIssues = Object.entries(health?.components ?? {}).filter(
@@ -25,7 +33,7 @@ export function AlertPanel() {
     (q) => q.status !== "normal" || q.drops_oldest > 0 || q.drops_newest > 0,
   );
 
-  const hasIssues = alertEmployees.length > 0 || componentIssues.length > 0 || queueIssues.length > 0;
+  const hasIssues = alertRoles.length > 0 || componentIssues.length > 0 || queueIssues.length > 0;
 
   return (
     <div className="flex h-full flex-col">
@@ -40,19 +48,10 @@ export function AlertPanel() {
           </div>
         ) : (
           <div className="space-y-2">
-            {/* 员工异常 */}
-            {alertEmployees.map((cfg) => {
-              const emp = employees[cfg.id]!;
-              return (
-                <AlertCard
-                  key={cfg.id}
-                  color={cfg.color}
-                  title={cfg.name}
-                  message={emp.currentTask}
-                  level={emp.status === "error" ? "error" : "warning"}
-                />
-              );
-            })}
+            {/* 员工异常 — 每行独立订阅 */}
+            {alertRoles.map((role) => (
+              <AlertEmployeeRow key={role} role={role} />
+            ))}
 
             {/* 组件异常 */}
             {componentIssues.map(([name, comp]) => (
@@ -77,6 +76,22 @@ export function AlertPanel() {
         )}
       </div>
     </div>
+  );
+}
+
+/** 单个异常员工行 — 独立订阅该员工状态 */
+function AlertEmployeeRow({ role }: { role: EmployeeRoleType }) {
+  const emp = useEmployeeStore(selectEmployee(role));
+  const cfg = employeeConfigs.find((c) => c.id === role);
+  if (!emp || !cfg) return null;
+
+  return (
+    <AlertCard
+      color={cfg.color}
+      title={cfg.name}
+      message={emp.currentTask}
+      level={emp.status === "error" || emp.status === "blocked" || emp.status === "disconnected" ? "error" : "warning"}
+    />
   );
 }
 

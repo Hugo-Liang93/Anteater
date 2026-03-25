@@ -1,5 +1,10 @@
 /** 应用配置 — 通过 Vite proxy 转发到 MT5Services 后端 */
 export const config = {
+  /** Mock 模式：true 时使用模拟数据，不连接后端（通过 ?mock=1 或 env 控制） */
+  mockMode: typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).has("mock")
+    : (import.meta.env.VITE_MOCK_MODE === "true"),
+
   /** API 基础路径（Vite dev server proxy 会将 /api → http://localhost:8808/v1） */
   apiBase: "/api",
 
@@ -17,6 +22,9 @@ export const config = {
 
   /** SSE 实时流端点 */
   sseEndpoint: "/api/stream",
+
+  /** WebSocket 实时通道端点 */
+  wsEndpoint: `${typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:"}//${typeof window !== "undefined" ? window.location.host : "localhost:8808"}/ws/studio`,
 
   /** 交易品种（与后端 app.ini 对齐） */
   symbols: ["XAUUSD"] as const,

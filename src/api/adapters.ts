@@ -11,35 +11,45 @@
 
 import type { AccountInfo, ApiResponse, HealthStatus, Position, Quote, StrategyInfo } from "./types";
 
+/** 安全取 number 值 */
+function num(v: unknown, fallback = 0): number {
+  return typeof v === "number" && !Number.isNaN(v) ? v : fallback;
+}
+
+/** 安全取 string 值 */
+function str(v: unknown, fallback = ""): string {
+  return typeof v === "string" ? v : fallback;
+}
+
 /** 从 quote API 响应中提取规范化的 Quote */
-export function normalizeQuote(res: ApiResponse<Record<string, unknown>>): Quote | null {
-  const d = res.data;
+export function normalizeQuote(res: ApiResponse<unknown>): Quote | null {
+  const d = res.data as Record<string, unknown> | null;
   if (!d) return null;
 
   return {
-    symbol: (d.symbol as string) ?? "XAUUSD",
-    bid: (d.bid as number) ?? 0,
-    ask: (d.ask as number) ?? 0,
-    spread: ((d.spread as number) ?? (res.metadata?.spread as number) ?? 0),
-    time: (d.time as string) ?? "",
+    symbol: str(d.symbol, "XAUUSD"),
+    bid: num(d.bid),
+    ask: num(d.ask),
+    spread: num(d.spread) || num(res.metadata?.spread),
+    time: str(d.time),
   };
 }
 
 /** 从 account API 响应中提取规范化的 AccountInfo */
-export function normalizeAccount(res: ApiResponse<Record<string, unknown>>): AccountInfo | null {
-  const d = res.data;
+export function normalizeAccount(res: ApiResponse<unknown>): AccountInfo | null {
+  const d = res.data as Record<string, unknown> | null;
   if (!d) return null;
 
   return {
-    login: (d.login as number) ?? 0,
-    balance: (d.balance as number) ?? 0,
-    equity: (d.equity as number) ?? 0,
-    margin: (d.margin as number) ?? 0,
-    free_margin: (d.free_margin as number) ?? (d.margin_free as number) ?? 0,
-    profit: (d.profit as number) ?? 0,
-    currency: (d.currency as string) ?? "USD",
-    leverage: (d.leverage as number) ?? 0,
-    server: (d.server as string) ?? (res.metadata?.server as string) ?? "",
+    login: num(d.login),
+    balance: num(d.balance),
+    equity: num(d.equity),
+    margin: num(d.margin),
+    free_margin: num(d.free_margin) || num(d.margin_free),
+    profit: num(d.profit),
+    currency: str(d.currency, "USD"),
+    leverage: num(d.leverage),
+    server: str(d.server) || str(res.metadata?.server),
   };
 }
 
@@ -50,20 +60,23 @@ export function normalizeAccount(res: ApiResponse<Record<string, unknown>>): Acc
  * 结构为 { overall_status, components: { name: { metric: { status, ... } } } }
  */
 export function normalizeHealth(raw: unknown): HealthStatus | null {
-  const d = raw as Record<string, unknown> | null;
-  if (!d) return null;
+  if (!raw || typeof raw !== "object") return null;
+
+  const d = raw as Record<string, unknown>;
 
   // 兼容两种格式：ApiResponse 包装 或 裸对象
-  const body = (d.data as Record<string, unknown>) ?? d;
-  const overallStatus = (body.overall_status as string) ?? "unknown";
+  const body = (typeof d.data === "object" && d.data !== null ? d.data : d) as Record<string, unknown>;
+  const overallStatus = str(body.overall_status, "unknown");
   const components: HealthStatus["components"] = {};
 
-  const comps = body.components as Record<string, Record<string, unknown>> | undefined;
-  if (comps) {
-    for (const [name, metrics] of Object.entries(comps)) {
+  const comps = body.components;
+  if (comps && typeof comps === "object") {
+    for (const [name, metrics] of Object.entries(comps as Record<string, unknown>)) {
+      if (!metrics || typeof metrics !== "object") continue;
       let worstStatus = "healthy";
-      for (const metric of Object.values(metrics as Record<string, Record<string, unknown>>)) {
-        const s = metric.status as string;
+      for (const metric of Object.values(metrics as Record<string, unknown>)) {
+        if (!metric || typeof metric !== "object") continue;
+        const s = (metric as Record<string, unknown>).status;
         if (s === "critical" || s === "unhealthy") worstStatus = "unhealthy";
         else if (s === "warning" && worstStatus === "healthy") worstStatus = "degraded";
       }
@@ -95,7 +108,22 @@ export function normalizeStrategies(res: ApiResponse<unknown>): StrategyInfo[] {
         regime_affinity: {},
       };
     }
-    return item as StrategyInfo;
+    // 验证对象形状
+    if (item && typeof item === "object") {
+      const obj = item as Record<string, unknown>;
+      if (typeof obj.name === "string") {
+        return {
+          name: obj.name,
+          category: str(obj.category),
+          preferred_scopes: Array.isArray(obj.preferred_scopes) ? obj.preferred_scopes as string[] : [],
+          required_indicators: Array.isArray(obj.required_indicators) ? obj.required_indicators as string[] : [],
+          regime_affinity: (obj.regime_affinity && typeof obj.regime_affinity === "object")
+            ? obj.regime_affinity as Record<string, number>
+            : {},
+        } satisfies StrategyInfo;
+      }
+    }
+    return { name: "unknown", category: "", preferred_scopes: [], required_indicators: [], regime_affinity: {} };
   });
 }
 
@@ -104,18 +132,20 @@ export function normalizePositions(res: ApiResponse<unknown>): Position[] {
   const d = res.data;
   if (!Array.isArray(d)) return [];
 
-  return d.map((p: Record<string, unknown>) => ({
-    ticket: (p.ticket as number) ?? 0,
-    symbol: (p.symbol as string) ?? "",
-    type: p.type === 0 ? "buy" as const : "sell" as const,
-    volume: (p.volume as number) ?? 0,
-    price_open: (p.price_open as number) ?? 0,
-    price_current: (p.price_current as number) ?? 0,
-    sl: (p.sl as number) ?? 0,
-    tp: (p.tp as number) ?? 0,
-    profit: (p.profit as number) ?? 0,
-    swap: (p.swap as number) ?? 0,
-    time: (p.time as string) ?? "",
-    comment: (p.comment as string) ?? "",
-  }));
+  return d
+    .filter((p): p is Record<string, unknown> => p != null && typeof p === "object")
+    .map((p) => ({
+      ticket: num(p.ticket),
+      symbol: str(p.symbol),
+      type: p.type === 0 ? "buy" as const : "sell" as const,
+      volume: num(p.volume),
+      price_open: num(p.price_open),
+      price_current: num(p.price_current),
+      sl: num(p.sl),
+      tp: num(p.tp),
+      profit: num(p.profit),
+      swap: num(p.swap),
+      time: str(p.time),
+      comment: str(p.comment),
+    }));
 }

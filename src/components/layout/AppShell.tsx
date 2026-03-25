@@ -1,11 +1,14 @@
 import { usePolling } from "@/hooks/usePolling";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
+import { BottomEventFeed } from "./BottomEventFeed";
 import { Studio3D } from "../studio/Studio3D";
 import { EmployeeDetail } from "../overlay/EmployeeDetail";
 
 export function AppShell() {
   usePolling();
+  useWebSocket();
 
   return (
     <div className="flex h-full flex-col">
@@ -17,6 +20,7 @@ export function AppShell() {
           <EmployeeDetail />
         </main>
       </div>
+      <BottomEventFeed />
     </div>
   );
 }

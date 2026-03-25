@@ -1,8 +1,27 @@
 import { create } from "zustand";
 import type { EmployeeRoleType } from "@/config/employees";
 
-/** 员工活动状态 */
-export type ActivityStatus = "idle" | "working" | "alert" | "success" | "error";
+/** 员工活动状态 — 对齐 API_CONTRACT Section 6.1 + ANIMATION_SPEC */
+export type ActivityStatus =
+  | "idle"
+  | "working"
+  | "walking"        // 行走中
+  | "thinking"       // 思考/决策中
+  | "waiting"        // 等待中
+  | "judging"        // 判断中
+  | "signal_ready"   // 信号就绪
+  | "reviewing"      // 审核中（风控）
+  | "approved"       // 已通过
+  | "submitting"     // 提交中
+  | "executed"       // 已执行
+  | "rejected"       // 已拒绝
+  | "warning"        // 警告
+  | "alert"          // 警告（前端映射，兼容）
+  | "success"        // 成功
+  | "error"          // 异常
+  | "blocked"        // 被拦截
+  | "disconnected"   // 失联
+  | "reconnecting";  // 重连中
 
 /** 运行时员工状态 */
 export interface EmployeeState {
@@ -90,17 +109,28 @@ export const useEmployeeStore = create<EmployeeStore>((set) => ({
       const emp = s.employees[role];
       if (!emp) return s;
       const action: ActionLog = { ...log, id: `act-${++actionSeq}` };
+      const prev = emp.recentActions;
+      const recentActions = prev.length >= MAX_ACTIONS
+        ? [action, ...prev.slice(0, MAX_ACTIONS - 1)]
+        : [action, ...prev];
       return {
         employees: {
           ...s.employees,
-          [role]: {
-            ...emp,
-            recentActions: [action, ...emp.recentActions].slice(0, MAX_ACTIONS),
-            lastUpdate: Date.now(),
-          },
+          [role]: { ...emp, recentActions, lastUpdate: Date.now() },
         },
       };
     }),
 
   setSelectedEmployee: (selectedEmployee) => set({ selectedEmployee }),
 }));
+
+/** 选择单个员工状态 */
+export const selectEmployee = (role: EmployeeRoleType) =>
+  (s: EmployeeStore) => s.employees[role];
+
+/** 选择单个员工的 status 字段 */
+export const selectEmployeeStatus = (role: EmployeeRoleType) =>
+  (s: EmployeeStore) => s.employees[role]?.status ?? "idle";
+
+/** 选择所有员工 */
+export const selectAllEmployees = (s: EmployeeStore) => s.employees;

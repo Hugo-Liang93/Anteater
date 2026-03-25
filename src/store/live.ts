@@ -70,3 +70,13 @@ export const useLiveStore = create<LiveState>((set) => ({
 
   setQueues: (queues) => set({ queues }),
 }));
+
+/** 选择器 */
+export const selectIndicatorsByTF = (tf: string) =>
+  (s: LiveState) => s.indicators[tf];
+export const selectSignals = (s: LiveState) => s.signals;
+export const selectQueues = (s: LiveState) => s.queues;
+export const selectQueueUtilization = (s: LiveState) =>
+  s.queues.length > 0
+    ? s.queues.reduce((sum, q) => sum + q.utilization_pct, 0) / s.queues.length
+    : 0;

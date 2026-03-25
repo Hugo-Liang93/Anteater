@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { employeeConfigMap } from "@/config/employees";
-import { useEmployeeStore, type ActionLog } from "@/store/employees";
+import { useEmployeeStore, selectAllEmployees, type ActionLog } from "@/store/employees";
 import { useLiveStore } from "@/store/live";
 
 const typeColors: Record<ActionLog["type"], string> = {
@@ -16,7 +16,7 @@ function formatTime(ts: number | string) {
 }
 
 export function LogPanel() {
-  const employees = useEmployeeStore((s) => s.employees);
+  const employees = useEmployeeStore(selectAllEmployees);
   const signals = useLiveStore((s) => s.signals);
 
   // 员工动作日志

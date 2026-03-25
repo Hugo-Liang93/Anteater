@@ -43,7 +43,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     title: "数据采集专员",
     backendComponent: "BackgroundIngestor",
     zone: "collection",
-    color: "#4fc3f7",
+    color: "#4298d4",
     icon: "Download",
   },
   {
@@ -52,7 +52,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     title: "技术指标分析师",
     backendComponent: "UnifiedIndicatorManager",
     zone: "analysis",
-    color: "#ab47bc",
+    color: "#4caf50",
     icon: "BarChart3",
   },
   {
@@ -61,7 +61,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     title: "信号策略评估师",
     backendComponent: "SignalModule",
     zone: "strategy",
-    color: "#ffb74d",
+    color: "#ab47bc",
     icon: "Brain",
   },
   {
@@ -88,7 +88,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     title: "交易执行员",
     backendComponent: "TradeExecutor",
     zone: "trading",
-    color: "#66bb6a",
+    color: "#f9a825",
     icon: "ArrowLeftRight",
   },
   {
@@ -124,7 +124,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     title: "系统健康巡检员",
     backendComponent: "MonitoringManager",
     zone: "support",
-    color: "#8d6e63",
+    color: "#26c6da",
     icon: "ScanSearch",
   },
 ];
@@ -133,3 +133,28 @@ export const employeeConfigs: EmployeeConfig[] = [
 export const employeeConfigMap = new Map(
   employeeConfigs.map((c) => [c.id, c]),
 );
+
+/** 统一的状态颜色映射 — 对齐 API_CONTRACT + ANIMATION_SPEC */
+export function statusColor(status: string): string {
+  switch (status) {
+    case "working": return "#00d4aa";
+    case "walking": return "#00d4aa";
+    case "thinking": return "#90caf9";
+    case "judging": return "#90caf9";
+    case "waiting": return "#78909c";
+    case "signal_ready": return "#ffb74d";
+    case "reviewing": return "#ce93d8";
+    case "approved": return "#66bb6a";
+    case "submitting": return "#4fc3f7";
+    case "executed": return "#66bb6a";
+    case "rejected": return "#ff4757";
+    case "success": return "#66bb6a";
+    case "warning": return "#ffa726";
+    case "alert": return "#ffa726";
+    case "error": return "#ff4757";
+    case "blocked": return "#ff1744";
+    case "disconnected": return "#b71c1c";
+    case "reconnecting": return "#ff9100";
+    default: return "#5a6d7e";
+  }
+}
