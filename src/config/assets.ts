@@ -29,7 +29,10 @@ export interface CharacterModelAsset {
 export const CHARACTER_MODELS: Record<EmployeeRoleType, CharacterModelAsset> = {
   collector:         { modelPath: null, version: 1 },
   analyst:           { modelPath: null, version: 1 },
+  live_analyst:      { modelPath: null, version: 1 },
   strategist:        { modelPath: null, version: 1 },
+  live_strategist:   { modelPath: null, version: 1 },
+  auditor:           { modelPath: null, version: 1 },
   voter:             { modelPath: null, version: 1 },
   risk_officer:      { modelPath: null, version: 1 },
   trader:            { modelPath: null, version: 1 },
@@ -95,9 +98,21 @@ export const CHARACTER_APPEARANCES: Record<EmployeeRoleType, CharacterAppearance
     shirt: "#4caf50", pants: "#263238", hair: "#212121", skin: "#ffe0c0",
     hairStyle: "spiky", propType: "monitor",
   },
+  live_analyst: {
+    shirt: "#66bb6a", pants: "#37474f", hair: "#5d4037", skin: "#ffd8b0",
+    hairStyle: "ponytail", propType: "monitor",
+  },
   strategist: {
     shirt: "#ab47bc", pants: "#37474f", hair: "#3e2723", skin: "#ffd8b0",
     hairStyle: "long", propType: "monitor",
+  },
+  live_strategist: {
+    shirt: "#ce93d8", pants: "#263238", hair: "#4a148c", skin: "#ffe0c0",
+    hairStyle: "spiky", propType: "monitor",
+  },
+  auditor: {
+    shirt: "#ff8a65", pants: "#37474f", hair: "#4e342e", skin: "#ffd8b0",
+    hairStyle: "short", propType: "clipboard",
   },
   voter: {
     shirt: "#fdd835", pants: "#455a64", hair: "#424242", skin: "#ffe0c0",

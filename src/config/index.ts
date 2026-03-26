@@ -29,8 +29,14 @@ export const config = {
   /** 交易品种（与后端 app.ini 对齐） */
   symbols: ["XAUUSD"] as const,
 
-  /** 时间框架（与后端 app.ini 对齐） */
-  timeframes: ["M1", "M5", "M15", "H1", "D1"] as const,
+  /** 时间框架（与后端 app.ini [trading] timeframes 对齐） */
+  timeframes: ["M5", "M15", "M30", "H1", "H4", "D1"] as const,
+
+  /** 默认时间框架（轮询指标/信号时使用，可由未来 TF 选择器覆盖） */
+  defaultTimeframe: "M5" as const,
+
+  /** 日夜交替：false 时锁定为白天（正午光照） */
+  enableDayNight: false,
 } as const;
 
 export type Symbol = (typeof config.symbols)[number];

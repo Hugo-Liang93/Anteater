@@ -461,13 +461,11 @@ export const Character3D = memo(function Character3D({ role, position, onClick }
 function NameTag({ role, color, name, title, hovered }: {
   role: EmployeeRoleType; color: string; name: string; title: string; hovered: boolean;
 }) {
-  const { currentTask, status } = useEmployeeStore((s) => ({
-    currentTask: s.employees[role]?.currentTask ?? "",
-    status: s.employees[role]?.status ?? "idle" as ActivityStatus,
-  }));
+  const currentTask = useEmployeeStore((s) => s.employees[role]?.currentTask ?? "");
+  const status = useEmployeeStore((s) => s.employees[role]?.status ?? ("idle" as ActivityStatus));
 
   return (
-    <Html position={[0, 1.95, 0]} center distanceFactor={7} sprite>
+    <Html position={[0, 1.95, 0]} center distanceFactor={7} sprite zIndexRange={[0, 0]}>
       <div
         style={{
           background: hovered ? "rgba(10,20,30,0.95)" : "rgba(15,25,35,0.88)",
@@ -563,7 +561,7 @@ function SignalIndicator() {
   const label = isBuy ? "BUY" : "SELL";
 
   return (
-    <Html position={[0, 2.15, 0]} center distanceFactor={7} sprite>
+    <Html position={[0, 2.15, 0]} center distanceFactor={7} sprite zIndexRange={[0, 0]}>
       <div style={{
         background: color, color: "#fff", fontSize: 9, fontWeight: 800,
         padding: "2px 6px", borderRadius: 4, pointerEvents: "none",

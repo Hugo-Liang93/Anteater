@@ -92,7 +92,7 @@ function CalendarAlert({ riskWindows }: { riskWindows: import("@/api/types").Ris
   const activeGuards = riskWindows.filter((w) => w.guard_active);
   const nearest = riskWindows
     .filter((w) => w.impact === "high")
-    .map((w) => ({ ...w, ms: new Date(w.datetime).getTime() - now }))
+    .map((w) => ({ ...w, ms: new Date(w.scheduled_at || w.datetime).getTime() - now }))
     .filter((w) => w.ms > 0)
     .sort((a, b) => a.ms - b.ms)[0];
 

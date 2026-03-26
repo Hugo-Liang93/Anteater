@@ -4,7 +4,7 @@
  * 真实日夜交替 + R3F Canvas + 角色 + 办公室 + 数据流
  */
 
-import { useRef, useState, useEffect, useCallback, memo } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
 import { employeeConfigs } from "@/config/employees";
@@ -76,6 +76,26 @@ function DynamicLighting({ params }: { params: DayNightParams }) {
   );
 }
 
+/** 单条数据流线 — 通过 ref 读取 employee 状态，不触发 React 重渲染 */
+import type { EmployeeState } from "@/store/employees";
+
+function DataFlowLine({ from, to, fromPos, toPos, employeesRef }: {
+  from: EmployeeRoleType; to: EmployeeRoleType;
+  fromPos: [number, number, number]; toPos: [number, number, number];
+  employeesRef: React.RefObject<Record<EmployeeRoleType, EmployeeState>>;
+}) {
+  const fromStatus = employeesRef.current?.[from]?.status ?? "idle";
+  const toStatus = employeesRef.current?.[to]?.status;
+  const isActive = fromStatus !== "idle";
+  const isHighlight = fromStatus === "success" || toStatus === "success";
+  return (
+    <group>
+      <FlowLine from={fromPos} to={toPos} highlight={isHighlight} />
+      <DataFlowParticle from={fromPos} to={toPos} active={isActive} sourceStatus={fromStatus} targetStatus={toStatus} />
+    </group>
+  );
+}
+
 /** 稳定的 onClick 工厂 — 避免每次渲染创建新函数击穿 Character3D memo */
 function useCharacterClickHandlers() {
   const setSelected = useEmployeeStore((s) => s.setSelectedEmployee);
@@ -95,8 +115,24 @@ function useCharacterClickHandlers() {
 }
 
 const Scene = memo(function Scene({ dayNight }: { dayNight: DayNightParams }) {
-  const employees = useEmployeeStore((s) => s.employees);
   const getClickHandler = useCharacterClickHandlers();
+
+  // 数据流状态通过 ref 订阅，不触发 React 重渲染（由 useFrame 驱动视觉更新）
+  const employeesRef = useRef(useEmployeeStore.getState().employees);
+  useEffect(() => {
+    return useEmployeeStore.subscribe((s) => {
+      employeesRef.current = s.employees;
+    });
+  }, []);
+
+  // 稳定的数据流配置（仅依赖布局，不依赖运行时状态）
+  const flowConfigs = useMemo(() =>
+    DATA_FLOWS.map(({ from, to }) => ({
+      from, to,
+      fromPos: AGENT_POSITIONS[from],
+      toPos: AGENT_POSITIONS[to],
+    })),
+  []);
 
   return (
     <>
@@ -109,28 +145,10 @@ const Scene = memo(function Scene({ dayNight }: { dayNight: DayNightParams }) {
       <Zones3D />
       <Office3D dayNight={dayNight} />
 
-      {/* 数据流 */}
-      {DATA_FLOWS.map(({ from, to }, i) => {
-        const fromPos = AGENT_POSITIONS[from];
-        const toPos = AGENT_POSITIONS[to];
-        const fromEmp = employees[from];
-        const toEmp = employees[to];
-        const fromStatus = fromEmp?.status ?? "idle";
-        const isActive = fromStatus !== "idle";
-        const isHighlight = fromStatus === "success" || toEmp?.status === "success";
-        return (
-          <group key={i}>
-            <FlowLine from={fromPos} to={toPos} highlight={isHighlight} />
-            <DataFlowParticle
-              from={fromPos}
-              to={toPos}
-              active={isActive}
-              sourceStatus={fromStatus}
-              targetStatus={toEmp?.status}
-            />
-          </group>
-        );
-      })}
+      {/* 数据流 — 粒子动画由 useFrame 内部读 ref，不触发 React 重渲染 */}
+      {flowConfigs.map(({ from, to, fromPos, toPos }, i) => (
+        <DataFlowLine key={i} from={from} to={to} fromPos={fromPos} toPos={toPos} employeesRef={employeesRef} />
+      ))}
 
       {/* 角色 — 使用稳定 onClick 引用，不击穿 memo */}
       {employeeConfigs.map((cfg) => {
@@ -167,7 +185,7 @@ export function Studio3D() {
       </div>
       <Canvas
         shadows
-        camera={{ position: [0, 12, 4], fov: 45, near: 0.1, far: 50 }}
+        camera={{ position: [0, 16, 6], fov: 45, near: 0.1, far: 60 }}
         onPointerMissed={() => setSelected(null)}
         style={{ background: bgHex }}
       >
@@ -179,10 +197,10 @@ export function Studio3D() {
           maxPolarAngle={Math.PI / 2.5}
           minPolarAngle={0.2}
           minDistance={5}
-          maxDistance={25}
-          target={[0, 0, 0.3]}
+          maxDistance={35}
+          target={[0, 0, 0.5]}
         />
-        <fog attach="fog" args={[dayNight.bgColor, 14, 22]} />
+        <fog attach="fog" args={[dayNight.bgColor, 18, 30]} />
       </Canvas>
     </div>
   );

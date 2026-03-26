@@ -8,7 +8,10 @@
 export const EmployeeRole = {
   COLLECTOR: "collector",
   ANALYST: "analyst",
+  LIVE_ANALYST: "live_analyst",
   STRATEGIST: "strategist",
+  LIVE_STRATEGIST: "live_strategist",
+  AUDITOR: "auditor",
   VOTER: "voter",
   RISK_OFFICER: "risk_officer",
   TRADER: "trader",
@@ -28,7 +31,7 @@ export interface EmployeeConfig {
   /** 对应后端组件 */
   backendComponent: string;
   /** 工作室中的区域 */
-  zone: "collection" | "analysis" | "strategy" | "voting" | "risk" | "trading"
+  zone: "collection" | "analysis" | "analysis_live" | "strategy" | "strategy_live" | "audit" | "voting" | "risk" | "trading"
       | "position" | "accounting" | "inspection" | "calendar";
   /** 角色颜色（用于头像/标签） */
   color: string;
@@ -51,10 +54,19 @@ export const employeeConfigs: EmployeeConfig[] = [
     id: EmployeeRole.ANALYST,
     name: "分析师",
     title: "技术指标分析师",
-    backendComponent: "UnifiedIndicatorManager",
+    backendComponent: "UnifiedIndicatorManager(confirmed)",
     zone: "analysis",
     color: "#4caf50",
     icon: "BarChart3",
+  },
+  {
+    id: EmployeeRole.LIVE_ANALYST,
+    name: "实时分析员",
+    title: "盘中指标分析员",
+    backendComponent: "UnifiedIndicatorManager(intrabar)",
+    zone: "analysis_live",
+    color: "#66bb6a",
+    icon: "Activity",
   },
   {
     id: EmployeeRole.STRATEGIST,
@@ -64,6 +76,24 @@ export const employeeConfigs: EmployeeConfig[] = [
     zone: "strategy",
     color: "#ab47bc",
     icon: "Brain",
+  },
+  {
+    id: EmployeeRole.LIVE_STRATEGIST,
+    name: "实时策略员",
+    title: "盘中信号预览员",
+    backendComponent: "SignalModule(intrabar)",
+    zone: "strategy_live",
+    color: "#ce93d8",
+    icon: "Zap",
+  },
+  {
+    id: EmployeeRole.AUDITOR,
+    name: "审核员",
+    title: "信号过滤审核员",
+    backendComponent: "FilterChain+RegimeDetector",
+    zone: "audit",
+    color: "#ff8a65",
+    icon: "Filter",
   },
   {
     id: EmployeeRole.VOTER,
@@ -78,7 +108,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     id: EmployeeRole.RISK_OFFICER,
     name: "风控官",
     title: "风险管理审批官",
-    backendComponent: "FilterChain+RiskService",
+    backendComponent: "PreTradeRiskService",
     zone: "risk",
     color: "#ef5350",
     icon: "ShieldCheck",

@@ -4,18 +4,19 @@ import { useLiveStore } from "@/store/live";
 import { employeeConfigs, type EmployeeRoleType } from "@/config/employees";
 import { AlertTriangle, CheckCircle } from "lucide-react";
 
-/** 选择有异常的员工角色 ID 列表 — 只在异常角色集合变化时触发重渲染 */
+/** 选择有异常的员工角色 ID 列表 — 用 join 字符串做稳定性比较，避免每次返回新数组 */
 function useAlertRoles(): EmployeeRoleType[] {
-  return useEmployeeStore((s) => {
-    const roles: EmployeeRoleType[] = [];
+  const key = useEmployeeStore((s) => {
+    const ids: string[] = [];
     for (const cfg of employeeConfigs) {
       const emp = s.employees[cfg.id];
       if (emp && (emp.status === "alert" || emp.status === "error" || emp.status === "blocked" || emp.status === "disconnected")) {
-        roles.push(cfg.id);
+        ids.push(cfg.id);
       }
     }
-    return roles;
+    return ids.join(",");
   });
+  return key ? key.split(",") as EmployeeRoleType[] : [];
 }
 
 export function AlertPanel() {

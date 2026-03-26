@@ -1,0 +1,120 @@
+/** 角色详情面板共享组件 */
+
+import { cn } from "@/lib/utils";
+
+export function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-[10px] uppercase tracking-wider text-text-muted">{children}</span>
+  );
+}
+
+export function KV({ k, v, color }: { k: string; v: string; color?: string }) {
+  return (
+    <div>
+      <div className="text-text-muted">{k}</div>
+      <div className={`font-mono ${color ?? "text-text-primary"}`}>{v}</div>
+    </div>
+  );
+}
+
+export function Empty({ text }: { text: string }) {
+  return <p className="text-xs text-text-muted">{text}</p>;
+}
+
+export function TugOfWarBar({ buy, sell, total, small }: { buy: number; sell: number; total: number; small?: boolean }) {
+  const buyPct = total > 0 ? (buy / total) * 100 : 50;
+  const sellPct = total > 0 ? (sell / total) * 100 : 50;
+  const h = small ? "h-1" : "h-1.5";
+
+  return (
+    <div className={cn("flex w-full overflow-hidden rounded-full", h, "bg-bg-secondary")}>
+      {buyPct > 0 && (
+        <div className={cn(h, "rounded-l-full bg-buy/70")} style={{ width: `${buyPct}%` }} />
+      )}
+      {sellPct > 0 && (
+        <div className={cn(h, "ml-auto rounded-r-full bg-sell/70")} style={{ width: `${sellPct}%` }} />
+      )}
+    </div>
+  );
+}
+
+export function dirColor(dir: string): string {
+  if (dir === "buy") return "text-buy";
+  if (dir === "sell") return "text-sell";
+  return "text-text-muted";
+}
+
+export function confColor(conf: number): string {
+  if (conf >= 0.75) return "text-success";
+  if (conf >= 0.55) return "text-text-primary";
+  return "text-text-muted";
+}
+
+export function extractBlocks(raw: unknown): Record<string, number> {
+  if (typeof raw === "object" && raw !== null && !Array.isArray(raw)) {
+    return raw as Record<string, number>;
+  }
+  return {};
+}
+
+export function indColor(name: string, value: number | null): string | undefined {
+  if (value == null) return undefined;
+  if (name.includes("rsi")) return value > 70 ? "text-sell" : value < 30 ? "text-buy" : undefined;
+  if (name.includes("macd")) return value > 0 ? "text-buy" : value < 0 ? "text-sell" : undefined;
+  return undefined;
+}
+
+export function fmtVal(v: number | null | undefined): string {
+  if (v == null) return "—";
+  if (Math.abs(v) >= 100) return v.toFixed(1);
+  if (Math.abs(v) >= 1) return v.toFixed(2);
+  return v.toFixed(4);
+}
+
+/** 迷你 K 线图 — 展示 intrabar bar 的 OHLC 演变 */
+export function MiniCandleChart({ snapshots }: { snapshots: { o: number; h: number; l: number; c: number }[] }) {
+  if (snapshots.length === 0) return null;
+
+  const allHigh = Math.max(...snapshots.map(s => s.h));
+  const allLow = Math.min(...snapshots.map(s => s.l));
+  const range = allHigh - allLow || 1;
+  const h = 48;
+  const w = 240;
+
+  const points = snapshots.map((s, i) => {
+    const x = snapshots.length > 1 ? (i / (snapshots.length - 1)) * w : w / 2;
+    const y = h - ((s.c - allLow) / range) * h;
+    return `${x},${y}`;
+  }).join(" ");
+
+  const areaHigh = snapshots.map((s, i) => {
+    const x = snapshots.length > 1 ? (i / (snapshots.length - 1)) * w : w / 2;
+    return `${x},${h - ((s.h - allLow) / range) * h}`;
+  }).join(" ");
+  const areaLow = [...snapshots].reverse().map((s, i) => {
+    const ri = snapshots.length - 1 - i;
+    const x = snapshots.length > 1 ? (ri / (snapshots.length - 1)) * w : w / 2;
+    return `${x},${h - ((s.l - allLow) / range) * h}`;
+  }).join(" ");
+
+  const last = snapshots[snapshots.length - 1]!;
+  const first = snapshots[0]!;
+  const isUp = last.c >= first.o;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: h }}>
+      <polygon
+        points={`${areaHigh} ${areaLow}`}
+        fill={isUp ? "rgba(0,212,170,0.1)" : "rgba(255,71,87,0.1)"}
+      />
+      <polyline
+        points={points}
+        fill="none"
+        stroke={isUp ? "#00d4aa" : "#ff4757"}
+        strokeWidth="1.5"
+      />
+      <line x1="0" y1={h - ((first.o - allLow) / range) * h} x2={w} y2={h - ((first.o - allLow) / range) * h}
+        stroke="#5a6d7e" strokeWidth="0.5" strokeDasharray="4,3" />
+    </svg>
+  );
+}

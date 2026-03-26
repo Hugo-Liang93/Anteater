@@ -52,10 +52,11 @@ export function fetchIndicatorList() {
 
 // ─── 信号 ───
 
-export function fetchRecentSignals(symbol: string, timeframe: string) {
-  return apiClient.get<unknown>(
-    `/signals/recent?symbol=${symbol}&timeframe=${timeframe}`,
-  );
+export function fetchRecentSignals(symbol: string, timeframe?: string, scope?: string) {
+  let params = `/signals/recent?symbol=${symbol}`;
+  if (timeframe) params += `&timeframe=${timeframe}`;
+  if (scope) params += `&scope=${scope}`;
+  return apiClient.get<unknown>(params);
 }
 
 export function fetchStrategies() {
@@ -82,6 +83,12 @@ export function fetchQueues() {
 
 export function fetchRiskWindows() {
   return apiClient.get<RiskWindow[]>("/economic/calendar/risk-windows");
+}
+
+export function fetchCalendarEnriched(hours = 48, importanceMin = 2) {
+  return apiClient.get<import("./types").EnrichedCalendarEvent[]>(
+    `/economic/calendar/enriched?hours=${hours}&importance_min=${importanceMin}`,
+  );
 }
 
 // ─── 交易 ───

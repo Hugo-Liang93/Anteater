@@ -41,8 +41,10 @@ export interface QueueInfo {
 interface LiveState {
   /** 指标快照（按 TF） */
   indicators: Record<string, IndicatorData>;
-  /** 最近信号事件 */
+  /** Confirmed 信号 */
   signals: LiveSignal[];
+  /** Preview/Armed 信号（intrabar scope） */
+  previewSignals: LiveSignal[];
   /** 队列状态 */
   queues: QueueInfo[];
   /** 活跃策略数（在信号中出现的不同策略名） */
@@ -50,12 +52,14 @@ interface LiveState {
 
   setIndicators: (tf: string, data: IndicatorData) => void;
   setSignals: (signals: LiveSignal[]) => void;
+  setPreviewSignals: (signals: LiveSignal[]) => void;
   setQueues: (queues: QueueInfo[]) => void;
 }
 
 export const useLiveStore = create<LiveState>((set) => ({
   indicators: {},
   signals: [],
+  previewSignals: [],
   queues: [],
   activeStrategies: new Set(),
 
@@ -67,6 +71,8 @@ export const useLiveStore = create<LiveState>((set) => ({
       const names = new Set(signals.map((s) => s.strategy));
       return { signals, activeStrategies: names };
     }),
+
+  setPreviewSignals: (previewSignals) => set({ previewSignals }),
 
   setQueues: (queues) => set({ queues }),
 }));

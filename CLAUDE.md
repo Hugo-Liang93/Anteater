@@ -96,14 +96,26 @@ src/
 2D UI 层     components/layout/* + overlay/* + panels/*
 ```
 
-### 交易主链路（6 核心角色）
+### 交易主链路（9 核心角色 + 4 支持角色 = 13）
 
 ```
-采集员(collector) → 分析师(analyst) → 策略师(strategist)
-    → 投票员(voter) → 风控官(risk_officer) → 交易员(trader)
+              采集员(collector)
+             ↙              ↘
+  分析师(analyst)    实时分析员(live_analyst)
+  (confirmed指标)     (intrabar指标+迷你K线)
+         ↓                    ↓
+  策略师(strategist)  实时策略员(live_strategist)
+  (confirmed信号)     (preview/armed信号)
+         ↘              ↙
+         审核员(auditor)
+    (FilterChain+Regime亲和度过滤)
+              ↓
+  投票主席(voter) → 风控官(risk_officer) → 交易员(trader)
 ```
 
 另有 4 个支持角色：position_manager, accountant, calendar_reporter, inspector
+
+**前后端分工**：后端只返回结构化数据（`status`/`alertLevel`/`metrics`），`task` 不含数值；前端负责所有渲染
 
 ### 状态驱动动画
 
@@ -153,19 +165,27 @@ src/
 |------|------|
 | ARCHITECTURE.md | 分层架构、数据流、模块边界 |
 | API_CONTRACT.md | REST/WS 接口协议 |
-| CHARACTER_ROSTER.md | 10 角色设计（外观/职责/动画） |
+| CHARACTER_ROSTER.md | 13 角色设计（外观/职责/动画） |
 | VISUAL_STYLE_GUIDE.md | 视觉风格（暖色卡通 3D 工作室） |
 | FOLLOW_UP_BACKEND.md | 后端待实现的状态推送清单 |
 
 ## 当前进度
 
-**已完成（Phase A-G 核心）：**
-- 3D 场景 + 10 角色 + 6 功能区域 + 数据流粒子
+**已完成（Phase A-H）：**
+- 3D 场景 + 13 角色 + 12 功能区域 + 数据流粒子（错行流水线布局）
 - 完整 UI（TopBar/Sidebar/DetailPanel/EventFeed）
 - 状态驱动动画系统（10+ 状态映射）
-- REST 轮询 + WebSocket 实时通道
-- Mock 模式（离线完整演示）
+- SSE 实时通道 + REST 轮询
+- 13 角色详情面板：
+  - 分析师(confirmed) / 实时分析员(intrabar+迷你K线) 双链路
+  - 策略师(confirmed) / 实时策略员(preview信号) 双链路
+  - 审核员（FilterChain 通过/拦截统计 + 滑动窗口）
+  - 投票主席（TF 拔河条 + 类别投票倾向）
+  - 风控官（信号决策漏斗 + 拦截原因明细）
+  - 交易员（入场区间可视化 + pending entry）
+  - 巡检员（组件健康 + 队列健康）
+- Mock 模式已清空（使用真实后端数据）
 
 **待实现：**
-- Phase H: GLB 角色模型替换（等美术资源）
-- Phase I: 扩展功能（多视图/巡检逻辑/回测可视化）
+- Phase I: GLB 角色模型替换（等美术资源）
+- Phase J: 扩展功能（多视图/巡检逻辑/回测可视化/intrabar 指标面板）

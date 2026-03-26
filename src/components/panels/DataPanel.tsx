@@ -1,3 +1,4 @@
+import { config } from "@/config";
 import { useMarketStore } from "@/store/market";
 import { useLiveStore } from "@/store/live";
 
@@ -5,7 +6,7 @@ export function DataPanel() {
   const account = useMarketStore((s) => s.account);
   const positions = useMarketStore((s) => s.positions);
   const quote = useMarketStore((s) => s.quotes["XAUUSD"]);
-  const indicators = useLiveStore((s) => s.indicators["M5"]);
+  const indicators = useLiveStore((s) => s.indicators[config.defaultTimeframe]);
   const queues = useLiveStore((s) => s.queues);
 
   return (
@@ -66,7 +67,7 @@ export function DataPanel() {
         </Section>
 
         {/* 关键指标 */}
-        <Section title="M5 指标">
+        <Section title={`${config.defaultTimeframe} 指标`}>
           {indicators ? (
             <div className="grid grid-cols-2 gap-1 text-xs">
               <IndStat ind={indicators.indicators} name="rsi14" field="rsi" label="RSI" />

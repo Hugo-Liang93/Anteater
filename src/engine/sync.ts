@@ -4,8 +4,17 @@
  * syncAll() 从各 store 收集输入，传递给纯函数 computeSync()，
  * 再将结果批量写入 employee store。
  * computeSync() 本身不直接依赖 store，可独立测试。
+ *
+ * 当 Studio SSE 连接成功时，后端直接推送真实 agent 状态，
+ * syncAll() 自动降级为 no-op，避免推测状态覆盖真实状态。
  */
 
+// ── SSE 降级开关 ──────────────────────────────────────────────
+// SSE 连上后 sync 推导自动跳过；断线后恢复推导作为 fallback。
+let _studioSSEActive = false;
+export function setStudioSSEActive(active: boolean) { _studioSSEActive = active; }
+
+import { config } from "@/config";
 import { EmployeeRole, type EmployeeRoleType } from "@/config/employees";
 import { useEmployeeStore, type ActivityStatus } from "@/store/employees";
 import { useMarketStore } from "@/store/market";
@@ -46,8 +55,6 @@ export function computeSync(input: SyncInput): SyncOutput {
   const { quote, account, positions, connected, health, strategies, riskWindows, lastLoggedSignalId, indicators, signals, queues } = input;
   const patches = new Map<EmployeeRoleType, SyncPatch>();
   let newSignalLog: SyncOutput["newSignalLog"] = null;
-  const m5 = indicators["M5"];
-
   // ─── 采集员 ───
   if (quote) {
     patches.set(EmployeeRole.COLLECTOR, {
@@ -63,18 +70,22 @@ export function computeSync(input: SyncInput): SyncOutput {
     });
   }
 
-  // ─── 分析师 ───
-  if (m5 && m5.indicators) {
-    const count = Object.keys(m5.indicators).length;
-    const rsi = m5.indicators["rsi14"]?.["rsi"];
-    const atr = m5.indicators["atr14"]?.["atr"];
-    const rsiStr = rsi != null ? `RSI ${rsi.toFixed(1)}` : "";
-    const atrStr = atr != null ? `ATR ${atr.toFixed(2)}` : "";
-    const detail = [rsiStr, atrStr].filter(Boolean).join(" | ");
+  // ─── 分析师（多 TF 感知）───
+  const activeTFs = Object.keys(indicators).filter((tf) => indicators[tf]?.indicators);
+  const defaultInd = indicators[config.defaultTimeframe];
+  if (activeTFs.length > 0) {
+    const totalCount = activeTFs.reduce((s, tf) => s + Object.keys(indicators[tf]?.indicators ?? {}).length, 0);
+    const rsi = defaultInd?.indicators?.["rsi14"]?.["rsi"];
+    const atr = defaultInd?.indicators?.["atr14"]?.["atr"];
+    const detail = [
+      `${activeTFs.length} TF`,
+      rsi != null ? `RSI ${rsi.toFixed(1)}` : "",
+      atr != null ? `ATR ${atr.toFixed(2)}` : "",
+    ].filter(Boolean).join(" | ");
     patches.set(EmployeeRole.ANALYST, {
       status: "working",
-      currentTask: `${count} 个指标${detail ? " | " + detail : ""}`,
-      stats: { indicators: count, rsi: rsi ?? 0, atr: atr ?? 0 },
+      currentTask: `${totalCount} 指标 | ${detail}`,
+      stats: { indicators: totalCount, active_tfs: activeTFs.length, rsi: rsi ?? 0, atr: atr ?? 0 },
     });
   } else if (connected) {
     patches.set(EmployeeRole.ANALYST, { status: "thinking", currentTask: "计算指标中...", stats: {} });
@@ -82,26 +93,30 @@ export function computeSync(input: SyncInput): SyncOutput {
     patches.set(EmployeeRole.ANALYST, { status: "disconnected", currentTask: "等待后端连接", stats: {} });
   }
 
-  // ─── 策略师 ───
+  // ─── 策略师（多 TF 感知）───
   const buySignals = signals.filter((s) => s.direction === "buy");
   const sellSignals = signals.filter((s) => s.direction === "sell");
+  const signalTFs = [...new Set(signals.map((s) => s.timeframe).filter(Boolean))];
   const latest = signals[0];
   if (latest) {
+    const tfSummary = signalTFs.length > 1 ? ` | ${signalTFs.length} TF` : latest.timeframe ? ` | ${latest.timeframe}` : "";
     patches.set(EmployeeRole.STRATEGIST, {
       status: "working",
-      currentTask: `${strategies.length} 策略 | ${buySignals.length} 买 ${sellSignals.length} 卖`,
+      currentTask: `${strategies.length} 策略 | ${buySignals.length} 买 ${sellSignals.length} 卖${tfSummary}`,
       stats: {
         total_strategies: strategies.length,
         buy_signals: buySignals.length,
         sell_signals: sellSignals.length,
+        signal_tfs: signalTFs.length,
         latest_strategy: latest.strategy,
+        latest_timeframe: latest.timeframe,
         latest_confidence: latest.confidence,
       },
     });
     if (latest.signal_id !== lastLoggedSignalId) {
       newSignalLog = {
         role: EmployeeRole.STRATEGIST,
-        message: `${latest.strategy} → ${latest.direction} (${(latest.confidence * 100).toFixed(0)}%)`,
+        message: `${latest.timeframe} ${latest.strategy} → ${latest.direction} (${(latest.confidence * 100).toFixed(0)}%)`,
         type: latest.direction === "hold" ? "info" : "success",
         signalId: latest.signal_id,
       };
@@ -116,17 +131,39 @@ export function computeSync(input: SyncInput): SyncOutput {
     patches.set(EmployeeRole.STRATEGIST, { status: "idle", currentTask: "等待策略加载", stats: {} });
   }
 
-  // ─── 投票主席 ───
+  // ─── 实时策略员（SSE 断线时 fallback） ───
+  patches.set(EmployeeRole.LIVE_STRATEGIST, {
+    status: signals.length > 0 ? "working" : "idle",
+    currentTask: signals.length > 0 ? "盘中策略评估中" : "等待盘中快照",
+    stats: {},
+  });
+
+  // ─── 实时分析员（SSE 断线时 fallback） ───
+  patches.set(EmployeeRole.LIVE_ANALYST, {
+    status: connected ? "working" : "idle",
+    currentTask: connected ? "盘中指标计算中" : "等待连接",
+    stats: {},
+  });
+
+  // ─── 审核员（SSE 断线时 fallback） ───
+  patches.set(EmployeeRole.AUDITOR, {
+    status: signals.length > 0 ? "reviewing" : "idle",
+    currentTask: signals.length > 0 ? "信号过滤审核中" : "等待指标快照",
+    stats: {},
+  });
+
+  // ─── 投票主席（多 TF 感知）───
   if (signals.length > 0) {
     const dirs = signals.reduce(
       (acc, s) => { if (s.direction === "buy") acc.buy++; else if (s.direction === "sell") acc.sell++; return acc; },
       { buy: 0, sell: 0 },
     );
     const consensus = dirs.buy > dirs.sell ? "偏多" : dirs.sell > dirs.buy ? "偏空" : "分歧";
+    const tfStr = signalTFs.length > 1 ? ` | ${signalTFs.join("/")}` : "";
     patches.set(EmployeeRole.VOTER, {
       status: "working",
-      currentTask: `${signals.length} 票 | ${consensus} (${dirs.buy}买/${dirs.sell}卖)`,
-      stats: { buy: dirs.buy, sell: dirs.sell },
+      currentTask: `${signals.length} 票 | ${consensus} (${dirs.buy}买/${dirs.sell}卖)${tfStr}`,
+      stats: { buy: dirs.buy, sell: dirs.sell, signal_tfs: signalTFs.length },
     });
   } else {
     patches.set(EmployeeRole.VOTER, {
@@ -217,7 +254,7 @@ export function computeSync(input: SyncInput): SyncOutput {
     const activeGuards = riskWindows.filter((w) => w.guard_active);
     // 找最近的高影响事件
     const nearest = highImpact
-      .map((w) => ({ ...w, ms: new Date(w.datetime).getTime() - now }))
+      .map((w) => ({ ...w, ms: new Date(w.scheduled_at || w.datetime).getTime() - now }))
       .filter((w) => w.ms > 0)
       .sort((a, b) => a.ms - b.ms)[0];
 
@@ -283,6 +320,9 @@ export function computeSync(input: SyncInput): SyncOutput {
 // ─── 入口：从 store 收集输入 → 计算 → 写回 ───
 
 export function syncAll() {
+  // SSE 连接时后端直接推送真实状态，跳过推导避免覆盖
+  if (_studioSSEActive) return;
+
   try {
     const { quotes, account, positions, connected } = useMarketStore.getState();
     const { health, strategies, riskWindows, lastLoggedSignalId } = useSignalStore.getState();

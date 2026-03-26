@@ -14,6 +14,7 @@
  */
 
 import * as THREE from "three";
+import { config } from "@/config";
 
 export interface DayNightParams {
   /** 背景/雾色 */
@@ -85,10 +86,10 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-/** 根据当前本地时间计算光照参数 */
+/** 根据当前本地时间计算光照参数。enableDayNight=false 时锁定正午。 */
 export function computeDayNight(now?: Date): DayNightParams {
   const d = now ?? new Date();
-  const hourFrac = d.getHours() + d.getMinutes() / 60;
+  const hourFrac = config.enableDayNight ? d.getHours() + d.getMinutes() / 60 : 12;
 
   // 找到前后两个关键帧
   let prev = KEYFRAMES[0] ?? KEYFRAMES[KEYFRAMES.length - 1]!;

@@ -6,7 +6,7 @@
 
 import { create } from "zustand";
 
-export type SidebarTab = "tasks" | "data" | "logs" | "alerts";
+export type SidebarTab = "tasks" | "data" | "calendar" | "logs" | "alerts";
 export type SceneMode = "3d" | "2d";
 
 interface UIState {

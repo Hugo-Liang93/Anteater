@@ -78,7 +78,10 @@ function makeDefaultState(role: EmployeeRoleType): EmployeeState {
 const allRoles: EmployeeRoleType[] = [
   "collector",
   "analyst",
+  "live_analyst",
   "strategist",
+  "live_strategist",
+  "auditor",
   "voter",
   "risk_officer",
   "trader",

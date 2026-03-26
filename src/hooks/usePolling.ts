@@ -10,6 +10,7 @@ import {
   fetchRecentSignals,
   fetchRiskWindows,
   fetchStrategies,
+  fetchCalendarEnriched,
 } from "@/api/endpoints";
 import {
   normalizeQuote,
@@ -22,103 +23,11 @@ import { useMarketStore } from "@/store/market";
 import { useSignalStore } from "@/store/signals";
 import { useLiveStore, type LiveSignal, type QueueInfo } from "@/store/live";
 import { syncAll } from "@/engine/sync";
-import {
-  MOCK_QUOTE, MOCK_ACCOUNT, MOCK_POSITIONS, MOCK_HEALTH,
-  MOCK_STRATEGIES, MOCK_INDICATORS, MOCK_SIGNALS, MOCK_QUEUES,
-  MOCK_RISK_WINDOWS,
-} from "@/api/mockData";
-import { useEventStore } from "@/store/events";
-import { useEmployeeStore, type ActivityStatus } from "@/store/employees";
-import type { EmployeeRoleType } from "@/config/employees";
-import type { StudioEventType, EventLevel } from "@/types/protocol";
-
-/** Mock 事件模板 — 模拟真实交易链路事件 */
-const MOCK_EVENT_TEMPLATES: {
-  source: EmployeeRoleType;
-  type: StudioEventType;
-  level: EventLevel;
-  message: string;
-  status: ActivityStatus;
-  task: string;
-}[] = [
-  { source: "collector",        type: "status_change",     level: "info",    message: "XAUUSD 行情刷新 bid=2345.67",              status: "working",  task: "采集 XAUUSD M5 K线" },
-  { source: "analyst",          type: "status_change",     level: "info",    message: "指标计算完成: RSI=58.3, ATR=12.45",        status: "working",  task: "计算技术指标" },
-  { source: "strategist",       type: "signal_generated",  level: "success", message: "MA_Cross 产生 BUY 信号 (置信度 0.78)",     status: "signal_ready", task: "策略信号生成" },
-  { source: "voter",            type: "vote_completed",    level: "info",    message: "投票结果: 2 BUY / 1 HOLD → 方向 BUY",      status: "judging",  task: "多策略投票" },
-  { source: "risk_officer",     type: "risk_approved",     level: "success", message: "风控通过: 仓位 0.1 手在限额内",             status: "approved",  task: "风控审核" },
-  { source: "trader",           type: "trade_executed",    level: "success", message: "XAUUSD BUY 0.1 手 @ 2345.67 已成交",       status: "executed",  task: "执行交易" },
-  { source: "position_manager", type: "status_change",     level: "info",    message: "持仓更新: 2 笔活跃仓位, 净利 $622.50",     status: "working",  task: "持仓监控" },
-  { source: "accountant",       type: "status_change",     level: "info",    message: "账户快照: 余额 $50,000 净值 $51,234",      status: "working",  task: "账户记录" },
-  { source: "calendar_reporter",type: "calendar_alert",    level: "warning", message: "⚠ 20:30 非农就业数据即将公布",              status: "warning",  task: "日历监控" },
-  { source: "inspector",        type: "status_change",     level: "info",    message: "巡检正常: 全部 7 组件健康",                 status: "working",  task: "系统巡检" },
-  { source: "risk_officer",     type: "risk_rejected",     level: "error",   message: "风控拦截: 日内亏损接近限额 (-$480)",        status: "rejected", task: "风控拦截" },
-  { source: "collector",        type: "module_error",      level: "error",   message: "MT5 连接中断，尝试重连...",                  status: "error",    task: "MT5 重连" },
-  { source: "collector",        type: "module_recovered",  level: "success", message: "MT5 连接已恢复",                             status: "working",  task: "采集 XAUUSD 行情" },
-];
-
-let mockEventSeq = 0;
-let mockTemplateIdx = 0;
-
-/** 生成一条模拟事件并更新角色状态 */
-function emitMockEvent() {
-  const tpl = MOCK_EVENT_TEMPLATES[mockTemplateIdx % MOCK_EVENT_TEMPLATES.length]!;
-  mockTemplateIdx++;
-
-  useEventStore.getState().appendEvent({
-    eventId: `mock-evt-${++mockEventSeq}`,
-    type: tpl.type,
-    source: tpl.source,
-    level: tpl.level,
-    message: tpl.message,
-    symbol: "XAUUSD",
-    createdAt: new Date().toISOString(),
-  });
-
-  useEmployeeStore.getState().updateEmployee(tpl.source, {
-    status: tpl.status,
-    currentTask: tpl.task,
-  });
-}
-
-/** Mock 模式：填充模拟数据并定期 sync */
-function initMockMode() {
-  useMarketStore.getState().setQuote(config.symbols[0], MOCK_QUOTE);
-  useMarketStore.getState().setAccount(MOCK_ACCOUNT);
-  useMarketStore.getState().setPositions(MOCK_POSITIONS);
-  useMarketStore.getState().setConnected(true);
-  useSignalStore.getState().setHealth(MOCK_HEALTH);
-  useSignalStore.getState().setStrategies(MOCK_STRATEGIES);
-  useLiveStore.getState().setIndicators("M5", {
-    timeframe: "M5",
-    timestamp: new Date().toISOString(),
-    indicators: MOCK_INDICATORS,
-  });
-  useLiveStore.getState().setSignals(MOCK_SIGNALS);
-  useLiveStore.getState().setQueues(MOCK_QUEUES);
-  useSignalStore.getState().setRiskWindows(MOCK_RISK_WINDOWS);
-
-  // 初始注入 3 条事件
-  emitMockEvent();
-  emitMockEvent();
-  emitMockEvent();
-
-  syncAll();
-}
+import type { RiskWindow } from "@/api/types";
 
 export function usePolling() {
   useEffect(() => {
-    // Mock 模式：填充数据 + 定期生成事件
-    if (config.mockMode) {
-      initMockMode();
-      // 每 3-6 秒生成一条模拟事件并同步（不再需要独立 sync 定时器）
-      const eventTimer = setInterval(() => {
-        emitMockEvent();
-        syncAll();
-      }, 3_000 + Math.random() * 3_000);
-      return () => {
-        clearInterval(eventTimer);
-      };
-    }
+    if (config.mockMode) return; // Mock 模式不轮询
 
     let cancelled = false;
 
@@ -161,10 +70,11 @@ export function usePolling() {
     const pollHealth = async () => {
       if (cancelled) return;
       try {
-        const [healthRes, stratRes, calRes] = await Promise.allSettled([
+        const [healthRes, stratRes, calRes, enrichedRes] = await Promise.allSettled([
           fetchHealth(),
           fetchStrategies(),
           fetchRiskWindows(),
+          fetchCalendarEnriched(48, 2),
         ]);
 
         if (cancelled) return;
@@ -181,15 +91,41 @@ export function usePolling() {
           const raw = calRes.value.data;
           if (Array.isArray(raw)) {
             useSignalStore.getState().setRiskWindows(
-              raw.map((w: Record<string, unknown>) => ({
-                event_name: String(w.event_name ?? ""),
-                currency: String(w.currency ?? ""),
-                impact: (["high", "medium", "low"].includes(w.impact as string)
-                  ? w.impact : "low") as "high" | "medium" | "low",
-                datetime: String(w.datetime ?? ""),
-                guard_active: Boolean(w.guard_active),
-              })),
+              raw.map((w: RiskWindow) => {
+                const importance = Number(w.importance ?? 1);
+                const impact: "high" | "medium" | "low" =
+                  importance >= 3 ? "high" : importance >= 2 ? "medium" : "low";
+                const scheduledAt = String(w.scheduled_at ?? "");
+                const now = Date.now();
+                const windowStart = String(w.window_start ?? "");
+                const windowEnd = String(w.window_end ?? "");
+                const guardActive = windowStart && windowEnd
+                  ? now >= new Date(windowStart).getTime() && now <= new Date(windowEnd).getTime()
+                  : false;
+                return {
+                  event_uid: String(w.event_uid ?? ""),
+                  event_name: String(w.event_name ?? ""),
+                  source: String(w.source ?? ""),
+                  country: String(w.country ?? ""),
+                  currency: String(w.currency ?? ""),
+                  importance,
+                  impact,
+                  session_bucket: String(w.session_bucket ?? ""),
+                  window_start: windowStart,
+                  window_end: windowEnd,
+                  scheduled_at: scheduledAt,
+                  scheduled_at_local: String(w.scheduled_at_local ?? ""),
+                  datetime: scheduledAt,
+                  guard_active: guardActive,
+                };
+              }),
             );
+          }
+        }
+        if (enrichedRes.status === "fulfilled" && enrichedRes.value.success) {
+          const enriched = enrichedRes.value.data;
+          if (Array.isArray(enriched)) {
+            useSignalStore.getState().setCalendarEvents(enriched);
           }
         }
         syncAll();
@@ -197,44 +133,61 @@ export function usePolling() {
     };
 
     // ─── 指标 & 信号（3s） ───
+    // 指标：拉取所有配置的 TF；信号：不传 TF 拉取全部
+    const INDICATOR_TFS = config.timeframes;
     const pollLive = async () => {
       if (cancelled) return;
       try {
-        const [indRes, sigRes] = await Promise.allSettled([
-          fetchIndicators(config.symbols[0], "M5"),
-          fetchRecentSignals(config.symbols[0], "M5"),
+        const indPromises = INDICATOR_TFS.map((tf) =>
+          fetchIndicators(config.symbols[0], tf).then((res) => ({ tf, res })),
+        );
+        const [sigRes, ...indResults] = await Promise.allSettled([
+          fetchRecentSignals(config.symbols[0], undefined, "all"),
+          ...indPromises,
         ]);
 
         if (cancelled) return;
 
-        if (indRes.status === "fulfilled" && indRes.value.success && indRes.value.data) {
-          const raw = indRes.value.data as unknown;
-          if (raw && typeof raw === "object") {
-            useLiveStore.getState().setIndicators("M5", {
-              timeframe: "M5",
-              timestamp: new Date().toISOString(),
-              indicators: raw as Record<string, Record<string, number | null>>,
-            });
+        // 指标：按 TF 写入 store
+        const store = useLiveStore.getState();
+        for (const result of indResults) {
+          if (result.status === "fulfilled") {
+            const { tf, res } = result.value as { tf: string; res: { success: boolean; data: unknown } };
+            if (res.success && res.data && typeof res.data === "object") {
+              store.setIndicators(tf, {
+                timeframe: tf,
+                timestamp: new Date().toISOString(),
+                indicators: res.data as Record<string, Record<string, number | null>>,
+              });
+            }
           }
         }
 
-        if (sigRes.status === "fulfilled" && sigRes.value.success) {
-          const rawSignals = sigRes.value.data;
-          if (Array.isArray(rawSignals)) {
-            const signals: LiveSignal[] = rawSignals.map((s: Record<string, unknown>) => ({
-              signal_id: String(s.signal_id ?? ""),
-              symbol: String(s.symbol ?? ""),
-              timeframe: String(s.timeframe ?? ""),
-              strategy: String(s.strategy ?? ""),
-              direction: (["buy", "sell", "hold"].includes(s.direction as string)
-                ? s.direction
-                : "hold") as "buy" | "sell" | "hold",
-              confidence: Number(s.confidence ?? 0),
-              reason: String(s.reason ?? ""),
-              scope: String(s.scope ?? ""),
-              generated_at: String(s.generated_at ?? ""),
-            }));
-            useLiveStore.getState().setSignals(signals);
+        // 信号：scope=all → 按 scope 拆分 + 按配置的 TF 过滤
+        if (sigRes.status === "fulfilled") {
+          const sigValue = sigRes.value as { success: boolean; data: unknown };
+          if (sigValue.success) {
+            const rawSignals = sigValue.data;
+            if (Array.isArray(rawSignals)) {
+              const validTFs = new Set<string>(config.timeframes);
+              const allSignals: LiveSignal[] = rawSignals
+                .map((s: Record<string, unknown>) => ({
+                  signal_id: String(s.signal_id ?? ""),
+                  symbol: String(s.symbol ?? ""),
+                  timeframe: String(s.timeframe ?? ""),
+                  strategy: String(s.strategy ?? ""),
+                  direction: (["buy", "sell", "hold"].includes(s.direction as string)
+                    ? s.direction
+                    : "hold") as "buy" | "sell" | "hold",
+                  confidence: Number(s.confidence ?? 0),
+                  reason: String(s.reason ?? ""),
+                  scope: String(s.scope ?? ""),
+                  generated_at: String(s.generated_at ?? ""),
+                }))
+                .filter((s) => validTFs.has(s.timeframe));
+              store.setSignals(allSignals.filter((s) => s.scope === "confirmed"));
+              store.setPreviewSignals(allSignals.filter((s) => s.scope !== "confirmed"));
+            }
           }
         }
         syncAll();

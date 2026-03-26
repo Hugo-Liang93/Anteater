@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui";
 import {
   AlertTriangle,
+  CalendarClock,
   ClipboardList,
   Database,
   PanelLeftClose,
@@ -12,10 +13,12 @@ import { TaskPanel } from "../panels/TaskPanel";
 import { DataPanel } from "../panels/DataPanel";
 import { LogPanel } from "../panels/LogPanel";
 import { AlertPanel } from "../panels/AlertPanel";
+import { CalendarPanel } from "../panels/CalendarPanel";
 
 const tabs = [
   { key: "tasks" as const, icon: ClipboardList, label: "任务" },
   { key: "data" as const, icon: Database, label: "数据" },
+  { key: "calendar" as const, icon: CalendarClock, label: "日历" },
   { key: "logs" as const, icon: ScrollText, label: "日志" },
   { key: "alerts" as const, icon: AlertTriangle, label: "告警" },
 ];
@@ -66,6 +69,7 @@ export function Sidebar() {
         <div className="flex-1 overflow-hidden">
           {sidebarTab === "tasks" && <TaskPanel />}
           {sidebarTab === "data" && <DataPanel />}
+          {sidebarTab === "calendar" && <CalendarPanel />}
           {sidebarTab === "logs" && <LogPanel />}
           {sidebarTab === "alerts" && <AlertPanel />}
         </div>

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { HealthStatus, RiskWindow, SignalEvent, StrategyInfo } from "@/api/types";
+import type { HealthStatus, RiskWindow, SignalEvent, StrategyInfo, EnrichedCalendarEvent } from "@/api/types";
 
 interface SignalState {
   /** 最近信号事件（按 strategy key） */
@@ -10,6 +10,8 @@ interface SignalState {
   health: HealthStatus | null;
   /** 经济日历风险窗口 */
   riskWindows: RiskWindow[];
+  /** 精简日历事件（含预测/前值/黄金影响） */
+  calendarEvents: EnrichedCalendarEvent[];
   /** 上次推送到日志的信号 ID，避免重复 */
   lastLoggedSignalId: string;
 
@@ -18,6 +20,7 @@ interface SignalState {
   setStrategies: (list: StrategyInfo[]) => void;
   setHealth: (h: HealthStatus) => void;
   setRiskWindows: (windows: RiskWindow[]) => void;
+  setCalendarEvents: (events: EnrichedCalendarEvent[]) => void;
   setLastLoggedSignalId: (id: string) => void;
 }
 
@@ -28,6 +31,7 @@ export const useSignalStore = create<SignalState>((set) => ({
   strategies: [],
   health: null,
   riskWindows: [],
+  calendarEvents: [],
   lastLoggedSignalId: "",
 
   setRecentSignals: (signals) => set({ recentSignals: signals }),
@@ -38,6 +42,7 @@ export const useSignalStore = create<SignalState>((set) => ({
   setStrategies: (strategies) => set({ strategies }),
   setHealth: (health) => set({ health }),
   setRiskWindows: (riskWindows) => set({ riskWindows }),
+  setCalendarEvents: (calendarEvents) => set({ calendarEvents }),
   setLastLoggedSignalId: (lastLoggedSignalId) => set({ lastLoggedSignalId }),
 }));
 
@@ -47,3 +52,4 @@ export const selectHealth = (s: SignalState) => s.health;
 export const selectHealthStatus = (s: SignalState) => s.health?.status ?? "unknown";
 export const selectRecentSignals = (s: SignalState) => s.recentSignals;
 export const selectRiskWindows = (s: SignalState) => s.riskWindows;
+export const selectCalendarEvents = (s: SignalState) => s.calendarEvents;

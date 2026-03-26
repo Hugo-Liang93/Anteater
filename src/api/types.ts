@@ -116,11 +116,45 @@ export interface QueueStatus {
 
 /** 经济日历风险窗口 */
 export interface RiskWindow {
+  event_uid: string;
   event_name: string;
+  source: string;
+  country: string;
   currency: string;
+  importance: number;
   impact: "high" | "medium" | "low";
+  session_bucket: string;
+  window_start: string;
+  window_end: string;
+  scheduled_at: string;
+  scheduled_at_local: string;
+  /** @deprecated 用 scheduled_at 代替 */
   datetime: string;
   guard_active: boolean;
+}
+
+/** 精简日历事件（/economic/calendar/enriched） */
+export interface EnrichedCalendarEvent {
+  event_uid: string;
+  event_name: string;
+  country: string;
+  currency: string;
+  importance: number;
+  status: string;
+  scheduled_at: string;
+  scheduled_at_local: string | null;
+  countdown_minutes: number;
+  forecast: string | null;
+  previous: string | null;
+  actual: string | null;
+  gold_impact: {
+    above_forecast: "利多" | "利空";
+    below_forecast: "利多" | "利空";
+    bullish_pct: number | null;
+    avg_30m_range: number | null;
+    sample_count: number;
+    source: "historical" | "static";
+  } | null;
 }
 
 /** 信号质量 */

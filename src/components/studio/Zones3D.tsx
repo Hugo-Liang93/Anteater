@@ -81,6 +81,7 @@ function ZoneFloor({ center, size, color, label }: {
         center
         distanceFactor={12}
         sprite
+        zIndexRange={[0, 0]}
       >
         <div
           style={{

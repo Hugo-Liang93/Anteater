@@ -45,30 +45,43 @@ function handleSnapshot(payload: unknown): void {
   if (payload == null || typeof payload !== "object") return;
   const raw = payload as Record<string, unknown>;
 
-  // 安全解析 agents
+  // 安全解析 agents — 批量写入，避免 N 次 setState
   const agents = normalizeStudioAgents(raw.agents);
-  const empStore = useEmployeeStore.getState();
-  for (const agent of agents) {
-    empStore.updateEmployee(agent.id as EmployeeRoleType, {
-      status: agent.status,
-      currentTask: agent.task,
-      stats: (agent.metrics ?? {}) as Record<string, number | string>,
+  if (agents.length > 0) {
+    useEmployeeStore.setState((s) => {
+      const updated = { ...s.employees };
+      for (const agent of agents) {
+        const role = agent.id as EmployeeRoleType;
+        if (updated[role]) {
+          updated[role] = {
+            ...updated[role],
+            status: agent.status,
+            currentTask: agent.task,
+            stats: (agent.metrics ?? {}) as Record<string, number | string>,
+            lastUpdate: Date.now(),
+          };
+        }
+      }
+      return { employees: updated };
     });
   }
 
-  // 安全解析 events
+  // 安全解析 events — 批量写入，避免 N 次 setState
   const events = normalizeStudioEvents(raw.events);
-  const evtStore = useEventStore.getState();
-  for (const event of events) {
-    evtStore.appendEvent({
-      eventId: event.eventId,
-      type: event.type,
-      source: event.source,
-      target: event.target,
-      symbol: event.symbol,
-      level: event.level,
-      message: event.message,
-      createdAt: event.createdAt,
+  if (events.length > 0) {
+    useEventStore.setState((s) => {
+      const incoming: import("@/types/protocol").StudioEvent[] = events.map((e) => ({
+        eventId: e.eventId,
+        type: e.type,
+        source: e.source,
+        target: e.target,
+        symbol: e.symbol,
+        level: e.level,
+        message: e.message,
+        createdAt: e.createdAt,
+      }));
+      const merged = [...incoming.reverse(), ...s.events];
+      return { events: merged.slice(0, 200) };
     });
   }
 
