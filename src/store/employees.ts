@@ -81,7 +81,8 @@ const allRoles: EmployeeRoleType[] = [
   "live_analyst",
   "strategist",
   "live_strategist",
-  "auditor",
+  "filter_guard",
+  "regime_guard",
   "voter",
   "risk_officer",
   "trader",
@@ -89,6 +90,7 @@ const allRoles: EmployeeRoleType[] = [
   "accountant",
   "calendar_reporter",
   "inspector",
+  "backtester",
 ];
 
 const initialEmployees = Object.fromEntries(

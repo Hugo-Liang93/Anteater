@@ -27,7 +27,8 @@ import { AnalystMetrics } from "./metrics/AnalystMetrics";
 import { LiveAnalystMetrics } from "./metrics/LiveAnalystMetrics";
 import { StrategistMetrics } from "./metrics/StrategistMetrics";
 import { LiveStrategistMetrics } from "./metrics/LiveStrategistMetrics";
-import { AuditorMetrics } from "./metrics/AuditorMetrics";
+import { FilterGuardMetrics } from "./metrics/FilterGuardMetrics";
+import { RegimeGuardMetrics } from "./metrics/RegimeGuardMetrics";
 import { VoterMetrics } from "./metrics/VoterMetrics";
 import { RiskOfficerMetrics } from "./metrics/RiskOfficerMetrics";
 import { TraderMetrics } from "./metrics/TraderMetrics";
@@ -37,12 +38,12 @@ import {
   InspectorMetrics,
   CalendarReporterMetrics,
 } from "./metrics/SupportMetrics";
+import { BacktesterMetrics } from "./metrics/BacktesterMetrics";
 
 /** 区域中文名映射 */
 const ZONE_LABELS: Record<string, string> = {
-  collection: "采集区", analysis: "分析区", analysis_live: "实时分析", strategy: "策略室", strategy_live: "盘中策略", audit: "审核区",
-  voting: "投票区", risk: "风控台", trading: "交易台",
-  position: "持仓区", accounting: "财务区", inspection: "巡检台", calendar: "日历区",
+  collection: "采集区", analysis: "分析区", filter: "过滤区",
+  strategy: "策略区", regime: "研判区", decision: "决策区", support: "支持区",
 };
 
 const DEFAULT_BADGE = { label: "未知", cls: "bg-text-muted/20 text-text-muted" };
@@ -214,8 +215,11 @@ function RoleMetrics({ roleId }: { roleId: string }) {
     case EmployeeRole.LIVE_STRATEGIST:
       content = <LiveStrategistMetrics {...props} />;
       break;
-    case EmployeeRole.AUDITOR:
-      content = <AuditorMetrics />;
+    case EmployeeRole.FILTER_GUARD:
+      content = <FilterGuardMetrics />;
+      break;
+    case EmployeeRole.REGIME_GUARD:
+      content = <RegimeGuardMetrics />;
       break;
     case EmployeeRole.VOTER:
       content = <VoterMetrics {...props} />;
@@ -237,6 +241,9 @@ function RoleMetrics({ roleId }: { roleId: string }) {
       break;
     case EmployeeRole.CALENDAR_REPORTER:
       content = <CalendarReporterMetrics {...props} />;
+      break;
+    case EmployeeRole.BACKTESTER:
+      content = <BacktesterMetrics />;
       break;
   }
 

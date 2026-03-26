@@ -44,6 +44,23 @@ export const OfficeGeo = {
   potSoil: new THREE.CylinderGeometry(0.11, 0.11, 0.02, 8),
   potLeaf1: new THREE.SphereGeometry(0.18, 8, 8),
   potLeaf2: new THREE.SphereGeometry(0.12, 8, 8),
+  // ── 温暖工作室新增 ──
+  // 圆角桌面（用圆柱体模拟圆角矩形）
+  roundDeskTop: new THREE.CylinderGeometry(0.7, 0.7, 0.05, 32),
+  roundDeskLeg: new THREE.CylinderGeometry(0.03, 0.04, 0.5, 8),
+  // 书架
+  shelfBoard: new THREE.BoxGeometry(0.8, 0.03, 0.25),
+  shelfSide: new THREE.BoxGeometry(0.03, 0.7, 0.25),
+  book: new THREE.BoxGeometry(0.06, 0.18, 0.14),
+  // 地毯（圆形）
+  rugCircle: new THREE.CircleGeometry(1.2, 32),
+  // 台灯
+  lampBase: new THREE.CylinderGeometry(0.06, 0.08, 0.03, 12),
+  lampPole: new THREE.CylinderGeometry(0.015, 0.015, 0.35, 6),
+  lampShade: new THREE.ConeGeometry(0.1, 0.12, 12, 1, true),
+  // 咖啡杯
+  cupBody: new THREE.CylinderGeometry(0.035, 0.03, 0.06, 8),
+  cupHandle: new THREE.TorusGeometry(0.02, 0.005, 6, 8, Math.PI),
 } as const;
 
 /** 角色几何体 */
@@ -119,6 +136,28 @@ export const OfficeMat = {
     new THREE.MeshStandardMaterial({ color: "#6a9a5a" }),
     new THREE.MeshStandardMaterial({ color: "#5a8a4a" }),
   ] as const,
+  // ── 温暖工作室新增 ──
+  warmFloor: new THREE.MeshStandardMaterial({ color: "#d4b896", roughness: 0.85, metalness: 0.02 }),
+  curvedWall: new THREE.MeshStandardMaterial({ color: "#ede4d4", side: THREE.DoubleSide, roughness: 0.95 }),
+  roundDesk: new THREE.MeshStandardMaterial({ color: "#b8956a", roughness: 0.6 }),
+  roundDeskLeg: new THREE.MeshStandardMaterial({ color: "#8a6840" }),
+  bigScreen: new THREE.MeshStandardMaterial({ color: "#0a0e1a", emissive: "#003366", emissiveIntensity: 0.8, roughness: 0.05 }),
+  bigScreenFrame: new THREE.MeshStandardMaterial({ color: "#1a1a2a", roughness: 0.2, metalness: 0.4 }),
+  shelf: new THREE.MeshStandardMaterial({ color: "#a08060", roughness: 0.7 }),
+  books: [
+    new THREE.MeshStandardMaterial({ color: "#e07060" }),
+    new THREE.MeshStandardMaterial({ color: "#5090c0" }),
+    new THREE.MeshStandardMaterial({ color: "#60a060" }),
+    new THREE.MeshStandardMaterial({ color: "#d0a040" }),
+    new THREE.MeshStandardMaterial({ color: "#9070b0" }),
+  ] as const,
+  lampBase: new THREE.MeshStandardMaterial({ color: "#c0a080", metalness: 0.3 }),
+  lampShade: new THREE.MeshStandardMaterial({
+    color: "#ffe4b5", emissive: "#ffd090", emissiveIntensity: 0.3,
+    side: THREE.DoubleSide, transparent: true, opacity: 0.85,
+  }),
+  cup: new THREE.MeshStandardMaterial({ color: "#f5f0e8", roughness: 0.4 }),
+  rug: new THREE.MeshStandardMaterial({ color: "#c4a882", transparent: true, opacity: 0.15, side: THREE.DoubleSide }),
 } as const;
 
 /** 角色共享材质 */
@@ -173,31 +212,7 @@ export const CharMatTemplates = {
 //  工 厂 函 数
 // ═══════════════════════════════════════════════════════════════
 
-/** 创建桌面材质（按 deskColor 查找共享材质） */
-export function getDeskMaterial(color?: string): THREE.MeshStandardMaterial {
-  switch (color) {
-    case "#9a7a5a": return OfficeMat.deskWood[1];
-    case "#8a6a4a": return OfficeMat.deskWood[2];
-    default: return OfficeMat.deskWood[0];
-  }
-}
-
-/** 创建屏幕发光材质（monitorGlow 为动态值，需按 glow 级别缓存） */
-const _monitorScreenCache = new Map<number, THREE.MeshStandardMaterial>();
-export function getMonitorScreenMat(glow: number): THREE.MeshStandardMaterial {
-  // 量化到 0.05 步长以限制实例数
-  const key = Math.round(glow * 20) / 20;
-  let mat = _monitorScreenCache.get(key);
-  if (!mat) {
-    mat = new THREE.MeshStandardMaterial({
-      color: "#0a1510", emissive: "#003a28", emissiveIntensity: key,
-    });
-    _monitorScreenCache.set(key, mat);
-  }
-  return mat;
-}
-
-/** 创建窗户玻璃材质（颜色随日夜变化，需按周期缓存） */
+/** 创建窗户玻璃材质（颜色随日夜变化，按周期缓存） */
 const _windowGlassCache = new Map<string, THREE.MeshStandardMaterial>();
 export function getWindowGlassMat(
   color: THREE.Color, isNight: boolean,
@@ -214,16 +229,6 @@ export function getWindowGlassMat(
   return mat;
 }
 
-/** 创建地板色带材质 */
-const _floorStripeCache = new Map<string, THREE.MeshStandardMaterial>();
-export function getFloorStripeMat(color: string): THREE.MeshStandardMaterial {
-  let mat = _floorStripeCache.get(color);
-  if (!mat) {
-    mat = new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.08 });
-    _floorStripeCache.set(color, mat);
-  }
-  return mat;
-}
 
 // ═══════════════════════════════════════════════════════════════
 //  清 理
@@ -246,10 +251,6 @@ export function disposeAllShared3D() {
   disposeMap(OfficeMat);
   disposeMap(CharMat);
   disposeMap(CharMatTemplates);
-  for (const mat of _monitorScreenCache.values()) mat.dispose();
   for (const mat of _windowGlassCache.values()) mat.dispose();
-  for (const mat of _floorStripeCache.values()) mat.dispose();
-  _monitorScreenCache.clear();
   _windowGlassCache.clear();
-  _floorStripeCache.clear();
 }

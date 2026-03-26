@@ -146,10 +146,17 @@ export function computeSync(input: SyncInput): SyncOutput {
     stats: {},
   });
 
-  // ─── 审核员（SSE 断线时 fallback） ───
-  patches.set(EmployeeRole.AUDITOR, {
+  // ─── 过滤员（SSE 断线时 fallback） ───
+  patches.set(EmployeeRole.FILTER_GUARD, {
     status: signals.length > 0 ? "reviewing" : "idle",
-    currentTask: signals.length > 0 ? "信号过滤审核中" : "等待指标快照",
+    currentTask: signals.length > 0 ? "环境过滤中" : "等待指标快照",
+    stats: {},
+  });
+
+  // ─── 研判员（SSE 断线时 fallback） ───
+  patches.set(EmployeeRole.REGIME_GUARD, {
+    status: signals.length > 0 ? "reviewing" : "idle",
+    currentTask: signals.length > 0 ? "Regime 研判中" : "等待 Regime 数据",
     stats: {},
   });
 

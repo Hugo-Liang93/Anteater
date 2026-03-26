@@ -33,6 +33,8 @@ export function TraderMetrics({ quote, positions }: TraderMetricsProps): React.R
     ? tm.pending_stats as unknown as Record<string, number | null>
     : {};
   const execCount = Number(tm.execution_count ?? 0);
+  const lastError = typeof tm.last_error === "string" ? tm.last_error : null;
+  const lastRiskBlock = typeof tm.last_risk_block === "string" ? tm.last_risk_block : null;
   const currentBid = quote?.bid;
 
   return (
@@ -43,6 +45,18 @@ export function TraderMetrics({ quote, positions }: TraderMetricsProps): React.R
         <div><div className="text-text-muted">成交率</div><div className="font-mono text-text-primary">{pendingStats.fill_rate != null ? `${(Number(pendingStats.fill_rate) * 100).toFixed(0)}%` : "—"}</div></div>
         <div><div className="text-text-muted">价格优化</div><div className="font-mono text-text-primary">{pendingStats.avg_price_improvement != null ? `${Number(pendingStats.avg_price_improvement).toFixed(2)}` : "—"}</div></div>
       </div>
+
+      {/* 异常/风控状态 */}
+      {lastError && (
+        <div className="rounded border border-warning/40 bg-warning/5 px-2 py-1 text-[10px] text-warning">
+          <span className="font-medium">执行异常：</span>{lastError}
+        </div>
+      )}
+      {!lastError && lastRiskBlock && (
+        <div className="rounded border border-text-muted/30 bg-bg-secondary px-2 py-1 text-[10px] text-text-secondary">
+          <span className="font-medium">最近风控拦截：</span>{lastRiskBlock}
+        </div>
+      )}
 
       {/* Pending Entries — 入场区间可视化 */}
       {pendingEntries.length > 0 ? (

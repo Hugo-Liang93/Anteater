@@ -11,7 +11,8 @@ export const EmployeeRole = {
   LIVE_ANALYST: "live_analyst",
   STRATEGIST: "strategist",
   LIVE_STRATEGIST: "live_strategist",
-  AUDITOR: "auditor",
+  FILTER_GUARD: "filter_guard",
+  REGIME_GUARD: "regime_guard",
   VOTER: "voter",
   RISK_OFFICER: "risk_officer",
   TRADER: "trader",
@@ -19,6 +20,7 @@ export const EmployeeRole = {
   ACCOUNTANT: "accountant",
   CALENDAR_REPORTER: "calendar_reporter",
   INSPECTOR: "inspector",
+  BACKTESTER: "backtester",
 } as const;
 
 export type EmployeeRoleType =
@@ -31,8 +33,7 @@ export interface EmployeeConfig {
   /** 对应后端组件 */
   backendComponent: string;
   /** 工作室中的区域 */
-  zone: "collection" | "analysis" | "analysis_live" | "strategy" | "strategy_live" | "audit" | "voting" | "risk" | "trading"
-      | "position" | "accounting" | "inspection" | "calendar";
+  zone: "collection" | "analysis" | "filter" | "strategy" | "regime" | "decision" | "support";
   /** 角色颜色（用于头像/标签） */
   color: string;
   /** 角色图标名（lucide-react） */
@@ -41,6 +42,7 @@ export interface EmployeeConfig {
 
 /** 全部员工配置（顺序 = 数据流方向） */
 export const employeeConfigs: EmployeeConfig[] = [
+  // ── 采集区 ──
   {
     id: EmployeeRole.COLLECTOR,
     name: "采集员",
@@ -50,6 +52,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     color: "#4298d4",
     icon: "Download",
   },
+  // ── 分析区（confirmed + intrabar 共享）──
   {
     id: EmployeeRole.ANALYST,
     name: "分析师",
@@ -64,10 +67,21 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "实时分析员",
     title: "盘中指标分析员",
     backendComponent: "UnifiedIndicatorManager(intrabar)",
-    zone: "analysis_live",
+    zone: "analysis",
     color: "#66bb6a",
     icon: "Activity",
   },
+  // ── 过滤区（指标计算后、策略评估前）──
+  {
+    id: EmployeeRole.FILTER_GUARD,
+    name: "过滤员",
+    title: "环境条件过滤员",
+    backendComponent: "SignalFilterChain",
+    zone: "filter",
+    color: "#ff8a65",
+    icon: "Filter",
+  },
+  // ── 策略区（confirmed + intrabar 共享）──
   {
     id: EmployeeRole.STRATEGIST,
     name: "策略师",
@@ -82,25 +96,27 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "实时策略员",
     title: "盘中信号预览员",
     backendComponent: "SignalModule(intrabar)",
-    zone: "strategy_live",
+    zone: "strategy",
     color: "#ce93d8",
     icon: "Zap",
   },
+  // ── 研判区（策略评估后、投票前）──
   {
-    id: EmployeeRole.AUDITOR,
-    name: "审核员",
-    title: "信号过滤审核员",
-    backendComponent: "FilterChain+RegimeDetector",
-    zone: "audit",
-    color: "#ff8a65",
-    icon: "Filter",
+    id: EmployeeRole.REGIME_GUARD,
+    name: "研判员",
+    title: "市场状态研判员",
+    backendComponent: "RegimeDetector+AffinityGate",
+    zone: "regime",
+    color: "#ffab40",
+    icon: "Radar",
   },
+  // ── 决策区（投票 + 风控 + 交易共享）──
   {
     id: EmployeeRole.VOTER,
     name: "投票主席",
     title: "策略投票汇总",
     backendComponent: "VotingEngine",
-    zone: "voting",
+    zone: "decision",
     color: "#fff176",
     icon: "Vote",
   },
@@ -109,7 +125,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "风控官",
     title: "风险管理审批官",
     backendComponent: "PreTradeRiskService",
-    zone: "risk",
+    zone: "decision",
     color: "#ef5350",
     icon: "ShieldCheck",
   },
@@ -118,16 +134,17 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "交易员",
     title: "交易执行员",
     backendComponent: "TradeExecutor",
-    zone: "trading",
+    zone: "decision",
     color: "#f9a825",
     icon: "ArrowLeftRight",
   },
+  // ── 支持区（持仓 + 财务 + 巡检 + 日历共享）──
   {
     id: EmployeeRole.POSITION_MANAGER,
     name: "仓管员",
     title: "持仓管理员",
     backendComponent: "PositionManager",
-    zone: "position",
+    zone: "support",
     color: "#26a69a",
     icon: "Briefcase",
   },
@@ -136,7 +153,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "会计",
     title: "账务核算员",
     backendComponent: "TradingModule",
-    zone: "accounting",
+    zone: "support",
     color: "#78909c",
     icon: "Calculator",
   },
@@ -145,7 +162,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "日历员",
     title: "经济日历播报员",
     backendComponent: "EconomicCalendarService",
-    zone: "calendar",
+    zone: "support",
     color: "#7e57c2",
     icon: "CalendarClock",
   },
@@ -154,9 +171,19 @@ export const employeeConfigs: EmployeeConfig[] = [
     name: "巡检员",
     title: "系统健康巡检员",
     backendComponent: "MonitoringManager",
-    zone: "inspection",
+    zone: "support",
     color: "#26c6da",
     icon: "ScanSearch",
+  },
+  // ── 回测区 ──
+  {
+    id: EmployeeRole.BACKTESTER,
+    name: "回测员",
+    title: "策略回测与参数优化",
+    backendComponent: "BacktestEngine",
+    zone: "support",
+    color: "#ff7043",
+    icon: "FlaskConical",
   },
 ];
 

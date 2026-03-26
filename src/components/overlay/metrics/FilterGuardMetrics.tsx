@@ -2,8 +2,16 @@ import { cn } from "@/lib/utils";
 import { useEmployeeStore } from "@/store/employees";
 import { Empty, TugOfWarBar, extractBlocks } from "./shared";
 
-export function AuditorMetrics(): React.ReactNode {
-  const emp = useEmployeeStore.getState().employees["auditor"];
+const FILTER_LABELS: Record<string, string> = {
+  outside_allowed_sessions: "交易时段",
+  spread_too_wide: "点差过大",
+  volatility_spike: "波动率异常",
+  session_transition_cooldown: "时段切换冷却",
+  trade_guard: "经济事件防护",
+};
+
+export function FilterGuardMetrics(): React.ReactNode {
+  const emp = useEmployeeStore.getState().employees["filter_guard"];
   const m = emp?.stats ?? {};
 
   const cPassed = Number(m.confirmed_passed ?? 0);
@@ -15,7 +23,6 @@ export function AuditorMetrics(): React.ReactNode {
   const totalPassed = Number(m.total_passed ?? 0);
   const totalBlocked = Number(m.total_blocked ?? 0);
   const totalSnap = Number(m.total_snapshots ?? 0);
-  const affinitySkip = Number(m.affinity_skipped ?? 0);
 
   const wElapsed = Number(m.window_elapsed ?? 0);
   const wByScope = typeof m.window_by_scope === "object" && m.window_by_scope !== null
@@ -23,16 +30,8 @@ export function AuditorMetrics(): React.ReactNode {
     : {};
   const windowLabel = wElapsed >= 3600 ? "最近 1h" : wElapsed >= 60 ? `最近 ${Math.round(wElapsed / 60)}m` : "刚启动";
 
-  const passRate = totalSnap > 0 ? (totalPassed / totalSnap * 100) : 0;
+  const passRate = Number(m.pass_rate ?? (totalSnap > 0 ? (totalPassed / totalSnap * 100) : 0));
   const hasData = totalSnap > 0;
-
-  const FILTER_LABELS: Record<string, string> = {
-    outside_allowed_sessions: "交易时段",
-    spread_too_wide: "点差过大",
-    volatility_spike: "波动率异常",
-    session_transition_cooldown: "时段切换冷却",
-    trade_guard: "经济事件防护",
-  };
 
   const allBlocks: Record<string, number> = {};
   for (const b of [cBlocks, iBlocks]) {
@@ -45,7 +44,7 @@ export function AuditorMetrics(): React.ReactNode {
 
   return (
     <div className="space-y-2.5">
-      {/* 总通过率 */}
+      {/* 通过率 */}
       <div className="flex items-center justify-between text-xs">
         <span className="text-text-muted">通过率</span>
         <span className={cn("font-medium tabular-nums",
@@ -89,12 +88,6 @@ export function AuditorMetrics(): React.ReactNode {
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {affinitySkip > 0 && (
-        <div className="text-[10px] text-text-muted">
-          Regime 亲和度跳过: <span className="text-warning">{affinitySkip}</span> 次
         </div>
       )}
 

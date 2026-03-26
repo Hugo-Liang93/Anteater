@@ -9,9 +9,10 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
 import { employeeConfigs } from "@/config/employees";
 import type { EmployeeRoleType } from "@/config/employees";
-import { AGENT_POSITIONS, DATA_FLOWS } from "@/config/layout";
+import { AGENT_POSITIONS, DATA_FLOWS, SCREEN_ONLY_AGENTS } from "@/config/layout";
 import { useEmployeeStore } from "@/store/employees";
 import { CharacterModel } from "./CharacterModel";
+import { RobotInspector } from "./RobotInspector";
 import { Office3D } from "./Office3D";
 import { DataFlowParticle, FlowLine } from "./DataFlow3D";
 import { Zones3D } from "./Zones3D";
@@ -150,17 +151,28 @@ const Scene = memo(function Scene({ dayNight }: { dayNight: DayNightParams }) {
         <DataFlowLine key={i} from={from} to={to} fromPos={fromPos} toPos={toPos} employeesRef={employeesRef} />
       ))}
 
-      {/* 角色 — 使用稳定 onClick 引用，不击穿 memo */}
+      {/* 角色 — SCREEN_ONLY 不渲染，inspector 用机器人 */}
       {employeeConfigs.map((cfg) => {
+        if (SCREEN_ONLY_AGENTS.has(cfg.id)) return null;
         const pos = AGENT_POSITIONS[cfg.id];
         if (!pos) return null;
+
+        // inspector → 机器人
+        if (cfg.id === "inspector") {
+          return <RobotInspector key={cfg.id} position={pos} onClick={getClickHandler(cfg.id)} />;
+        }
+
+        const dx = -pos[0];
+        const dz = -6 - pos[2];
+        const rotY = Math.atan2(dx, dz);
         return (
-          <CharacterModel
-            key={cfg.id}
-            role={cfg.id}
-            position={pos}
-            onClick={getClickHandler(cfg.id)}
-          />
+          <group key={cfg.id} position={pos} rotation={[0, rotY, 0]}>
+            <CharacterModel
+              role={cfg.id}
+              position={[0, 0, 0]}
+              onClick={getClickHandler(cfg.id)}
+            />
+          </group>
         );
       })}
     </>
@@ -185,7 +197,7 @@ export function Studio3D() {
       </div>
       <Canvas
         shadows
-        camera={{ position: [0, 16, 6], fov: 45, near: 0.1, far: 60 }}
+        camera={{ position: [0, 14, 12], fov: 45, near: 0.1, far: 80 }}
         onPointerMissed={() => setSelected(null)}
         style={{ background: bgHex }}
       >
@@ -194,13 +206,13 @@ export function Studio3D() {
           enablePan
           enableZoom
           enableRotate
-          maxPolarAngle={Math.PI / 2.5}
-          minPolarAngle={0.2}
+          maxPolarAngle={Math.PI / 2.2}
+          minPolarAngle={0.1}
           minDistance={5}
           maxDistance={35}
-          target={[0, 0, 0.5]}
+          target={[0, 0.5, 0]}
         />
-        <fog attach="fog" args={[dayNight.bgColor, 18, 30]} />
+        <fog attach="fog" args={[dayNight.bgColor, 18, 35]} />
       </Canvas>
     </div>
   );

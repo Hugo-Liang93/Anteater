@@ -1,99 +1,102 @@
 /**
- * 场景布局配置 — 按 ARCHITECTURE.md 要求独立管理
+ * 场景布局配置 — 温暖卡通工作室
  *
- * 所有 3D 场景中的坐标、区域定义集中在此，
- * 避免硬编码在组件中。
+ * 矩形办公室（三面墙，前面开放），大屏贴后墙。
+ * 工位面向大屏，数据流从后排向前排流动。
  */
 
 import type { EmployeeRoleType } from "./employees";
 
+/** 不渲染 3D 角色的组件 — 改为大屏面板展示 */
+export const SCREEN_ONLY_AGENTS: ReadonlySet<EmployeeRoleType> = new Set([
+  "calendar_reporter",  // → 大屏日历面板
+  "accountant",         // → 大屏账户面板
+]);
+
 /**
- * 角色在 3D 场景中的位置 — 错行流水线布局
+ * 角色 3D 坐标 — 后墙大屏 + U 形工位
  *
- * Row 1 (Z=-4.0):  collector
- * Row 2 (Z=-2.0):  analyst(confirmed)   live_analyst(intrabar)    ← 两条分支并行
- * Row 3 (Z= 0.0):  strategist → auditor                          ← 汇合 + 审核
- * Row 4 (Z= 2.0):  voter → risk_officer → trader                 ← 执行链路
- * Row 5 (Z= 4.5):  position_manager / accountant / inspector / calendar_reporter
+ *  后墙 ──── 大屏 ──── inspector(机器人)
+ *
+ *  Row 1 (Z=-3.2): collector               ← 采集
+ *  Row 2 (Z=-1.5): analyst / live_analyst   ← 分析
+ *  Row 3 (Z= 0.2): strategist / filter / live_strategist ← 策略
+ *  Row 4 (Z= 2.0): regime / voter / risk   ← 决策
+ *  Row 5 (Z= 3.8): trader / pos_mgr        ← 执行
  */
 export const AGENT_POSITIONS: Record<EmployeeRoleType, [number, number, number]> = {
-  // ── Row 1: 数据入口 ──
-  collector:         [0,    0, -4.0],
-  // ── Row 2: 两条分析分支（confirmed 左 / intrabar 右）──
-  analyst:           [-2.5, 0, -2.0],
-  live_analyst:      [2.5,  0, -2.0],
-  // ── Row 3: 策略(confirmed 左 / intrabar 右) ──
-  strategist:        [-2.5, 0,  0.0],
-  live_strategist:   [2.5,  0,  0.0],
-  // ── Row 3.5: 审核（汇合点） ──
-  auditor:           [0,    0,  1.0],
-  // ── Row 4: 投票 → 风控 → 交易 ──
-  voter:             [-3.0, 0,  3.0],
-  risk_officer:      [0,    0,  3.0],
-  trader:            [3.0,  0,  3.0],
-  // ── Row 5: 支持角色 ──
-  position_manager:  [-3.5, 0,  5.5],
-  accountant:        [-1.2, 0,  5.5],
-  inspector:         [1.2,  0,  5.5],
-  calendar_reporter: [3.5,  0,  5.5],
+  // ── Row 1: 采集（大屏正前方，独占中心） ──
+  collector:         [0,    0, -3.2],
+  // ── Row 2: 分析（对称两侧） ──
+  analyst:           [-2.2, 0, -1.5],
+  live_analyst:      [2.2,  0, -1.5],
+  // ── Row 3: 过滤 + 策略（三人一排） ──
+  strategist:        [-3.2, 0,  0.2],
+  filter_guard:      [0,    0,  0.2],
+  live_strategist:   [3.2,  0,  0.2],
+  // ── Row 4: 研判 + 决策（三人一排） ──
+  regime_guard:      [-2.8, 0,  2.0],
+  voter:             [0,    0,  2.0],
+  risk_officer:      [2.8,  0,  2.0],
+  // ── Row 5: 执行 + 支持 ──
+  trader:            [-2.0, 0,  3.8],
+  position_manager:  [2.0,  0,  3.8],
+  // inspector（机器人巡检员）放在大屏前右侧
+  inspector:         [4.8,  0, -3.0],
+  // backtester（回测员）放在大屏前左侧
+  backtester:        [-4.8, 0, -3.0],
+  // accountant 在大屏展示，不渲染角色
+  accountant:        [5.0,  0,  2.0],
+  // calendar_reporter 不在场景中渲染角色，但保留坐标供数据流计算
+  calendar_reporter: [5.0,  0, -3.2],
 };
 
-/** 数据流连接定义 — 按交易链路顺序 */
+/** 数据流连接定义 — 按实际交易链路顺序 */
 export const DATA_FLOWS: { from: EmployeeRoleType; to: EmployeeRoleType }[] = [
-  // 采集 → 两条分析分支
   { from: "collector", to: "analyst" },
   { from: "collector", to: "live_analyst" },
-  // 分析 → 对应策略
-  { from: "analyst", to: "strategist" },
-  { from: "live_analyst", to: "live_strategist" },
-  // 两条策略 → 审核汇合
-  { from: "strategist", to: "auditor" },
-  { from: "live_strategist", to: "auditor" },
-  // 审核 → 投票（group 成员走投票聚合）
-  { from: "auditor", to: "voter" },
-  // 审核 → 风控（solo 策略直达风控）
-  { from: "auditor", to: "risk_officer" },
-  // 投票结果 → 风控
+  { from: "analyst", to: "filter_guard" },
+  { from: "live_analyst", to: "filter_guard" },
+  { from: "filter_guard", to: "strategist" },
+  { from: "filter_guard", to: "live_strategist" },
+  { from: "strategist", to: "regime_guard" },
+  { from: "live_strategist", to: "regime_guard" },
+  { from: "regime_guard", to: "voter" },
   { from: "voter", to: "risk_officer" },
-  // 风控 → 交易
   { from: "risk_officer", to: "trader" },
-  // 交易 → 仓管
   { from: "trader", to: "position_manager" },
 ];
 
 /** 角色在 2D Canvas 中的位置（比例 0~1） */
 export const AGENT_POSITIONS_2D: Record<string, { x: number; y: number }> = {
-  // Row 1
   collector:         { x: 0.50, y: 0.08 },
-  // Row 2
-  analyst:           { x: 0.25, y: 0.22 },
-  live_analyst:      { x: 0.75, y: 0.22 },
-  // Row 3
-  strategist:        { x: 0.25, y: 0.36 },
-  live_strategist:   { x: 0.75, y: 0.36 },
-  // Row 3.5
-  auditor:           { x: 0.50, y: 0.48 },
-  // Row 4
-  voter:             { x: 0.20, y: 0.60 },
-  risk_officer:      { x: 0.50, y: 0.60 },
-  trader:            { x: 0.80, y: 0.60 },
-  // Row 5
-  position_manager:  { x: 0.15, y: 0.82 },
-  accountant:        { x: 0.38, y: 0.82 },
-  inspector:         { x: 0.62, y: 0.82 },
-  calendar_reporter: { x: 0.85, y: 0.82 },
+  analyst:           { x: 0.30, y: 0.22 },
+  live_analyst:      { x: 0.70, y: 0.22 },
+  strategist:        { x: 0.22, y: 0.38 },
+  filter_guard:      { x: 0.50, y: 0.38 },
+  live_strategist:   { x: 0.78, y: 0.38 },
+  regime_guard:      { x: 0.25, y: 0.55 },
+  voter:             { x: 0.50, y: 0.55 },
+  risk_officer:      { x: 0.75, y: 0.55 },
+  trader:            { x: 0.30, y: 0.75 },
+  position_manager:  { x: 0.70, y: 0.75 },
+  inspector:         { x: 0.92, y: 0.12 },
+  accountant:        { x: 0.08, y: 0.08 },  // 大屏
+  calendar_reporter: { x: 0.92, y: 0.08 },
+  backtester:        { x: 0.08, y: 0.12 },
 };
 
 /** 2D 数据流连接 */
 export const DATA_FLOWS_2D: [string, string][] = [
   ["collector", "analyst"],
   ["collector", "live_analyst"],
-  ["analyst", "strategist"],
-  ["live_analyst", "live_strategist"],
-  ["strategist", "auditor"],
-  ["live_strategist", "auditor"],
-  ["auditor", "voter"],
-  ["auditor", "risk_officer"],
+  ["analyst", "filter_guard"],
+  ["live_analyst", "filter_guard"],
+  ["filter_guard", "strategist"],
+  ["filter_guard", "live_strategist"],
+  ["strategist", "regime_guard"],
+  ["live_strategist", "regime_guard"],
+  ["regime_guard", "voter"],
   ["voter", "risk_officer"],
   ["risk_officer", "trader"],
   ["trader", "position_manager"],
@@ -101,19 +104,11 @@ export const DATA_FLOWS_2D: [string, string][] = [
 
 /** 区域标签 */
 export const ZONE_LABELS = [
-  { label: "采 集 区", x: 0.50, y: 0.02 },
-  { label: "确认分析", x: 0.25, y: 0.16 },
-  { label: "盘中分析", x: 0.75, y: 0.16 },
-  { label: "确认策略", x: 0.25, y: 0.30 },
-  { label: "盘中策略", x: 0.75, y: 0.30 },
-  { label: "审 核 区", x: 0.50, y: 0.42 },
-  { label: "投 票 区", x: 0.20, y: 0.54 },
-  { label: "风 控 台", x: 0.50, y: 0.54 },
-  { label: "交 易 台", x: 0.80, y: 0.54 },
-  { label: "持 仓 区", x: 0.15, y: 0.76 },
-  { label: "财 务 区", x: 0.38, y: 0.76 },
-  { label: "巡 检 台", x: 0.62, y: 0.76 },
-  { label: "日 历 区", x: 0.85, y: 0.76 },
+  { label: "采 集 区", x: 0.50, y: 0.03 },
+  { label: "分 析 区", x: 0.50, y: 0.16 },
+  { label: "策 略 区", x: 0.50, y: 0.30 },
+  { label: "研 判 区", x: 0.50, y: 0.46 },
+  { label: "执 行 区", x: 0.50, y: 0.65 },
 ] as const;
 
 /** 3D 场景功能区域定义 */
@@ -129,23 +124,9 @@ export interface Zone3D {
 }
 
 export const SCENE_ZONES: Zone3D[] = [
-  // ── Row 1 ──
-  { id: "collection",    label: "采集区",   center: [0,    0, -4.0], size: [3.0, 2.0], color: "#4298d4" },
-  // ── Row 2: 两个分析区并排 ──
-  { id: "analysis",      label: "确认分析", center: [-2.5, 0, -2.0], size: [3.0, 2.0], color: "#4caf50" },
-  { id: "analysis_live", label: "盘中分析", center: [2.5,  0, -2.0], size: [3.0, 2.0], color: "#66bb6a" },
-  // ── Row 3: 两个策略区并排 ──
-  { id: "strategy",      label: "确认策略", center: [-2.5, 0,  0.0], size: [3.0, 2.0], color: "#ab47bc" },
-  { id: "strategy_live", label: "盘中策略", center: [2.5,  0,  0.0], size: [3.0, 2.0], color: "#ce93d8" },
-  // ── Row 3.5: 审核（汇合） ──
-  { id: "audit",         label: "审核区",   center: [0,    0,  1.0], size: [3.0, 1.8], color: "#ff8a65" },
-  // ── Row 4: 投票 → 风控 → 交易 ──
-  { id: "voting",        label: "投票区",   center: [-3.0, 0,  3.0], size: [2.5, 2.0], color: "#7e57c2" },
-  { id: "risk",          label: "风控台",   center: [0,    0,  3.0], size: [2.5, 2.0], color: "#ef5350" },
-  { id: "trading",       label: "交易台",   center: [3.0,  0,  3.0], size: [2.5, 2.0], color: "#f9a825" },
-  // ── Row 5: 支持角色 ──
-  { id: "position",      label: "持仓区",   center: [-3.5, 0,  5.5], size: [2.2, 2.0], color: "#26a69a" },
-  { id: "accounting",    label: "财务区",   center: [-1.2, 0,  5.5], size: [2.2, 2.0], color: "#42a5f5" },
-  { id: "inspection",    label: "巡检台",   center: [1.2,  0,  5.5], size: [2.2, 2.0], color: "#ffa726" },
-  { id: "calendar",      label: "日历区",   center: [3.5,  0,  5.5], size: [2.2, 2.0], color: "#78909c" },
+  { id: "collection", label: "采集区", center: [0,    0, -3.2], size: [3.0, 1.6], color: "#4298d4" },
+  { id: "analysis",   label: "分析区", center: [0,    0, -1.5], size: [6.5, 1.6], color: "#4caf50" },
+  { id: "strategy",   label: "策略区", center: [0,    0,  0.2], size: [8.5, 1.6], color: "#ab47bc" },
+  { id: "decision",   label: "决策区", center: [0,    0,  2.0], size: [7.5, 1.6], color: "#ef5350" },
+  { id: "execution",  label: "执行区", center: [0,    0,  3.8], size: [6.0, 1.6], color: "#f9a825" },
 ];

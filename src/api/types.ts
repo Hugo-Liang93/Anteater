@@ -157,6 +157,49 @@ export interface EnrichedCalendarEvent {
   } | null;
 }
 
+// ─── 回测 ───
+
+export type BacktestJobStatus = "pending" | "running" | "completed" | "failed";
+
+export interface BacktestJob {
+  run_id: string;
+  status: BacktestJobStatus;
+  job_type: "backtest" | "optimize" | "walk_forward";
+  config_summary: string;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  progress: number;
+  error: string | null;
+}
+
+export interface BacktestResult {
+  run_id: string;
+  symbol: string;
+  timeframe: string;
+  strategy: string;
+  start_date: string;
+  end_date: string;
+  total_trades: number;
+  win_rate: number;
+  sharpe_ratio: number;
+  max_drawdown: number;
+  net_profit: number;
+  profit_factor: number;
+}
+
+export type RecommendationStatus = "pending" | "approved" | "applied" | "rolled_back";
+
+export interface BacktestRecommendation {
+  rec_id: string;
+  run_id: string;
+  status: RecommendationStatus;
+  changes: { param: string; old_value: string; new_value: string; change_pct: number }[];
+  overfitting_ratio: number;
+  consistency_rate: number;
+  created_at: string;
+}
+
 /** 信号质量 */
 export interface SignalQuality {
   strategy: string;

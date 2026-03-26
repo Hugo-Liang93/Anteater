@@ -101,6 +101,48 @@ export function fetchTradePrecheck(params: {
   return apiClient.post<unknown>("/trade/precheck", params);
 }
 
+// ─── 回测 ───
+
+export function fetchBacktestJobs() {
+  return apiClient.get<import("./types").BacktestJob[]>("/backtest/jobs");
+}
+
+export function fetchBacktestResult(runId: string) {
+  return apiClient.get<import("./types").BacktestResult>(`/backtest/results/${runId}`);
+}
+
+export function submitBacktest(params: { symbol: string; timeframe: string; strategy: string; start_date: string; end_date: string }) {
+  return apiClient.post<{ run_id: string }>("/backtest/run", params);
+}
+
+export function submitOptimize(params: { symbol: string; timeframe: string; strategy: string; start_date: string; end_date: string }) {
+  return apiClient.post<{ run_id: string }>("/backtest/optimize", params);
+}
+
+export function submitWalkForward(params: { symbol: string; timeframe: string; strategy: string; start_date: string; end_date: string }) {
+  return apiClient.post<{ run_id: string }>("/backtest/walk-forward", params);
+}
+
+export function fetchRecommendations(runId: string) {
+  return apiClient.get<import("./types").BacktestRecommendation[]>(`/backtest/recommendations?run_id=${runId}`);
+}
+
+export function fetchRecommendation(recId: string) {
+  return apiClient.get<import("./types").BacktestRecommendation>(`/backtest/recommendations/${recId}`);
+}
+
+export function approveRecommendation(recId: string) {
+  return apiClient.post<unknown>(`/backtest/recommendations/${recId}/approve`);
+}
+
+export function applyRecommendation(recId: string) {
+  return apiClient.post<unknown>(`/backtest/recommendations/${recId}/apply`);
+}
+
+export function rollbackRecommendation(recId: string) {
+  return apiClient.post<unknown>(`/backtest/recommendations/${recId}/rollback`);
+}
+
 // ─── Studio 协议端点 (API_CONTRACT) ───
 
 export function fetchStudioAgents() {

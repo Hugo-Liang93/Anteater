@@ -1,83 +1,73 @@
 /**
- * 3D 功能区域组件 — 对齐 TASKS Phase B3
+ * 3D 功能区域组件 — 温暖卡通风格
  *
- * 在地面渲染半透明区域标记 + 区域名牌，
- * 让 6 个功能区在 3D 场景中清晰可见。
- *
- * 材质/几何体通过 useMemo 缓存并在卸载时 dispose。
+ * 用半透明圆形地毯（而非硬边矩形色带）标记功能区域，
+ * 配合区域名牌，让分区在 3D 场景中柔和可见。
  */
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { SCENE_ZONES } from "@/config/layout";
-import { useMemo } from "react";
 
-/** 单个区域地面标记 */
-function ZoneFloor({ center, size, color, label }: {
+/** 单个区域地毯标记 */
+function ZoneRug({ center, size, color, label }: {
   center: [number, number, number];
   size: [number, number];
   color: string;
   label: string;
 }) {
-  const floorGeo = useMemo(() => new THREE.PlaneGeometry(size[0], size[1]), [size]);
+  // 椭圆地毯：width/2 为 X 半径，depth/2 为 Z 半径
+  const rugGeo = useMemo(() => {
+    const g = new THREE.CircleGeometry(1, 48);
+    // 椭圆缩放在 mesh 层做
+    return g;
+  }, []);
 
   const mat = useMemo(() =>
     new THREE.MeshStandardMaterial({
       color,
       transparent: true,
-      opacity: 0.06,
+      opacity: 0.08,
+      side: THREE.DoubleSide,
+      roughness: 1.0,
+    }),
+  [color]);
+
+  // 柔和光晕边缘（第二层更大更透明）
+  const glowMat = useMemo(() =>
+    new THREE.MeshStandardMaterial({
+      color,
+      transparent: true,
+      opacity: 0.03,
       side: THREE.DoubleSide,
     }),
   [color]);
 
-  const borderMat = useMemo(() =>
-    new THREE.LineBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 0.2,
-    }),
-  [color]);
-
-  const borderGeo = useMemo(() => {
-    const hw = size[0] / 2;
-    const hd = size[1] / 2;
-    const points = [
-      new THREE.Vector3(-hw, 0, -hd),
-      new THREE.Vector3(hw, 0, -hd),
-      new THREE.Vector3(hw, 0, hd),
-      new THREE.Vector3(-hw, 0, hd),
-      new THREE.Vector3(-hw, 0, -hd),
-    ];
-    return new THREE.BufferGeometry().setFromPoints(points);
-  }, [size]);
-
-  // 组件卸载时释放材质和几何体
   useEffect(() => {
     return () => {
-      floorGeo.dispose();
+      rugGeo.dispose();
       mat.dispose();
-      borderMat.dispose();
-      borderGeo.dispose();
+      glowMat.dispose();
     };
-  }, [floorGeo, mat, borderMat, borderGeo]);
+  }, [rugGeo, mat, glowMat]);
 
   return (
     <group position={center}>
-      {/* 半透明地面 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}
-        geometry={floorGeo} material={mat}
+      {/* 主地毯 */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}
+        scale={[size[0] / 2, size[1] / 2, 1]}
+        geometry={rugGeo} material={mat}
       />
-
-      {/* 边框线 */}
-      <line>
-        <primitive object={borderGeo} attach="geometry" />
-        <primitive object={borderMat} attach="material" />
-      </line>
+      {/* 外层光晕 */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]}
+        scale={[size[0] / 2 + 0.3, size[1] / 2 + 0.3, 1]}
+        geometry={rugGeo} material={glowMat}
+      />
 
       {/* 区域名牌 */}
       <Html
-        position={[0, 0.05, -size[1] / 2 + 0.2]}
+        position={[0, 0.08, -size[1] / 2 + 0.15]}
         center
         distanceFactor={12}
         sprite
@@ -86,13 +76,14 @@ function ZoneFloor({ center, size, color, label }: {
         <div
           style={{
             color,
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: 700,
-            letterSpacing: 2,
-            opacity: 0.5,
+            letterSpacing: 3,
+            opacity: 0.4,
             pointerEvents: "none",
             userSelect: "none",
             whiteSpace: "nowrap",
+            textTransform: "uppercase",
           }}
         >
           {label}
@@ -107,7 +98,7 @@ export function Zones3D() {
   return (
     <group>
       {SCENE_ZONES.map((zone) => (
-        <ZoneFloor
+        <ZoneRug
           key={zone.id}
           center={zone.center}
           size={zone.size}

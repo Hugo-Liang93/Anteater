@@ -32,7 +32,8 @@ export const CHARACTER_MODELS: Record<EmployeeRoleType, CharacterModelAsset> = {
   live_analyst:      { modelPath: null, version: 1 },
   strategist:        { modelPath: null, version: 1 },
   live_strategist:   { modelPath: null, version: 1 },
-  auditor:           { modelPath: null, version: 1 },
+  filter_guard:      { modelPath: null, version: 1 },
+  regime_guard:      { modelPath: null, version: 1 },
   voter:             { modelPath: null, version: 1 },
   risk_officer:      { modelPath: null, version: 1 },
   trader:            { modelPath: null, version: 1 },
@@ -40,6 +41,7 @@ export const CHARACTER_MODELS: Record<EmployeeRoleType, CharacterModelAsset> = {
   accountant:        { modelPath: null, version: 1 },
   calendar_reporter: { modelPath: null, version: 1 },
   inspector:         { modelPath: null, version: 1 },
+  backtester:        { modelPath: null, version: 1 },
 };
 
 // ─── 场景道具资源 ───
@@ -110,9 +112,13 @@ export const CHARACTER_APPEARANCES: Record<EmployeeRoleType, CharacterAppearance
     shirt: "#ce93d8", pants: "#263238", hair: "#4a148c", skin: "#ffe0c0",
     hairStyle: "spiky", propType: "monitor",
   },
-  auditor: {
+  filter_guard: {
     shirt: "#ff8a65", pants: "#37474f", hair: "#4e342e", skin: "#ffd8b0",
     hairStyle: "short", propType: "clipboard",
+  },
+  regime_guard: {
+    shirt: "#ffab40", pants: "#37474f", hair: "#3e2723", skin: "#ffe0c0",
+    hairStyle: "long", propType: "monitor",
   },
   voter: {
     shirt: "#fdd835", pants: "#455a64", hair: "#424242", skin: "#ffe0c0",
@@ -141,6 +147,10 @@ export const CHARACTER_APPEARANCES: Record<EmployeeRoleType, CharacterAppearance
   inspector: {
     shirt: "#26c6da", pants: "#37474f", hair: "#5d4037", skin: "#ffe0c0",
     hairStyle: "bald", propType: "magnifier",
+  },
+  backtester: {
+    shirt: "#ff7043", pants: "#37474f", hair: "#3e2723", skin: "#ffd8b0",
+    hairStyle: "spiky", propType: "monitor",
   },
 };
 
