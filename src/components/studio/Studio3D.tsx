@@ -85,7 +85,7 @@ function DataFlowLine({ from, to, fromPos, toPos, employeesRef }: {
   employeesRef: React.RefObject<Record<EmployeeRoleType, EmployeeState>>;
 }) {
   const fromStatus = employeesRef.current?.[from]?.status ?? "idle";
-  const toStatus = employeesRef.current?.[to]?.status;
+  const toStatus = employeesRef.current?.[to]?.status ?? "idle";
   const isActive = fromStatus !== "idle";
   const isHighlight = fromStatus === "success" || toStatus === "success";
   return (

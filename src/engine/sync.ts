@@ -13,6 +13,7 @@
 // SSE 连上后 sync 推导自动跳过；断线后恢复推导作为 fallback。
 let _studioSSEActive = false;
 export function setStudioSSEActive(active: boolean) { _studioSSEActive = active; }
+export function isStudioSSEActive(): boolean { return _studioSSEActive; }
 
 import { config } from "@/config";
 import { EmployeeRole, type EmployeeRoleType } from "@/config/employees";
@@ -173,28 +174,16 @@ export function computeSync(input: SyncInput): SyncOutput {
     });
   }
 
-  // ─── 风控官 ───
-  const queueDrops = queues.reduce((s, q) => s + q.drops_oldest + q.drops_newest, 0);
-  const queueWarning = queues.some((q) => q.status !== "normal");
-  if (connected && strategies.length > 0) {
-    if (queueDrops > 10) {
-      patches.set(EmployeeRole.RISK_OFFICER, {
-        status: "blocked", currentTask: `风控拦截 | ${queueDrops} 次丢弃`,
-        stats: { queues: queues.length, drops: queueDrops },
-      });
-    } else if (queueWarning) {
-      patches.set(EmployeeRole.RISK_OFFICER, {
-        status: "alert", currentTask: `队列异常 | ${queueDrops} 次丢弃`,
-        stats: { queues: queues.length, drops: queueDrops },
-      });
-    } else {
-      patches.set(EmployeeRole.RISK_OFFICER, {
-        status: "reviewing", currentTask: `风控审核中 | ${queues.length} 队列正常`,
-        stats: { queues: queues.length, drops: queueDrops },
-      });
-    }
+  // ─── 风控官（信号决策漏斗：接收/通过/拦截） ───
+  if (connected && signals.length > 0) {
+    const actionable = signals.filter((s) => s.direction !== "hold");
+    patches.set(EmployeeRole.RISK_OFFICER, {
+      status: actionable.length > 0 ? "reviewing" : "idle",
+      currentTask: actionable.length > 0 ? "信号风控审核中" : "等待信号",
+      stats: { actionable_signals: actionable.length },
+    });
   } else {
-    patches.set(EmployeeRole.RISK_OFFICER, { status: "idle", currentTask: "待命", stats: {} });
+    patches.set(EmployeeRole.RISK_OFFICER, { status: "idle", currentTask: "等待信号", stats: {} });
   }
 
   // ─── 交易员 ───

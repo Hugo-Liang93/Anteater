@@ -2,7 +2,8 @@ import { cn } from "@/lib/utils";
 import { config } from "@/config";
 import { useMarketStore } from "@/store/market";
 import { useSignalStore, selectRiskWindows } from "@/store/signals";
-import { Activity, CalendarClock, Wifi, WifiOff } from "lucide-react";
+import { useEmployeeStore } from "@/store/employees";
+import { Activity, CalendarClock, ShieldAlert, Wifi, WifiOff } from "lucide-react";
 
 export function TopBar() {
   const quote = useMarketStore((s) => s.quotes["XAUUSD"]);
@@ -67,8 +68,9 @@ export function TopBar() {
         )}
       </div>
 
-      {/* 右：日历 + 状态 */}
+      {/* 右：保证金告警 + 日历 + 状态 */}
       <div className="flex items-center gap-3 text-xs">
+        <MarginAlert />
         <CalendarAlert riskWindows={riskWindows} />
         <span className={cn("flex items-center gap-1", healthColor)}>
           <Activity size={14} />
@@ -81,6 +83,40 @@ export function TopBar() {
         )}
       </div>
     </header>
+  );
+}
+
+/** 保证金水位告警指示器 */
+function MarginAlert() {
+  const stats = useEmployeeStore((s) => s.employees["accountant"]?.stats ?? {});
+  const mg = typeof stats.margin_guard === "object" && stats.margin_guard !== null
+    ? stats.margin_guard as { state?: string; margin_level?: number; should_block_new_trades?: boolean; should_emergency_close?: boolean }
+    : null;
+
+  if (!mg || mg.state === "safe" || mg.state === "unknown") return null;
+
+  const level = mg.margin_level != null ? `${Math.round(mg.margin_level)}%` : "";
+  const isCritical = mg.state === "critical";
+  const isDanger = mg.state === "danger";
+
+  const label = isCritical
+    ? `保证金 ${level} 紧急`
+    : isDanger
+      ? `保证金 ${level} 危险`
+      : `保证金 ${level} 预警`;
+
+  return (
+    <span className={cn(
+      "flex items-center gap-1 rounded px-1.5 py-0.5",
+      isCritical
+        ? "bg-danger/20 text-danger animate-pulse"
+        : isDanger
+          ? "bg-warning/20 text-warning animate-pulse"
+          : "bg-yellow-400/20 text-yellow-400",
+    )}>
+      <ShieldAlert size={12} />
+      <span>{label}</span>
+    </span>
   );
 }
 

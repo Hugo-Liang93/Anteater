@@ -114,8 +114,12 @@ function EventRow({ event }: { event: import("@/api/types").EnrichedCalendarEven
 export function CalendarPanel() {
   const events = useSignalStore(selectCalendarEvents);
 
-  const future = events.filter((e) => e.countdown_minutes > 0);
-  const past = events.filter((e) => e.countdown_minutes <= 0);
+  const future = events
+    .filter((e) => e.countdown_minutes > 0)
+    .sort((a, b) => a.countdown_minutes - b.countdown_minutes);
+  const past = events
+    .filter((e) => e.countdown_minutes <= 0)
+    .sort((a, b) => (b.scheduled_at ?? "").localeCompare(a.scheduled_at ?? ""));
 
   return (
     <div className="flex h-full flex-col">

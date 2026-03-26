@@ -49,9 +49,13 @@ export const DATA_FLOWS: { from: EmployeeRoleType; to: EmployeeRoleType }[] = [
   // 两条策略 → 审核汇合
   { from: "strategist", to: "auditor" },
   { from: "live_strategist", to: "auditor" },
-  // 审核 → 投票 → 风控 → 交易
+  // 审核 → 投票（group 成员走投票聚合）
   { from: "auditor", to: "voter" },
+  // 审核 → 风控（solo 策略直达风控）
+  { from: "auditor", to: "risk_officer" },
+  // 投票结果 → 风控
   { from: "voter", to: "risk_officer" },
+  // 风控 → 交易
   { from: "risk_officer", to: "trader" },
   // 交易 → 仓管
   { from: "trader", to: "position_manager" },
@@ -89,6 +93,7 @@ export const DATA_FLOWS_2D: [string, string][] = [
   ["strategist", "auditor"],
   ["live_strategist", "auditor"],
   ["auditor", "voter"],
+  ["auditor", "risk_officer"],
   ["voter", "risk_officer"],
   ["risk_officer", "trader"],
   ["trader", "position_manager"],

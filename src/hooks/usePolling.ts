@@ -22,7 +22,7 @@ import {
 import { useMarketStore } from "@/store/market";
 import { useSignalStore } from "@/store/signals";
 import { useLiveStore, type LiveSignal, type QueueInfo } from "@/store/live";
-import { syncAll } from "@/engine/sync";
+import { syncAll, isStudioSSEActive } from "@/engine/sync";
 import type { RiskWindow } from "@/api/types";
 
 export function usePolling() {
@@ -60,19 +60,23 @@ export function usePolling() {
           (r) => r.status === "fulfilled" && r.value.success,
         );
         useMarketStore.getState().setConnected(anySuccess);
-        syncAll();
+        if (!isStudioSSEActive()) syncAll();
       } catch {
         useMarketStore.getState().setConnected(false);
       }
     };
 
-    // ─── 健康 & 策略 & 经济日历（5s） ───
+    // ─── 健康 & 经济日历（5s） + 策略列表（60s，几乎不变）───
+    let lastStrategyFetch = 0;
+    const STRATEGY_INTERVAL = 60_000;
     const pollHealth = async () => {
       if (cancelled) return;
       try {
+        const now = Date.now();
+        const needStrategies = now - lastStrategyFetch >= STRATEGY_INTERVAL;
         const [healthRes, stratRes, calRes, enrichedRes] = await Promise.allSettled([
           fetchHealth(),
-          fetchStrategies(),
+          needStrategies ? fetchStrategies() : Promise.resolve({ success: false, data: null }),
           fetchRiskWindows(),
           fetchCalendarEnriched(48, 2),
         ]);
@@ -83,9 +87,10 @@ export function usePolling() {
           const health = normalizeHealth(healthRes.value);
           if (health) useSignalStore.getState().setHealth(health);
         }
-        if (stratRes.status === "fulfilled" && stratRes.value.success) {
+        if (needStrategies && stratRes.status === "fulfilled" && stratRes.value.success) {
           const strats = normalizeStrategies(stratRes.value);
           useSignalStore.getState().setStrategies(strats);
+          lastStrategyFetch = now;
         }
         if (calRes.status === "fulfilled" && calRes.value.success) {
           const raw = calRes.value.data;
@@ -128,7 +133,7 @@ export function usePolling() {
             useSignalStore.getState().setCalendarEvents(enriched);
           }
         }
-        syncAll();
+        if (!isStudioSSEActive()) syncAll();
       } catch { /* best effort */ }
     };
 
@@ -190,7 +195,7 @@ export function usePolling() {
             }
           }
         }
-        syncAll();
+        if (!isStudioSSEActive()) syncAll();
       } catch { /* best effort */ }
     };
 
@@ -220,7 +225,7 @@ export function usePolling() {
             useLiveStore.getState().setQueues(list);
           }
         }
-        syncAll();
+        if (!isStudioSSEActive()) syncAll();
       } catch { /* best effort */ }
     };
 
