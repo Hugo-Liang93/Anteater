@@ -1,7 +1,6 @@
 import { config } from "@/config";
 import { useEmployeeStore } from "@/store/employees";
 import type { LiveSignal } from "@/store/live";
-import type { StrategyInfo } from "@/api/types";
 import { Empty, TugOfWarBar } from "./shared";
 
 interface VotingGroup {
@@ -11,10 +10,9 @@ interface VotingGroup {
 
 interface VoterMetricsProps {
   signals: LiveSignal[];
-  strategies: StrategyInfo[];
 }
 
-export function VoterMetrics({ signals, strategies }: VoterMetricsProps): React.ReactNode {
+export function VoterMetrics({ signals }: VoterMetricsProps): React.ReactNode {
   const emp = useEmployeeStore.getState().employees["voter"];
   const m = emp?.stats ?? {};
 
@@ -30,7 +28,6 @@ export function VoterMetrics({ signals, strategies }: VoterMetricsProps): React.
   return (
     <VoterMetricsContent
       signals={signals}
-      strategies={strategies}
       votingGroups={votingGroups}
     />
   );
@@ -45,9 +42,8 @@ const GROUP_LABELS: Record<string, string> = {
 };
 
 /** 投票主席核心指标 — 按 voting group 分组 + 时间框架多空力量对比 */
-function VoterMetricsContent({ signals, strategies, votingGroups }: {
+function VoterMetricsContent({ signals, votingGroups }: {
   signals: LiveSignal[];
-  strategies: StrategyInfo[];
   votingGroups: VotingGroup[];
 }) {
   // 构建 strategy → group 映射

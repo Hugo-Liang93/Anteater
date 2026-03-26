@@ -76,7 +76,7 @@ export function usePolling() {
         const needStrategies = now - lastStrategyFetch >= STRATEGY_INTERVAL;
         const [healthRes, stratRes, calRes, enrichedRes] = await Promise.allSettled([
           fetchHealth(),
-          needStrategies ? fetchStrategies() : Promise.resolve({ success: false, data: null }),
+          needStrategies ? fetchStrategies() : Promise.resolve(null),
           fetchRiskWindows(),
           fetchCalendarEnriched(48, 2),
         ]);
@@ -87,7 +87,11 @@ export function usePolling() {
           const health = normalizeHealth(healthRes.value);
           if (health) useSignalStore.getState().setHealth(health);
         }
-        if (needStrategies && stratRes.status === "fulfilled" && stratRes.value.success) {
+        if (
+          needStrategies &&
+          stratRes.status === "fulfilled" &&
+          stratRes.value?.success
+        ) {
           const strats = normalizeStrategies(stratRes.value);
           useSignalStore.getState().setStrategies(strats);
           lastStrategyFetch = now;

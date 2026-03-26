@@ -20,7 +20,7 @@ import { EmployeeRole, type EmployeeRoleType } from "@/config/employees";
 import { useEmployeeStore, type ActivityStatus } from "@/store/employees";
 import { useMarketStore } from "@/store/market";
 import { useSignalStore } from "@/store/signals";
-import { useLiveStore, type LiveSignal, type QueueInfo } from "@/store/live";
+import { useLiveStore, type LiveSignal } from "@/store/live";
 import { useEventStore } from "@/store/events";
 import type { Quote, AccountInfo, Position, HealthStatus, RiskWindow, StrategyInfo } from "@/api/types";
 
@@ -37,7 +37,6 @@ export interface SyncInput {
   lastLoggedSignalId: string;
   indicators: Record<string, { indicators: Record<string, Record<string, number | null>> }>;
   signals: LiveSignal[];
-  queues: QueueInfo[];
 }
 
 export interface SyncPatch {
@@ -53,7 +52,7 @@ export interface SyncOutput {
 
 /** 纯函数：根据输入计算所有角色的状态补丁 */
 export function computeSync(input: SyncInput): SyncOutput {
-  const { quote, account, positions, connected, health, strategies, riskWindows, lastLoggedSignalId, indicators, signals, queues } = input;
+  const { quote, account, positions, connected, health, strategies, riskWindows, lastLoggedSignalId, indicators, signals } = input;
   const patches = new Map<EmployeeRoleType, SyncPatch>();
   let newSignalLog: SyncOutput["newSignalLog"] = null;
   // ─── 采集员 ───
@@ -322,13 +321,13 @@ export function syncAll() {
   try {
     const { quotes, account, positions, connected } = useMarketStore.getState();
     const { health, strategies, riskWindows, lastLoggedSignalId } = useSignalStore.getState();
-    const { indicators, signals, queues } = useLiveStore.getState();
+    const { indicators, signals } = useLiveStore.getState();
 
     const input: SyncInput = {
       quote: quotes["XAUUSD"],
       account, positions, connected,
       health, strategies, riskWindows, lastLoggedSignalId,
-      indicators, signals, queues,
+      indicators, signals,
     };
 
     const output = computeSync(input);

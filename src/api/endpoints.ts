@@ -6,6 +6,12 @@
 import { apiClient } from "./client";
 import type {
   AccountInfo,
+  BacktestConfigDefaults,
+  BacktestOptimizePayload,
+  BacktestParamSpaceTemplate,
+  BacktestRecommendation,
+  BacktestRunResult,
+  BacktestRunPayload,
   HealthStatus,
   IndicatorSnapshot,
   Position,
@@ -14,6 +20,7 @@ import type {
   RiskWindow,
   SignalQuality,
   StrategyInfo,
+  WalkForwardPayload,
 } from "./types";
 
 // ─── 市场数据 ───
@@ -108,31 +115,54 @@ export function fetchBacktestJobs() {
 }
 
 export function fetchBacktestResult(runId: string) {
-  return apiClient.get<import("./types").BacktestResult>(`/backtest/results/${runId}`);
+  return apiClient.get<BacktestRunResult>(`/backtest/results/${runId}`);
 }
 
-export function submitBacktest(params: { symbol: string; timeframe: string; strategy: string; start_date: string; end_date: string }) {
+export function fetchBacktestConfigDefaults() {
+  return apiClient.get<BacktestConfigDefaults>("/backtest/config/defaults");
+}
+
+export function fetchBacktestParamSpaceTemplate(params: {
+  timeframe: string;
+  strategies?: string[];
+}) {
+  const search = new URLSearchParams({ timeframe: params.timeframe });
+  if (params.strategies && params.strategies.length > 0) {
+    search.set("strategies", params.strategies.join(","));
+  }
+  return apiClient.get<BacktestParamSpaceTemplate>(
+    `/backtest/config/param-space-template?${search.toString()}`,
+  );
+}
+
+export function submitBacktest(params: BacktestRunPayload) {
   return apiClient.post<{ run_id: string }>("/backtest/run", params);
 }
 
-export function submitOptimize(params: { symbol: string; timeframe: string; strategy: string; start_date: string; end_date: string }) {
+export function submitOptimize(params: BacktestOptimizePayload) {
   return apiClient.post<{ run_id: string }>("/backtest/optimize", params);
 }
 
-export function submitWalkForward(params: { symbol: string; timeframe: string; strategy: string; start_date: string; end_date: string }) {
+export function submitWalkForward(params: WalkForwardPayload) {
   return apiClient.post<{ run_id: string }>("/backtest/walk-forward", params);
 }
 
-export function fetchRecommendations(runId: string) {
-  return apiClient.get<import("./types").BacktestRecommendation[]>(`/backtest/recommendations?run_id=${runId}`);
+export function generateRecommendation(walkForwardRunId: string) {
+  return apiClient.post<BacktestRecommendation>("/backtest/recommendations/generate", {
+    walk_forward_run_id: walkForwardRunId,
+  });
+}
+
+export function fetchRecommendations() {
+  return apiClient.get<BacktestRecommendation[]>("/backtest/recommendations");
 }
 
 export function fetchRecommendation(recId: string) {
-  return apiClient.get<import("./types").BacktestRecommendation>(`/backtest/recommendations/${recId}`);
+  return apiClient.get<BacktestRecommendation>(`/backtest/recommendations/${recId}`);
 }
 
-export function approveRecommendation(recId: string) {
-  return apiClient.post<unknown>(`/backtest/recommendations/${recId}/approve`);
+export function approveRecommendation(recId: string, reason = "") {
+  return apiClient.post<unknown>(`/backtest/recommendations/${recId}/approve`, { reason });
 }
 
 export function applyRecommendation(recId: string) {
