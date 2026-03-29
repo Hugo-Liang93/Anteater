@@ -50,7 +50,7 @@ export function RiskOfficerMetrics(): React.ReactNode {
 
   return (
     <div className="space-y-2.5">
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center justify-between text-[13px]">
         <span className="text-text-muted">审批通过率</span>
         <span
           className={cn(
@@ -63,7 +63,7 @@ export function RiskOfficerMetrics(): React.ReactNode {
       </div>
       <TugOfWarBar buy={passed} sell={blocked} total={received} />
 
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-3 gap-2 text-[13px]">
         <div>
           <div className="text-text-muted">接收</div>
           <div className="font-mono text-text-primary">{received}</div>
@@ -82,14 +82,14 @@ export function RiskOfficerMetrics(): React.ReactNode {
 
       {sortedTFs.length > 0 && (
         <div className="space-y-1 border-t border-border/50 pt-2">
-          <div className="text-[10px] text-text-muted">按时间框架查看</div>
+          <div className="text-[13px] text-text-muted">按时间框架查看</div>
           {sortedTFs.map((tf) => {
             const entry = byTimeframe[tf]!;
             if (entry.received === 0) return null;
             const reasons = Object.entries(entry.skip_reasons ?? {});
             return (
               <div key={tf} className="space-y-0.5">
-                <div className="flex items-center justify-between text-[10px]">
+                <div className="flex items-center justify-between text-[13px]">
                   <span className="font-mono text-accent">{tf}</span>
                   <span className="tabular-nums text-text-muted">
                     <span className="text-success">{entry.passed}</span> /{" "}
@@ -104,7 +104,7 @@ export function RiskOfficerMetrics(): React.ReactNode {
                     {reasons
                       .sort(([, a], [, b]) => b - a)
                       .map(([reason, count]) => (
-                        <div key={reason} className="flex items-center justify-between text-[9px]">
+                        <div key={reason} className="flex items-center justify-between text-[13px]">
                           <span className="text-text-muted">{SKIP_LABELS[reason] ?? reason}</span>
                           <span className="tabular-nums text-danger">{count}</span>
                         </div>
@@ -119,11 +119,11 @@ export function RiskOfficerMetrics(): React.ReactNode {
 
       {Object.keys(skipReasons).length > 0 && (
         <div className="space-y-1 border-t border-border/50 pt-2">
-          <div className="text-[10px] text-text-muted">主要阻断原因</div>
+          <div className="text-[13px] text-text-muted">主要阻断原因</div>
           {Object.entries(skipReasons)
             .sort(([, a], [, b]) => b - a)
             .map(([reason, count]) => (
-              <div key={reason} className="flex items-center justify-between text-[10px]">
+              <div key={reason} className="flex items-center justify-between text-[13px]">
                 <span className="text-text-secondary">{SKIP_LABELS[reason] ?? reason}</span>
                 <span className="tabular-nums text-danger">{count}</span>
               </div>

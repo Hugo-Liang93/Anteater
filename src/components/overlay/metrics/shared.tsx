@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 export function Label({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] uppercase tracking-wider text-text-muted">{children}</span>
+    <span className="text-[13px] uppercase tracking-wider text-text-muted">{children}</span>
   );
 }
 
@@ -16,7 +16,7 @@ export function KV({ k, v, color }: { k: string; v: string; color?: string }) {
 }
 
 export function Empty({ text }: { text: string }) {
-  return <p className="text-xs text-text-muted">{text}</p>;
+  return <p className="text-[13px] text-text-muted">{text}</p>;
 }
 
 export function TugOfWarBar({

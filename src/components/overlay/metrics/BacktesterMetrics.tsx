@@ -605,7 +605,7 @@ export function BacktesterMetrics() {
 
   return (
     <div className="max-h-[72vh] space-y-2 overflow-y-auto pr-1">
-      <div className="flex gap-1 text-[10px]">
+      <div className="flex gap-1 text-[13px]">
         {(["config", "jobs", "result", "recs"] as const).map((key) => (
           <button
             key={key}
@@ -630,12 +630,12 @@ export function BacktesterMetrics() {
       </div>
 
       {message && (
-        <div className="rounded border border-success/20 bg-success/10 px-2 py-1 text-[10px] text-success">
+        <div className="rounded border border-success/20 bg-success/10 px-2 py-1 text-[13px] text-success">
           {message}
         </div>
       )}
       {error && (
-        <div className="rounded border border-danger/20 bg-danger/10 px-2 py-1 text-[10px] text-danger">
+        <div className="rounded border border-danger/20 bg-danger/10 px-2 py-1 text-[13px] text-danger">
           {error}
         </div>
       )}
@@ -732,7 +732,7 @@ function ConfigPanel({
   ];
 
   return (
-    <div className="max-h-[68vh] space-y-2 overflow-y-auto pr-1 text-[10px]">
+    <div className="max-h-[68vh] space-y-2 overflow-y-auto pr-1 text-[13px]">
       <CollapsibleSection
         title={"基础配置"}
         defaultOpen={true}
@@ -1220,7 +1220,7 @@ function JobCard({
   const progressPct = Math.max(0, Math.min(job.progress ?? 0, 1)) * 100;
 
   return (
-    <div className="rounded border border-border/50 px-2 py-1.5 text-[10px]">
+    <div className="rounded border border-border/50 px-2 py-1.5 text-[13px]">
       <div className="flex items-center justify-between">
         <span className="font-medium text-text-primary">{jobTypeLabel(job.job_type)}</span>
         <span className={cn("rounded-full px-1.5 py-0.5", style.cls)}>{style.label}</span>
@@ -1270,7 +1270,7 @@ function ResultPanel({ result }: { result: BacktestRunResult }) {
       <div className="space-y-2">
         <Empty text={`任务状态：${JOB_STATUS_STYLE[result.status]?.label ?? result.status}`} />
         {typeof result.progress === "number" && (
-          <div className="text-[10px] text-text-muted">
+          <div className="text-[13px] text-text-muted">
             进度 {(result.progress * 100).toFixed(0)}%
           </div>
         )}
@@ -1286,11 +1286,11 @@ function ResultPanel({ result }: { result: BacktestRunResult }) {
   const strategies = result.config.strategies?.join(", ") || "全部策略";
   return (
     <div className="space-y-2">
-      <div className="text-[10px] text-text-muted">
+      <div className="text-[13px] text-text-muted">
         研究标的 {result.config.symbol} / 周期 {result.config.timeframe} / 策略 {strategies}
       </div>
       <MetricsGrid metrics={metrics} />
-      <div className="grid grid-cols-2 gap-2 text-xs">
+      <div className="grid grid-cols-2 gap-2 text-[13px]">
         <KV k="参数项数" v={String(Object.keys(result.param_set ?? {}).length)} />
         <KV k="交易数" v={String(metrics.total_trades)} />
       </div>
@@ -1303,7 +1303,7 @@ function OptimizationResultPanel({ results }: { results: BacktestResult[] }) {
   const best = results[0]!;
   return (
     <div className="space-y-2">
-      <div className="text-[10px] text-text-muted">共返回 {results.length} 组优化结果，当前先展示最佳组合</div>
+      <div className="text-[13px] text-text-muted">共返回 {results.length} 组优化结果，当前先展示最佳组合</div>
       <ResultPanel result={best} />
     </div>
   );
@@ -1313,11 +1313,11 @@ function WalkForwardPanel({ result }: { result: WalkForwardResultSummary }) {
   const metrics = result.aggregate_metrics;
   return (
     <div className="space-y-2">
-      <div className="text-[10px] text-text-muted">
+      <div className="text-[13px] text-text-muted">
         前推验证 {result.n_splits} 段 | 过拟合系数 {result.overfitting_ratio.toFixed(2)} | 一致性{" "}
         {(result.consistency_rate * 100).toFixed(0)}%
       </div>
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-3 gap-2 text-[13px]">
         <KV k="交易数" v={String(metrics.total_trades)} />
         <KV k="胜率" v={`${(metrics.win_rate * 100).toFixed(1)}%`} color={metricColor(metrics.win_rate, 0.5)} />
         <KV k="夏普" v={metrics.sharpe_ratio.toFixed(2)} color={metricColor(metrics.sharpe_ratio, 1)} />
@@ -1327,7 +1327,7 @@ function WalkForwardPanel({ result }: { result: WalkForwardResultSummary }) {
       </div>
       <div className="space-y-1">
         {result.splits.slice(0, 4).map((split) => (
-          <div key={split.split_index} className="rounded bg-bg-secondary px-2 py-1 text-[10px]">
+          <div key={split.split_index} className="rounded bg-bg-secondary px-2 py-1 text-[13px]">
             第 {split.split_index + 1} 段 | 样本内 {split.in_sample_sharpe.toFixed(2)} | 样本外{" "}
             {split.out_of_sample_sharpe.toFixed(2)}
           </div>
@@ -1339,7 +1339,7 @@ function WalkForwardPanel({ result }: { result: WalkForwardResultSummary }) {
 
 function MetricsGrid({ metrics }: { metrics: BacktestMetricsSummary }) {
   return (
-    <div className="grid grid-cols-3 gap-2 text-xs">
+    <div className="grid grid-cols-3 gap-2 text-[13px]">
       <KV k="交易数" v={String(metrics.total_trades)} />
       <KV k="胜率" v={`${(metrics.win_rate * 100).toFixed(1)}%`} color={metricColor(metrics.win_rate, 0.5)} />
       <KV k="夏普" v={metrics.sharpe_ratio.toFixed(2)} color={metricColor(metrics.sharpe_ratio, 1)} />
@@ -1384,7 +1384,7 @@ function RecommendationList({
           cls: "bg-text-muted/20 text-text-muted",
         };
         return (
-          <div key={rec.rec_id} className="rounded border border-border/50 px-2 py-1.5 text-[10px]">
+          <div key={rec.rec_id} className="rounded border border-border/50 px-2 py-1.5 text-[13px]">
             <div className="flex items-center justify-between">
               <span className="text-text-primary">{rec.changes.length} 项参数变更</span>
               <span className={cn("rounded-full px-1.5 py-0.5", style.cls)}>{style.label}</span>

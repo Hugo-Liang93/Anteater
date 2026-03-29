@@ -43,7 +43,7 @@ export function TraderMetrics({ quote, positions }: TraderMetricsProps): React.R
 
   return (
     <div className="space-y-2.5">
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-3 gap-2 text-[13px]">
         <KVText title="已执行" value={String(execCount)} />
         <KVText
           title="成交率"
@@ -64,13 +64,13 @@ export function TraderMetrics({ quote, positions }: TraderMetricsProps): React.R
       </div>
 
       {lastError && (
-        <div className="rounded border border-warning/40 bg-warning/5 px-2 py-1 text-[10px] text-warning">
+        <div className="rounded border border-warning/40 bg-warning/5 px-2 py-1 text-[13px] text-warning">
           <span className="font-medium">执行异常：</span>
           {lastError}
         </div>
       )}
       {!lastError && lastRiskBlock && (
-        <div className="rounded border border-white/10 bg-black/10 px-2 py-1 text-[10px] text-white/65">
+        <div className="rounded border border-white/10 bg-black/10 px-2 py-1 text-[13px] text-white/65">
           <span className="font-medium">最近风控阻断：</span>
           {lastRiskBlock}
         </div>
@@ -78,20 +78,20 @@ export function TraderMetrics({ quote, positions }: TraderMetricsProps): React.R
 
       {pendingEntries.length > 0 ? (
         <div className="space-y-1.5">
-          <div className="text-[10px] text-text-muted">价格确认中（{pendingEntries.length}）</div>
+          <div className="text-[13px] text-text-muted">价格确认中（{pendingEntries.length}）</div>
           {pendingEntries.map((entry) => (
             <EntryZoneCard key={entry.signal_id} entry={entry} currentPrice={quote?.bid} />
           ))}
         </div>
       ) : (
-        <div className="text-[10px] text-text-muted">当前没有挂起入场区间</div>
+        <div className="text-[13px] text-text-muted">当前没有挂起入场区间</div>
       )}
 
       {positions.length > 0 && (
         <div className="space-y-1 border-t border-border/50 pt-2">
-          <div className="text-[10px] text-text-muted">活动持仓（{positions.length}）</div>
+          <div className="text-[13px] text-text-muted">活动持仓（{positions.length}）</div>
           {positions.slice(0, 3).map((position) => (
-            <div key={position.ticket} className="flex justify-between text-[10px]">
+            <div key={position.ticket} className="flex justify-between text-[13px]">
               <span>
                 <span className={position.type === "buy" ? "text-buy" : "text-sell"}>
                   {position.type === "buy" ? "多" : "空"}
@@ -143,7 +143,7 @@ function EntryZoneCard({
   return (
     <div
       className={cn(
-        "rounded border px-2 py-1.5 text-[10px]",
+        "rounded border px-2 py-1.5 text-[13px]",
         inZone ? "border-success/50 bg-success/5" : "border-border/50",
       )}
     >

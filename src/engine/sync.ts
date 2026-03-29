@@ -159,18 +159,22 @@ export function computeSync(input: SyncInput): SyncOutput {
     stats: {},
   });
 
-  // ─── 投票主席（多 TF 感知）───
+  // ─── 投票主席（多 TF 感知，按 confidence 加权）───
   if (signals.length > 0) {
     const dirs = signals.reduce(
-      (acc, s) => { if (s.direction === "buy") acc.buy++; else if (s.direction === "sell") acc.sell++; return acc; },
-      { buy: 0, sell: 0 },
+      (acc, s) => {
+        if (s.direction === "buy") { acc.buyCount++; acc.buyWeight += s.confidence; }
+        else if (s.direction === "sell") { acc.sellCount++; acc.sellWeight += s.confidence; }
+        return acc;
+      },
+      { buyCount: 0, sellCount: 0, buyWeight: 0, sellWeight: 0 },
     );
-    const consensus = dirs.buy > dirs.sell ? "偏多" : dirs.sell > dirs.buy ? "偏空" : "分歧";
+    const consensus = dirs.buyWeight > dirs.sellWeight ? "偏多" : dirs.sellWeight > dirs.buyWeight ? "偏空" : "分歧";
     const tfStr = signalTFs.length > 1 ? ` | ${signalTFs.join("/")}` : "";
     patches.set(EmployeeRole.VOTER, {
       status: "working",
-      currentTask: `${signals.length} 票 | ${consensus} (${dirs.buy}买/${dirs.sell}卖)${tfStr}`,
-      stats: { buy: dirs.buy, sell: dirs.sell, signal_tfs: signalTFs.length },
+      currentTask: `${signals.length} 票 | ${consensus} (${dirs.buyCount}买/${dirs.sellCount}卖)${tfStr}`,
+      stats: { buy: dirs.buyCount, sell: dirs.sellCount, buy_weight: dirs.buyWeight, sell_weight: dirs.sellWeight, signal_tfs: signalTFs.length },
     });
   } else {
     patches.set(EmployeeRole.VOTER, {
@@ -249,7 +253,7 @@ export function computeSync(input: SyncInput): SyncOutput {
     const activeGuards = riskWindows.filter((w) => w.guard_active);
     // 找最近的高影响事件
     const nearest = highImpact
-      .map((w) => ({ ...w, ms: new Date(w.scheduled_at || w.datetime).getTime() - now }))
+      .map((w) => ({ ...w, ms: new Date(w.scheduled_at).getTime() - now }))
       .filter((w) => w.ms > 0)
       .sort((a, b) => a.ms - b.ms)[0];
 
@@ -314,7 +318,18 @@ export function computeSync(input: SyncInput): SyncOutput {
 
 // ─── 入口：从 store 收集输入 → 计算 → 写回 ───
 
+let _syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** 防抖 syncAll：多个 poll 在短时间内完成时只执行一次 */
 export function syncAll() {
+  if (_syncTimer) return;
+  _syncTimer = setTimeout(() => {
+    _syncTimer = null;
+    _syncAllImmediate();
+  }, 100);
+}
+
+function _syncAllImmediate() {
   // SSE 连接时后端直接推送真实状态，跳过推导避免覆盖
   if (_studioSSEActive) return;
 

@@ -23,6 +23,7 @@ import type { EmployeeRoleType } from "@/config/employees";
 import { employeeConfigMap, statusColor } from "@/config/employees";
 import { CHARACTER_APPEARANCES } from "@/config/assets";
 import { useEmployeeStore } from "@/store/employees";
+import { useUIStore } from "@/store/ui";
 import { useLiveStore } from "@/store/live";
 import type { ActivityStatus } from "@/store/employees";
 import { CharGeo, CharMat, CharMatTemplates } from "@/engine/shared3d";
@@ -60,25 +61,31 @@ export const Character3D = memo(function Character3D({ role, position, onClick }
 
   // 订阅 store 变化，更新 ref（不触发 React 重渲染）
   useEffect(() => {
-    const unsub = useEmployeeStore.subscribe((state) => {
+    // 订阅 employee store（status / currentTask）
+    const unsub1 = useEmployeeStore.subscribe((state) => {
       const emp = state.employees[role];
       const newStatus = emp?.status ?? "idle";
-      const newSelected = state.selectedEmployee === role;
       cachedStateRef.current.status = newStatus;
-      cachedStateRef.current.isSelected = newSelected;
       if (newStatus !== prevStatusRef.current) {
         prevStatusRef.current = newStatus;
         cachedStatusColorRef.current = statusColor(newStatus);
       }
     });
+    // 订阅 UI store（isSelected 从右面板状态派生）
+    const unsub2 = useUIStore.subscribe((state) => {
+      const sel = state.rightPanel.kind === "employee" ? state.rightPanel.employeeId : null;
+      cachedStateRef.current.isSelected = sel === role;
+    });
     // 初始化
-    const state = useEmployeeStore.getState();
-    const emp = state.employees[role];
+    const empState = useEmployeeStore.getState();
+    const emp = empState.employees[role];
     cachedStateRef.current.status = emp?.status ?? "idle";
-    cachedStateRef.current.isSelected = state.selectedEmployee === role;
     cachedStatusColorRef.current = statusColor(cachedStateRef.current.status);
     prevStatusRef.current = cachedStateRef.current.status;
-    return unsub;
+    const uiState = useUIStore.getState();
+    const selEmployee = uiState.rightPanel.kind === "employee" ? uiState.rightPanel.employeeId : null;
+    cachedStateRef.current.isSelected = selEmployee === role;
+    return () => { unsub1(); unsub2(); };
   }, [role]);
 
   // Hover 状态
@@ -111,10 +118,15 @@ export const Character3D = memo(function Character3D({ role, position, onClick }
     };
   }, [materials]);
 
+  // 追踪上一帧状态，仅在变化时更新静态材质属性
+  const lastFrameStatusRef = useRef<ActivityStatus | null>(null);
+
   useFrame(() => {
     if (!groupRef.current) return;
     const t = performance.now() / 1000;
     const { status, isSelected } = cachedStateRef.current;
+    const statusChanged = status !== lastFrameStatusRef.current;
+    if (statusChanged) lastFrameStatusRef.current = status;
 
     // ─── 成功扩散光圈触发检测 ───
     const sa = successAnimRef.current;
@@ -124,8 +136,8 @@ export const Character3D = memo(function Character3D({ role, position, onClick }
     }
     sa.lastStatus = status;
 
-    // ─── 整体透明度（disconnected 变暗） ───
-    if (groupRef.current) {
+    // ─── 整体透明度（仅在 status 变化时更新，避免每帧写材质属性） ───
+    if (statusChanged) {
       const dimming = status === "disconnected" ? 0.5 : 1.0;
       materials.skin.opacity = dimming;
       materials.skin.transparent = dimming < 1;
@@ -237,7 +249,7 @@ export const Character3D = memo(function Character3D({ role, position, onClick }
     if (leftLegRef.current) leftLegRef.current.rotation.x = -Math.sin(t * limbSpeed) * legAmp;
     if (rightLegRef.current) rightLegRef.current.rotation.x = Math.sin(t * limbSpeed) * legAmp;
 
-    // ─── 衣服发光 ───
+    // ─── 衣服发光（动画状态每帧更新，静态状态仅在变化时设置一次） ───
     switch (status) {
       case "alert": {
         const flash = Math.sin(t * 4) > 0;
@@ -256,7 +268,7 @@ export const Character3D = memo(function Character3D({ role, position, onClick }
         if (elapsed < 1.5) {
           materials.shirt.emissive.set("#00ff88");
           materials.shirt.emissiveIntensity = Math.max(0, 0.5 * (1 - elapsed / 1.5));
-        } else {
+        } else if (statusChanged || elapsed < 1.6) {
           materials.shirt.emissive.set("#000000");
           materials.shirt.emissiveIntensity = 0;
         }
@@ -274,10 +286,6 @@ export const Character3D = memo(function Character3D({ role, position, onClick }
         materials.shirt.emissive.set("#ab47bc");
         materials.shirt.emissiveIntensity = 0.1 + Math.sin(t * 1.5) * 0.08;
         break;
-      case "disconnected":
-        materials.shirt.emissive.set("#b71c1c");
-        materials.shirt.emissiveIntensity = 0.2;
-        break;
       case "reconnecting": {
         const phase = Math.sin(t * 3) > 0;
         materials.shirt.emissive.set(phase ? "#ff9100" : "#42a5f5");
@@ -285,17 +293,27 @@ export const Character3D = memo(function Character3D({ role, position, onClick }
         break;
       }
       default:
-        materials.shirt.emissive.set("#000000");
-        materials.shirt.emissiveIntensity = 0;
+        // 静态状态仅在 status 变化时更新一次
+        if (statusChanged) {
+          if (status === "disconnected") {
+            materials.shirt.emissive.set("#b71c1c");
+            materials.shirt.emissiveIntensity = 0.2;
+          } else {
+            materials.shirt.emissive.set("#000000");
+            materials.shirt.emissiveIntensity = 0;
+          }
+        }
         break;
     }
 
-    // ─── 状态灯颜色（使用缓存颜色，避免每帧转换） ───
+    // ─── 状态灯颜色（仅 status 变化时更新颜色，动画每帧更新亮度） ───
     if (statusLightRef.current) {
       const mat = statusLightRef.current.material as THREE.MeshStandardMaterial;
-      const c = cachedStatusColorRef.current;
-      mat.color.set(c);
-      mat.emissive.set(c);
+      if (statusChanged) {
+        const c = cachedStatusColorRef.current;
+        mat.color.set(c);
+        mat.emissive.set(c);
+      }
       mat.emissiveIntensity = status === "idle" ? 0.3 : 0.8 + Math.sin(t * 4) * 0.2;
     }
 
@@ -465,7 +483,7 @@ function NameTag({ role, color, name, title, hovered }: {
   const status = useEmployeeStore((s) => s.employees[role]?.status ?? ("idle" as ActivityStatus));
 
   return (
-    <Html position={[0, 1.95, 0]} center distanceFactor={7} sprite zIndexRange={[0, 0]}>
+    <Html position={[0, 1.95, 0]} center distanceFactor={7} sprite zIndexRange={[24, 0]}>
       <div
         style={{
           background: hovered ? "rgba(10,20,30,0.95)" : "rgba(15,25,35,0.88)",
@@ -561,7 +579,7 @@ function SignalIndicator() {
   const label = isBuy ? "BUY" : "SELL";
 
   return (
-    <Html position={[0, 2.15, 0]} center distanceFactor={7} sprite zIndexRange={[0, 0]}>
+    <Html position={[0, 2.15, 0]} center distanceFactor={7} sprite zIndexRange={[24, 0]}>
       <div style={{
         background: color, color: "#fff", fontSize: 9, fontWeight: 800,
         padding: "2px 6px", borderRadius: 4, pointerEvents: "none",

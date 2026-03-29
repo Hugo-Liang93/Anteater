@@ -30,7 +30,7 @@ export const config = {
 
   symbols: ["XAUUSD"] as const,
   timeframes: ["M5", "M15", "M30", "H1", "H4", "D1"] as const,
-  defaultTimeframe: "M5" as const,
+  defaultTimeframe: "M15" as const,
   enableDayNight: false,
 } as const;
 

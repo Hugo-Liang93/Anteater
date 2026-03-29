@@ -4,6 +4,7 @@ import {
   fetchAccountInfo,
   fetchHealth,
   fetchIndicators,
+  fetchOhlc,
   fetchPositions,
   fetchQueues,
   fetchQuote,
@@ -56,10 +57,10 @@ export function usePolling() {
           useMarketStore.getState().setPositions(positions);
         }
 
-        const anySuccess = [quoteRes, accountRes, posRes].some(
-          (r) => r.status === "fulfilled" && r.value.success,
-        );
-        useMarketStore.getState().setConnected(anySuccess);
+        // 需要行情+账户都成功才算真正连接
+        const quoteOk = quoteRes.status === "fulfilled" && quoteRes.value.success;
+        const accountOk = accountRes.status === "fulfilled" && accountRes.value.success;
+        useMarketStore.getState().setConnected(quoteOk && accountOk);
         if (!isStudioSSEActive()) syncAll();
       } catch {
         useMarketStore.getState().setConnected(false);
@@ -144,20 +145,34 @@ export function usePolling() {
     // ─── 指标 & 信号（3s） ───
     // 指标：拉取所有配置的 TF；信号：不传 TF 拉取全部
     const INDICATOR_TFS = config.timeframes;
+    const STATUS_TF = config.defaultTimeframe;
     const pollLive = async () => {
       if (cancelled) return;
       try {
         const indPromises = INDICATOR_TFS.map((tf) =>
           fetchIndicators(config.symbols[0], tf).then((res) => ({ tf, res })),
         );
-        const [sigRes, ...indResults] = await Promise.allSettled([
+        const [sigRes, latestOhlcRes, ...indResults] = await Promise.allSettled([
           fetchRecentSignals(config.symbols[0], undefined, "all"),
+          fetchOhlc(config.symbols[0], STATUS_TF, 1),
           ...indPromises,
         ]);
 
         if (cancelled) return;
 
         // 指标：按 TF 写入 store
+        if (latestOhlcRes.status === "fulfilled" && latestOhlcRes.value.success) {
+          const bars = latestOhlcRes.value.data;
+          const latestBar = Array.isArray(bars) ? bars[bars.length - 1] : null;
+          if (latestBar) {
+            useMarketStore.getState().setLatestOhlcBar(
+              config.symbols[0],
+              STATUS_TF,
+              latestBar,
+            );
+          }
+        }
+
         const store = useLiveStore.getState();
         for (const result of indResults) {
           if (result.status === "fulfilled") {

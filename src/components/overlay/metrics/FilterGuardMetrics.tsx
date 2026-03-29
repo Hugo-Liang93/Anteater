@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { useEmployeeStore } from "@/store/employees";
 import { Empty, TugOfWarBar } from "./shared";
-import { extractBlocks } from "./utils";
+import { extractBlocks, safeNum } from "./utils";
 
 const FILTER_LABELS: Record<string, string> = {
   outside_allowed_sessions: "交易时段限制",
@@ -15,23 +15,23 @@ export function FilterGuardMetrics(): React.ReactNode {
   const employee = useEmployeeStore.getState().employees.filter_guard;
   const stats = employee?.stats ?? {};
 
-  const confirmedPassed = Number(stats.confirmed_passed ?? 0);
-  const confirmedBlocked = Number(stats.confirmed_blocked ?? 0);
+  const confirmedPassed = safeNum(stats.confirmed_passed);
+  const confirmedBlocked = safeNum(stats.confirmed_blocked);
   const confirmedBlocks = extractBlocks(stats.confirmed_blocks);
-  const intrabarPassed = Number(stats.intrabar_passed ?? 0);
-  const intrabarBlocked = Number(stats.intrabar_blocked ?? 0);
+  const intrabarPassed = safeNum(stats.intrabar_passed);
+  const intrabarBlocked = safeNum(stats.intrabar_blocked);
   const intrabarBlocks = extractBlocks(stats.intrabar_blocks);
-  const totalPassed = Number(stats.total_passed ?? 0);
-  const totalBlocked = Number(stats.total_blocked ?? 0);
-  const totalSnapshots = Number(stats.total_snapshots ?? 0);
-  const passRate = Number(
+  const totalPassed = safeNum(stats.total_passed);
+  const totalBlocked = safeNum(stats.total_blocked);
+  const totalSnapshots = safeNum(stats.total_snapshots);
+  const passRate = safeNum(
     stats.pass_rate ?? (totalSnapshots > 0 ? (totalPassed / totalSnapshots) * 100 : 0),
   );
 
   const allBlocks: Record<string, number> = {};
   for (const blocks of [confirmedBlocks, intrabarBlocks]) {
     for (const [key, value] of Object.entries(blocks)) {
-      allBlocks[key] = (allBlocks[key] ?? 0) + Number(value);
+      allBlocks[key] = (allBlocks[key] ?? 0) + safeNum(value);
     }
   }
 
@@ -39,7 +39,7 @@ export function FilterGuardMetrics(): React.ReactNode {
 
   return (
     <div className="space-y-2.5">
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center justify-between text-[13px]">
         <span className="text-text-muted">样本通过率</span>
         <span
           className={cn(
@@ -53,8 +53,8 @@ export function FilterGuardMetrics(): React.ReactNode {
       <TugOfWarBar buy={totalPassed} sell={totalBlocked} total={totalSnapshots} />
 
       <div className="space-y-1 border-t border-border/50 pt-2">
-        <div className="text-[10px] text-text-muted">按输入范围查看</div>
-        <div className="space-y-0.5 text-[10px]">
+        <div className="text-[13px] text-text-muted">按输入范围查看</div>
+        <div className="space-y-0.5 text-[13px]">
           <div className="flex items-center justify-between">
             <span className="text-text-muted">确认态样本</span>
             <span className="tabular-nums">
@@ -74,11 +74,11 @@ export function FilterGuardMetrics(): React.ReactNode {
 
       {Object.keys(allBlocks).length > 0 && (
         <div className="space-y-1 border-t border-border/50 pt-2">
-          <div className="text-[10px] text-text-muted">阻断原因</div>
+          <div className="text-[13px] text-text-muted">阻断原因</div>
           {Object.entries(allBlocks)
             .sort(([, a], [, b]) => b - a)
             .map(([reason, count]) => (
-              <div key={reason} className="flex items-center justify-between text-[10px]">
+              <div key={reason} className="flex items-center justify-between text-[13px]">
                 <span className="text-text-secondary">{FILTER_LABELS[reason] ?? reason}</span>
                 <span className="tabular-nums text-danger">{count}</span>
               </div>

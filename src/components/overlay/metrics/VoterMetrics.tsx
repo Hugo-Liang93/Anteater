@@ -89,7 +89,7 @@ export function VoterMetrics({ signals }: VoterMetricsProps): React.ReactNode {
     <div className="space-y-2.5">
       {groupTotal > 0 && (
         <>
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-[13px]">
             <span className="text-text-muted">投票总览（{groupTotal} 条组内信号）</span>
             <span className="font-medium">
               {groupBuy > groupSell ? (
@@ -107,7 +107,7 @@ export function VoterMetrics({ signals }: VoterMetricsProps): React.ReactNode {
 
       {votingGroups.length > 0 && groupSignals.size > 0 && (
         <div className="space-y-1 border-t border-border/50 pt-2">
-          <div className="text-[10px] text-text-muted">按投票分组查看</div>
+          <div className="text-[13px] text-text-muted">按投票分组查看</div>
           {votingGroups.map((group) => {
             const current = groupSignals.get(group.name);
             if (!current) return null;
@@ -117,7 +117,7 @@ export function VoterMetrics({ signals }: VoterMetricsProps): React.ReactNode {
 
             return (
               <div key={group.name} className="space-y-0.5">
-                <div className="flex items-center justify-between text-[10px]">
+                <div className="flex items-center justify-between text-[13px]">
                   <span className="text-accent">{GROUP_LABELS[group.name] ?? group.name}</span>
                   <span className="tabular-nums text-text-muted">
                     <span className="text-buy">{current.buy}</span> /
@@ -134,14 +134,14 @@ export function VoterMetrics({ signals }: VoterMetricsProps): React.ReactNode {
 
       {sortedTFs.length > 0 && (
         <div className="space-y-1 border-t border-border/50 pt-2">
-          <div className="text-[10px] text-text-muted">按周期查看投票拉锯</div>
+          <div className="text-[13px] text-text-muted">按周期查看投票拉锯</div>
           {sortedTFs.map((timeframe) => {
             const current = byTF.get(timeframe)!;
             const total = current.buy + current.sell + current.hold;
 
             return (
               <div key={timeframe} className="space-y-0.5">
-                <div className="flex items-center justify-between text-[10px]">
+                <div className="flex items-center justify-between text-[13px]">
                   <span className="font-mono text-accent">{timeframe}</span>
                   <span className="tabular-nums text-text-muted">
                     <span className="text-buy">{current.buy}</span> /

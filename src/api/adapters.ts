@@ -30,7 +30,7 @@ export function normalizeQuote(res: ApiResponse<unknown>): Quote | null {
     symbol: str(d.symbol, "XAUUSD"),
     bid: num(d.bid),
     ask: num(d.ask),
-    spread: num(d.spread) || num(res.metadata?.spread),
+    spread: d.spread != null ? num(d.spread) : num(res.metadata?.spread),
     time: str(d.time),
   };
 }
@@ -45,11 +45,11 @@ export function normalizeAccount(res: ApiResponse<unknown>): AccountInfo | null 
     balance: num(d.balance),
     equity: num(d.equity),
     margin: num(d.margin),
-    free_margin: num(d.free_margin) || num(d.margin_free),
+    free_margin: d.free_margin != null ? num(d.free_margin) : num(d.margin_free),
     profit: num(d.profit),
     currency: str(d.currency, "USD"),
     leverage: num(d.leverage),
-    server: str(d.server) || str(res.metadata?.server),
+    server: d.server != null ? str(d.server) : str(res.metadata?.server, "Unknown"),
   };
 }
 

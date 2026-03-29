@@ -11,7 +11,7 @@ import { employeeConfigs } from "@/config/employees";
 import type { EmployeeRoleType } from "@/config/employees";
 import { AGENT_POSITIONS, DATA_FLOWS, SCREEN_ONLY_AGENTS } from "@/config/layout";
 import { useEmployeeStore } from "@/store/employees";
-import { useUIStore } from "@/store/ui";
+import { useUIStore, selectSelectedEmployee } from "@/store/ui";
 import { getWorkflowByRole, workflowConfigMap } from "@/config/workflows";
 import { CharacterModel } from "./CharacterModel";
 import { RobotInspector } from "./RobotInspector";
@@ -174,25 +174,27 @@ function FocusMarker({
 
 /** 稳定的 onClick 工厂 — 避免每次渲染创建新函数击穿 Character3D memo */
 function useCharacterClickHandlers() {
-  const setSelected = useEmployeeStore((s) => s.setSelectedEmployee);
+  const openRightPanel = useUIStore((s) => s.openRightPanel);
   const handlersRef = useRef(new Map<EmployeeRoleType, () => void>());
 
   // 懒初始化所有角色的 click handler
   const getHandler = useCallback((role: EmployeeRoleType) => {
     let handler = handlersRef.current.get(role);
     if (!handler) {
-      handler = () => setSelected(role);
+      handler = () => {
+        openRightPanel({ kind: "employee", workflowId: getWorkflowByRole(role) ?? "support", employeeId: role });
+      };
       handlersRef.current.set(role, handler);
     }
     return handler;
-  }, [setSelected]);
+  }, [openRightPanel]);
 
   return getHandler;
 }
 
 const Scene = memo(function Scene({ dayNight }: { dayNight: DayNightParams }) {
   const getClickHandler = useCharacterClickHandlers();
-  const selectedEmployee = useEmployeeStore((s) => s.selectedEmployee);
+  const selectedEmployee = useUIStore(selectSelectedEmployee);
   const selectedWorkflow = useUIStore((s) => s.selectedWorkflow);
   const activeWorkflow = selectedEmployee
     ? getWorkflowByRole(selectedEmployee)
@@ -299,7 +301,6 @@ const Scene = memo(function Scene({ dayNight }: { dayNight: DayNightParams }) {
 });
 
 export function Studio3D() {
-  const setSelected = useEmployeeStore((s) => s.setSelectedEmployee);
   const [dayNight, setDayNight] = useState(() => computeDayNight());
 
   useEffect(() => {
@@ -315,10 +316,10 @@ export function Studio3D() {
         {dayNight.periodName} {dayNight.isNight ? "🌙" : "☀️"}
       </div>
       <Canvas
-        shadows
+        shadows={{ enabled: true, type: THREE.PCFShadowMap }}
         dpr={[1, 1.5]}
         camera={{ position: [0, 8.8, 15.4], fov: 34, near: 0.1, far: 80 }}
-        onPointerMissed={() => setSelected(null)}
+        resize={{ debounce: { resize: 200, scroll: 0 } }}
         style={{ background: bgHex }}
       >
         <Scene dayNight={dayNight} />

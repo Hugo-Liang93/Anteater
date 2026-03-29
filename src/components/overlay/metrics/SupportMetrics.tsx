@@ -16,7 +16,7 @@ export function PositionManagerMetrics({ positions }: PositionManagerMetricsProp
 
   return (
     <div className="space-y-2">
-      <div className="space-y-1 text-xs">
+      <div className="space-y-1 text-[13px]">
         {positions.slice(0, 5).map((position) => (
           <div key={position.ticket} className="flex justify-between">
             <span>
@@ -32,7 +32,7 @@ export function PositionManagerMetrics({ positions }: PositionManagerMetricsProp
           </div>
         ))}
       </div>
-      <div className="flex justify-between text-xs font-medium">
+      <div className="flex justify-between text-[13px] font-medium">
         <span className="text-text-muted">总浮盈亏</span>
         <span className={totalPnl >= 0 ? "text-buy" : "text-sell"}>
           {totalPnl >= 0 ? "+" : ""}
@@ -93,7 +93,7 @@ export function AccountantMetrics({ account }: AccountantMetricsProps): React.Re
 
   return (
     <div className="space-y-2.5">
-      <div className="grid grid-cols-2 gap-2 text-xs">
+      <div className="grid grid-cols-2 gap-2 text-[13px]">
         <KV k="余额" v={`$${account.balance.toFixed(2)}`} />
         <KV k="净值" v={`$${account.equity.toFixed(2)}`} />
         <KV k="保证金" v={`$${account.margin.toFixed(2)}`} />
@@ -108,7 +108,7 @@ export function AccountantMetrics({ account }: AccountantMetricsProps): React.Re
 
       {marginLevel != null && (
         <div className="space-y-1 border-t border-border/50 pt-2">
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-[13px]">
             <span className="text-text-muted">保证金水位</span>
             <span className={cn("font-medium tabular-nums", stateColor)}>
               {marginLevel.toFixed(0)}% / {stateLabel}
@@ -123,19 +123,19 @@ export function AccountantMetrics({ account }: AccountantMetricsProps): React.Re
           marginGuard.should_tighten_stops ||
           marginGuard.should_emergency_close) && (
           <div className="space-y-1 border-t border-border/50 pt-2">
-            <div className="text-[10px] text-text-muted">当前保护动作</div>
+            <div className="text-[13px] text-text-muted">当前保护动作</div>
             {marginGuard.should_emergency_close && (
-              <div className="rounded bg-danger/10 px-2 py-1 text-[10px] text-danger">
+              <div className="rounded bg-danger/10 px-2 py-1 text-[13px] text-danger">
                 紧急平仓已激活（{marginGuard.emergency_close_count} 次）
               </div>
             )}
             {marginGuard.should_tighten_stops && (
-              <div className="rounded bg-warning/10 px-2 py-1 text-[10px] text-warning">
+              <div className="rounded bg-warning/10 px-2 py-1 text-[13px] text-warning">
                 已收紧止损（{marginGuard.tighten_count} 次）
               </div>
             )}
             {marginGuard.should_block_new_trades && (
-              <div className="rounded bg-warning/10 px-2 py-1 text-[10px] text-warning">
+              <div className="rounded bg-warning/10 px-2 py-1 text-[13px] text-warning">
                 新开仓已禁止（{marginGuard.block_count} 次）
               </div>
             )}
@@ -193,7 +193,7 @@ export function InspectorMetrics({
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-1 text-xs">
+      <div className="grid grid-cols-2 gap-1 text-[13px]">
         <KV
           k="总体状态"
           v={health.status}
@@ -211,7 +211,7 @@ export function InspectorMetrics({
       {issues.length > 0 && (
         <div className="space-y-1">
           {issues.map(([name, component]) => (
-            <div key={name} className="flex justify-between text-xs">
+            <div key={name} className="flex justify-between text-[13px]">
               <span className="text-text-muted">{name}</span>
               <span className="text-warning">{component.status}</span>
             </div>
@@ -221,12 +221,12 @@ export function InspectorMetrics({
 
       {queues.length > 0 && (
         <div className="space-y-1 border-t border-border/50 pt-2">
-          <div className="flex items-center justify-between text-[10px] text-text-muted">
+          <div className="flex items-center justify-between text-[13px] text-text-muted">
             <span>队列健康</span>
             {totalDrops > 0 && <span className="text-warning">丢弃 {totalDrops}</span>}
           </div>
           {queues.map((queue) => (
-            <div key={queue.name} className="flex items-center justify-between text-[10px]">
+            <div key={queue.name} className="flex items-center justify-between text-[13px]">
               <span className="text-text-muted">{queue.name}</span>
               <div className="flex items-center gap-2">
                 <div className="h-1 w-10 overflow-hidden rounded-full bg-bg-secondary">
@@ -286,7 +286,7 @@ export function CalendarReporterMetrics({
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-3 gap-2 text-[13px]">
         <KV k="总事件" v={String(riskWindows.length)} />
         <KV k="高影响" v={String(highImpact.length)} color={highImpact.length > 0 ? "text-warning" : undefined} />
         <KV k="保护中" v={String(activeGuards.length)} color={activeGuards.length > 0 ? "text-danger" : undefined} />
@@ -294,14 +294,14 @@ export function CalendarReporterMetrics({
 
       {upcoming.length > 0 && (
         <div className="space-y-1">
-          <div className="text-[10px] text-text-muted">即将公布</div>
+          <div className="text-[13px] text-text-muted">即将公布</div>
           {upcoming.slice(0, 3).map((item, index) => {
             const timeStr =
               item.ms < 3600_000
                 ? `${Math.round(item.ms / 60_000)} 分钟`
                 : `${Math.round(item.ms / 3600_000)} 小时`;
             return (
-              <div key={index} className="flex items-center justify-between text-xs">
+              <div key={index} className="flex items-center justify-between text-[13px]">
                 <span className="flex items-center gap-1">
                   <span
                     className={cn(
@@ -314,7 +314,7 @@ export function CalendarReporterMetrics({
                     )}
                   />
                   <span className="text-text-secondary">{item.event_name}</span>
-                  <span className="text-[10px] text-text-muted">{item.currency}</span>
+                  <span className="text-[13px] text-text-muted">{item.currency}</span>
                 </span>
                 <span className={item.ms < 3600_000 ? "font-medium text-warning" : "text-text-muted"}>
                   {timeStr}后
@@ -326,7 +326,7 @@ export function CalendarReporterMetrics({
       )}
 
       {activeGuards.length > 0 && (
-        <div className="rounded bg-danger/10 p-1.5 text-[10px] text-danger">
+        <div className="rounded bg-danger/10 p-1.5 text-[13px] text-danger">
           保护窗口已激活：{activeGuards.map((item) => item.event_name).join("，")}
         </div>
       )}

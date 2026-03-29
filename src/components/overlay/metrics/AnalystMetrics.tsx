@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { config } from "@/config";
@@ -27,7 +28,7 @@ export function AnalystMetrics(): React.ReactNode {
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 text-xs">
+      <div className="grid grid-cols-2 gap-2 text-[13px]">
         <KV
           k={`RSI(${config.defaultTimeframe})`}
           v={rsi != null ? rsi.toFixed(1) : "--"}
@@ -36,7 +37,7 @@ export function AnalystMetrics(): React.ReactNode {
         <KV k={`ATR(${config.defaultTimeframe})`} v={atr != null ? atr.toFixed(2) : "--"} />
       </div>
 
-      <div className="text-[10px] text-text-muted">
+      <div className="text-[13px] text-text-muted">
         收盘计算 {computations} 次 / 对账 {reconcileComputations} 次
         {successRate > 0 && (
           <span>
@@ -47,14 +48,14 @@ export function AnalystMetrics(): React.ReactNode {
 
       {indicatorNames.length > 0 && (
         <div className="space-y-1 border-t border-border/50 pt-2">
-          <div className="text-[10px] text-text-muted">
+          <div className="text-[13px] text-text-muted">
             当前已产出 {indicatorNames.length} 个确认态指标
           </div>
           <div className="flex flex-wrap gap-1">
             {indicatorNames.map((name) => (
               <span
                 key={name}
-                className="rounded bg-bg-secondary px-1.5 py-0.5 text-[9px] text-text-secondary"
+                className="rounded bg-bg-secondary px-1.5 py-0.5 text-[13px] text-text-secondary"
               >
                 {name}
               </span>
@@ -64,14 +65,14 @@ export function AnalystMetrics(): React.ReactNode {
       )}
 
       <div className="space-y-0.5 border-t border-border/50 pt-2">
-        <div className="text-[10px] text-text-muted">按时间框架查看</div>
+        <div className="text-[13px] text-text-muted">按时间框架查看</div>
         {activeTFs.map((tf) => {
           const tfIndicators = allIndicators[tf]?.indicators ?? {};
           const count = Object.keys(tfIndicators).length;
           const tfRsi = tfIndicators.rsi14?.rsi;
           const tfAtr = tfIndicators.atr14?.atr;
           return (
-            <div key={tf} className="flex items-center justify-between text-[10px]">
+            <div key={tf} className="flex items-center justify-between text-[13px]">
               <span className="font-mono text-accent">{tf}</span>
               <span className="text-text-muted">
                 {count} 个指标
@@ -109,15 +110,15 @@ function IndicatorFullView({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-1 rounded bg-bg-hover py-1 text-[10px] text-text-secondary transition-colors hover:text-accent"
+        className="flex w-full items-center justify-center gap-1 rounded bg-bg-hover py-1 text-[13px] text-text-secondary transition-colors hover:text-accent"
       >
         <ChevronDown size={12} />
         查看全部指标
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setOpen(false)}
         >
           <div
@@ -134,7 +135,7 @@ function IndicatorFullView({
             </div>
 
             <div className="overflow-auto p-4" style={{ maxHeight: "calc(85vh - 52px)" }}>
-              <table className="w-full border-collapse text-[11px]">
+              <table className="w-full border-collapse text-[13px]">
                 <thead>
                   <tr className="border-b border-border">
                     <th className="sticky left-0 z-10 bg-bg-panel py-1.5 pr-3 text-left font-medium text-text-secondary">指标</th>
@@ -186,7 +187,8 @@ function IndicatorFullView({
               </table>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

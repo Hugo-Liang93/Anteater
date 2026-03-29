@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { AlertTriangle, Link2, X } from "lucide-react";
+import { lazy, Suspense, useState } from "react";
+import { AlertTriangle, ChevronDown, ChevronRight, Link2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   employeeConfigMap,
@@ -13,7 +13,6 @@ import { getWorkflowByRole, workflowConfigMap, type WorkflowId } from "@/config/
 import { buildWorkflowSummaries, buildWorkflowTodos } from "@/lib/workflowPanel";
 import {
   useEmployeeStore,
-  type ActionLog,
   type ActivityStatus,
   type EmployeeState,
 } from "@/store/employees";
@@ -21,7 +20,7 @@ import { useEventStore } from "@/store/events";
 import { useLiveStore } from "@/store/live";
 import { useMarketStore } from "@/store/market";
 import { useSignalStore } from "@/store/signals";
-import { useUIStore } from "@/store/ui";
+import { useUIStore, selectSelectedEmployee } from "@/store/ui";
 import type { StudioEvent } from "@/types/protocol";
 import { AnalystMetrics } from "./metrics/AnalystMetrics";
 import { CollectorMetrics } from "./metrics/CollectorMetrics";
@@ -41,63 +40,36 @@ import { TraderMetrics } from "./metrics/TraderMetrics";
 import { VoterMetrics } from "./metrics/VoterMetrics";
 
 const LazyBacktesterMetrics = lazy(() =>
-  import("./metrics/BacktesterMetrics").then((module) => ({
-    default: module.BacktesterMetrics,
-  })),
+  import("./metrics/BacktesterMetrics").then((m) => ({ default: m.BacktesterMetrics })),
 );
+
+// ─── Status badge 映射 ───
 
 const STATUS_BADGE: Partial<Record<ActivityStatus, { label: string; cls: string }>> = {
   idle: { label: "空闲", cls: "bg-white/10 text-white/60" },
   working: { label: "工作中", cls: "bg-emerald-400/15 text-emerald-300" },
-  walking: { label: "移动中", cls: "bg-emerald-400/15 text-emerald-300" },
   thinking: { label: "分析中", cls: "bg-sky-400/15 text-sky-300" },
-  judging: { label: "判断中", cls: "bg-sky-400/15 text-sky-300" },
-  waiting: { label: "等待中", cls: "bg-white/10 text-white/60" },
-  signal_ready: { label: "信号就绪", cls: "bg-amber-400/15 text-amber-300" },
   reviewing: { label: "审核中", cls: "bg-fuchsia-400/15 text-fuchsia-300" },
-  approved: { label: "已批准", cls: "bg-emerald-400/15 text-emerald-300" },
-  submitting: { label: "提交中", cls: "bg-sky-400/15 text-sky-300" },
-  executed: { label: "已执行", cls: "bg-emerald-400/15 text-emerald-300" },
-  rejected: { label: "已拒绝", cls: "bg-rose-400/15 text-rose-300" },
   warning: { label: "预警", cls: "bg-amber-400/15 text-amber-300" },
   alert: { label: "告警", cls: "bg-amber-400/15 text-amber-300" },
-  success: { label: "完成", cls: "bg-emerald-400/15 text-emerald-300" },
   error: { label: "异常", cls: "bg-rose-400/15 text-rose-300" },
   blocked: { label: "阻塞", cls: "bg-rose-400/15 text-rose-300" },
   disconnected: { label: "离线", cls: "bg-rose-400/15 text-rose-300" },
   reconnecting: { label: "重连中", cls: "bg-amber-400/15 text-amber-300" },
 };
 
-const LOG_COLOR: Record<ActionLog["type"], string> = {
-  info: "text-white/55",
-  success: "text-emerald-300",
-  warning: "text-amber-300",
-  error: "text-rose-300",
-};
-
 const WORKFLOW_ORDER: WorkflowId[] = [
-  "collection",
-  "analysis",
-  "filter",
-  "strategy",
-  "decision",
-  "execution",
-  "support",
+  "collection", "analysis", "filter", "strategy", "decision", "execution", "support",
 ];
 
-type SupportEvidence = {
-  role: EmployeeRoleType;
-  title: string;
-  summary: string;
-  detail: string;
-};
+// ─── 主组件 ───
 
 export function EmployeeDetail() {
-  const selectedEmployee = useEmployeeStore((s) => s.selectedEmployee);
-  const setSelectedEmployee = useEmployeeStore((s) => s.setSelectedEmployee);
+  const selectedEmployee = useUIStore(selectSelectedEmployee);
+  const rightPanel = useUIStore((s) => s.rightPanel);
+  const openRightPanel = useUIStore((s) => s.openRightPanel);
+  const closeRightPanel = useUIStore((s) => s.closeRightPanel);
   const employees = useEmployeeStore((s) => s.employees);
-  const selectedWorkflow = useUIStore((s) => s.selectedWorkflow);
-  const setSelectedWorkflow = useUIStore((s) => s.setSelectedWorkflow);
   const events = useEventStore((s) => s.events);
   const indicators = useLiveStore((s) => s.indicators);
   const signals = useLiveStore((s) => s.signals);
@@ -111,344 +83,290 @@ export function EmployeeDetail() {
   const calendarEvents = useSignalStore((s) => s.calendarEvents);
   const recentSignals = useSignalStore((s) => s.recentSignals);
 
-  if (!selectedWorkflow && !selectedEmployee) return null;
+  const panelWorkflowId =
+    rightPanel.kind === "workflow" ? rightPanel.workflowId
+    : rightPanel.kind === "employee" ? rightPanel.workflowId
+    : null;
 
   const runtimeInput = {
-    employees,
-    indicators,
-    signals,
-    previewSignals,
-    queues,
-    quote,
-    positions,
-    riskWindows,
-    calendarEvents,
-    recentSignals,
-    events,
-    health,
+    employees, indicators, signals, previewSignals, queues, quote,
+    positions, riskWindows, calendarEvents, recentSignals, events, health,
   };
 
-  const onClose = () => {
-    if (selectedEmployee) {
-      setSelectedEmployee(null);
-      return;
-    }
-    setSelectedWorkflow(null);
-  };
-
-  if (!selectedEmployee && selectedWorkflow) {
-    const workflow = workflowConfigMap.get(selectedWorkflow);
+  // ═══ Workflow 视图 ═══
+  if (!selectedEmployee && panelWorkflowId) {
+    const workflow = workflowConfigMap.get(panelWorkflowId);
     if (!workflow) return null;
-
-    const summary = buildWorkflowSummaries(runtimeInput).find(
-      (item) => item.config.id === selectedWorkflow,
-    );
-    const todos = buildWorkflowTodos(runtimeInput).filter(
-      (item) => item.workflowId === selectedWorkflow,
-    );
-    const roleEntries = workflow.roles.filter((role) => !isSupportModuleRole(role));
-    const moduleEntries =
-      selectedWorkflow === "support"
-        ? workflow.roles.filter((role) => isSupportModuleRole(role))
-        : dedupeRoles(roleEntries.flatMap((role) => getRelatedSupportModules(role)));
-
+    const summary = buildWorkflowSummaries(runtimeInput).find((s) => s.config.id === panelWorkflowId);
+    const todos = buildWorkflowTodos(runtimeInput).filter((t) => t.workflowId === panelWorkflowId);
     if (!summary) return null;
 
     return (
-      <div className="absolute inset-y-4 right-4 z-50 w-[400px] rounded-[28px] border border-white/10 bg-[#0d1723]/95 shadow-[0_24px_80px_rgba(0,0,0,0.42)] backdrop-blur">
-        <HeaderBar
-          title={workflow.label}
+      <div className="flex h-full flex-col overflow-hidden">
+        <CompactHeader
+          name={workflow.label}
           subtitle={workflow.subtitle}
-          badge="流程"
           color={workflow.color}
-          onClose={onClose}
+          badge={getWorkflowStatusLabel(summary)}
+          badgeCls={summary.abnormalCount > 0 ? "bg-rose-400/15 text-rose-300" : "bg-emerald-400/15 text-emerald-300"}
+          onClose={closeRightPanel}
         />
-        <div className="max-h-[calc(100vh-11rem)] space-y-4 overflow-y-auto px-4 py-4">
-          <SectionCard title="对象头部">
-            <div className="grid grid-cols-2 gap-2">
-              <StatBox label="当前状态" value={getWorkflowStatusLabel(summary)} />
-              <StatBox label="一句话结论" value={summary.nextAction} />
-            </div>
-          </SectionCard>
+        <div className="flex-1 space-y-3 overflow-y-auto p-3">
+          {/* 关键指标 */}
+          <div className="grid grid-cols-2 gap-2">
+            <MiniStat label={summary.metricLabel} value={summary.metricValue} />
+            <MiniStat label={summary.secondaryMetricLabel} value={summary.secondaryMetricValue} />
+          </div>
 
-          <SectionCard title="业务解释层">
-            <div className="space-y-3">
-              <StatBox label="当前卡点" value={summary.blocker} />
-              <StatBox label={summary.handoffLabel} value={summary.handoffValue} />
-              <StatBox label="下一步动作" value={summary.nextAction} />
-              <div className="grid grid-cols-2 gap-2">
-                <TagCard title="涉及角色" items={roleEntries.map(getRoleName)} />
-                <TagCard title="涉及支撑模块" items={moduleEntries.map(getRoleName)} />
-              </div>
+          {/* 卡点 */}
+          {summary.blocker !== "无" && summary.blocker !== "" && (
+            <div className="rounded-xl border border-amber-400/15 bg-amber-400/5 px-3 py-2">
+              <span className="text-[13px] text-amber-300/70">当前卡点</span>
+              <p className="text-[13px] text-amber-200">{summary.blocker}</p>
             </div>
-          </SectionCard>
+          )}
 
-          <SectionCard title="事实层">
-            <div className="grid grid-cols-2 gap-2">
-              <StatBox label={summary.metricLabel} value={summary.metricValue} />
-              <StatBox label={summary.secondaryMetricLabel} value={summary.secondaryMetricValue} />
+          {/* 待处理 */}
+          {todos.length > 0 && (
+            <div className="space-y-1.5">
+              <span className="text-[13px] text-white/35">待处理 ({todos.length})</span>
+              {todos.slice(0, 4).map((todo) => (
+                <div key={todo.id} className="rounded-xl border border-white/6 bg-black/10 px-2.5 py-2">
+                  <p className="text-[13px] text-white/80">{todo.title}</p>
+                  <p className="mt-0.5 text-[13px] text-white/40">{todo.detail}</p>
+                </div>
+              ))}
             </div>
-            <div className="mt-3 space-y-2">
-              {todos.length === 0 ? (
-                <EmptyText text="当前这段流程没有新增阻塞或风险。" />
-              ) : (
-                todos.map((todo) => (
-                  <div
-                    key={todo.id}
-                    className="rounded-2xl border border-white/8 bg-black/10 px-3 py-3"
-                  >
-                    <p className="text-sm text-white">{todo.title}</p>
-                    <p className="mt-1 text-xs text-white/45">{todo.detail}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          </SectionCard>
+          )}
+
+          {/* 涉及角色 */}
+          <div className="flex flex-wrap gap-1">
+            {workflow.roles.map((role) => {
+              const cfg = employeeConfigMap.get(role);
+              return (
+                <button
+                  key={role}
+                  onClick={() => openRightPanel({ kind: "employee", workflowId: workflow.id, employeeId: role })}
+                  className="rounded-lg border border-white/6 bg-white/[0.03] px-2 py-1 text-[13px] text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+                >
+                  {cfg?.name ?? role}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
   }
 
+  // ═══ Employee 视图 ═══
   const roleId = selectedEmployee!;
   const employee = employees[roleId];
   const config = employeeConfigMap.get(roleId);
   if (!employee || !config) return null;
 
-  const workflowId = getWorkflowByRole(roleId);
+  const workflowId = panelWorkflowId ?? getWorkflowByRole(roleId);
   const workflow = workflowId ? workflowConfigMap.get(workflowId) : null;
   const badge = STATUS_BADGE[employee.status] ?? STATUS_BADGE.idle!;
-  const flowState = buildEmployeeFlowState(
-    roleId,
-    employee,
-    riskWindows.filter((item) => item.guard_active).length,
-    queues.filter((item) => item.utilization_pct >= 80).length,
-    positions.length,
-    health?.status ?? "unknown",
-    account?.margin && account.margin > 0 ? (account.equity / account.margin) * 100 : null,
-  );
-  const relatedEvents = collectRelatedEvents(events, roleId, [
-    ...flowState.upstreamRoles,
-    ...flowState.downstreamRoles,
-  ]);
-  const supportEvidence = (!isSupportModuleRole(roleId)
-    ? getRelatedSupportModules(roleId)
-    : []
-  )
-    .map((role) =>
-      buildSupportEvidence(role, health?.status ?? "unknown", queues, riskWindows, account, positions.length),
-    )
-    .filter((item): item is SupportEvidence => Boolean(item));
 
   return (
-    <div className="absolute inset-y-4 right-4 z-50 w-[400px] rounded-[28px] border border-white/10 bg-[#0d1723]/95 shadow-[0_24px_80px_rgba(0,0,0,0.42)] backdrop-blur">
-      <HeaderBar
-        title={config.name}
-        subtitle={config.title}
-        badge={config.presentation === "module" ? "支撑模块" : "角色"}
+    <div className="flex h-full flex-col overflow-hidden">
+      <CompactHeader
+        name={config.name}
+        subtitle={employee.currentTask}
         color={config.color}
-        onClose={onClose}
+        badge={badge.label}
+        badgeCls={badge.cls}
+        onClose={closeRightPanel}
+        extra={workflow && (
+          <span className="rounded-lg border border-white/8 bg-black/10 px-1.5 py-0.5 text-[13px] text-white/45">
+            {workflow.label}
+          </span>
+        )}
       />
-      <div className="max-h-[calc(100vh-11rem)] space-y-4 overflow-y-auto px-4 py-4">
-        <SectionCard title="对象头部">
-          <p className="text-sm leading-6 text-white/82">{employee.currentTask}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className={cn("rounded-full px-2 py-1 text-[11px]", badge.cls)}>{badge.label}</span>
-            {workflow && (
-              <span className="rounded-full border border-white/10 bg-black/10 px-2 py-1 text-[11px] text-white/60">
-                {workflow.label}
-              </span>
-            )}
+
+      <div className="flex-1 space-y-3 overflow-y-auto p-3">
+        {/* 异常告警（置顶） */}
+        {isAbnormal(employee.status) && (
+          <div className="flex items-start gap-2 rounded-xl bg-rose-500/10 px-3 py-2">
+            <AlertTriangle size={12} className="mt-0.5 shrink-0" style={{ color: statusColor(employee.status) }} />
+            <p className="text-[13px] text-rose-200">{employee.currentTask}</p>
           </div>
-        </SectionCard>
+        )}
 
-        <SectionCard title="业务解释层">
-          <div className="space-y-3">
-            <StatBox
-              label={config.presentation === "module" ? "模块职责" : "业务职责"}
-              value={config.responsibility}
-            />
-            <StatBox label="当前交接" value={flowState.handoff} />
-            <StatBox label="下一步动作" value={flowState.nextAction} />
-            <div className="grid grid-cols-2 gap-2">
-              <TagCard title="上游输入" items={config.inputs} />
-              <TagCard title="下游输出" items={config.outputs} />
-              <TagCard title="上游角色" items={flowState.upstreamRoles.map(getRoleName)} />
-              <TagCard title="下游角色" items={flowState.downstreamRoles.map(getRoleName)} />
-            </div>
+        {/* 核心指标（最重要，放最前面） */}
+        <RoleMetrics roleId={roleId} />
 
-            {supportEvidence.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-[11px] tracking-[0.16em] text-white/35">上游支撑证据</div>
-                {supportEvidence.map((item) => (
-                  <button
-                    key={item.role}
-                    onClick={() => {
-                      setSelectedWorkflow(getWorkflowByRole(item.role));
-                      setSelectedEmployee(item.role);
-                    }}
-                    className="w-full rounded-2xl border border-white/8 bg-black/10 px-3 py-3 text-left transition-colors hover:border-white/14 hover:bg-white/[0.05]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-white">{item.title}</p>
-                        <p className="mt-1 text-xs text-white/70">{item.summary}</p>
-                        <p className="mt-1 text-xs text-white/42">{item.detail}</p>
-                      </div>
-                      <Link2 size={14} className="mt-0.5 text-white/30" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </SectionCard>
+        {/* 业务上下文（可折叠，默认收起） */}
+        <CollapsibleSection title="业务上下文" defaultOpen={false}>
+          <BusinessContext roleId={roleId} employee={employee} riskWindows={riskWindows} queues={queues} positions={positions} health={health} account={account} openRightPanel={openRightPanel} workflowId={workflowId} />
+        </CollapsibleSection>
 
-        <SectionCard title="事实层">
-          <RoleMetrics roleId={roleId} />
-
-          {(employee.status === "error" ||
-            employee.status === "warning" ||
-            employee.status === "alert" ||
-            employee.status === "blocked" ||
-            employee.status === "disconnected") && (
-            <div className="mt-3 flex items-start gap-2 rounded-2xl bg-rose-500/10 px-3 py-3">
-              <AlertTriangle
-                size={14}
-                className="mt-0.5 shrink-0"
-                style={{ color: statusColor(employee.status) }}
-              />
-              <div>
-                <p className="text-sm text-rose-200">{badge.label}</p>
-                <p className="mt-1 text-xs text-white/55">{employee.currentTask}</p>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-3 space-y-2">
-            <div className="text-[11px] tracking-[0.16em] text-white/35">相关事件</div>
-            {relatedEvents.length === 0 ? (
-              <EmptyText text="当前没有和这段交接直接相关的新事件。" />
-            ) : (
-              relatedEvents.map((event) => (
-                <div
-                  key={event.eventId}
-                  className="rounded-2xl border border-white/8 bg-black/10 px-3 py-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs text-white/40">{formatEventPath(event)}</span>
-                    <span className="text-[11px] text-white/30">{formatClock(event.createdAt)}</span>
-                  </div>
-                  <p className="mt-1 text-sm text-white/82">{event.message}</p>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="mt-3 space-y-2">
-            <div className="text-[11px] tracking-[0.16em] text-white/35">最近动作</div>
-            {employee.recentActions.length === 0 ? (
-              <EmptyText text="还没有动作记录。" />
-            ) : (
-              employee.recentActions.slice(0, 6).map((log) => (
-                <div
-                  key={log.id}
-                  className="flex gap-3 rounded-2xl border border-white/8 bg-black/10 px-3 py-3"
-                >
-                  <span className="shrink-0 text-[11px] text-white/35">
-                    {formatClock(log.timestamp)}
-                  </span>
-                  <span className={cn("text-sm", LOG_COLOR[log.type])}>{log.message}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </SectionCard>
+        {/* 相关事件（可折叠） */}
+        <CollapsibleSection title="相关事件" defaultOpen={false}>
+          <RelatedEvents roleId={roleId} employee={employee} events={events} riskWindows={riskWindows} queues={queues} positions={positions} health={health} account={account} />
+        </CollapsibleSection>
       </div>
     </div>
   );
 }
 
-function HeaderBar({
-  title,
-  subtitle,
-  badge,
-  color,
-  onClose,
-}: {
-  title: string;
-  subtitle: string;
-  badge: string;
-  color: string;
-  onClose: () => void;
+// ─── 紧凑头部 ───
+
+function CompactHeader({ name, subtitle, color, badge, badgeCls, onClose, extra }: {
+  name: string; subtitle: string; color: string; badge: string; badgeCls: string;
+  onClose: () => void; extra?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 border-b border-white/8 px-4 py-4">
-      <div
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-[#09111c]"
-        style={{ backgroundColor: color }}
-      >
-        {title[0]}
+    <div className="flex items-center gap-2.5 border-b border-white/8 px-3 py-2.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[13px] font-bold text-[#09111c]" style={{ backgroundColor: color }}>
+        {name[0]}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-display text-[20px] tracking-[0.08em] text-white">{title}</p>
-        <p className="truncate text-xs text-white/45">{subtitle}</p>
+        <div className="flex items-center gap-2">
+          <span className="truncate text-sm font-medium text-white">{name}</span>
+          <span className={cn("shrink-0 rounded-md px-1.5 py-0.5 text-[13px]", badgeCls)}>{badge}</span>
+          {extra}
+        </div>
+        <p className="truncate text-[13px] text-white/45">{subtitle}</p>
       </div>
-      <span className="rounded-full border border-white/10 bg-black/10 px-2 py-1 text-[11px] text-white/55">
-        {badge}
-      </span>
-      <button
-        onClick={onClose}
-        className="rounded-full p-1 text-white/38 transition-colors hover:bg-white/[0.06] hover:text-white"
-      >
-        <X size={16} />
+      <button onClick={onClose} className="shrink-0 rounded-md p-1 text-white/30 hover:bg-white/5 hover:text-white/60">
+        <X size={14} />
       </button>
     </div>
   );
 }
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4">
-      <p className="font-display text-[15px] tracking-[0.08em] text-white">{title}</p>
-      <div className="mt-3">{children}</div>
-    </section>
-  );
-}
+// ─── 可折叠区域 ───
 
-function StatBox({ label, value }: { label: string; value: string }) {
+function CollapsibleSection({ title, defaultOpen, children }: {
+  title: string; defaultOpen: boolean; children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl border border-white/8 bg-black/10 px-3 py-3">
-      <p className="text-[11px] text-white/34">{label}</p>
-      <p className="mt-1 text-sm leading-6 text-white/78">{value}</p>
+    <div className="rounded-xl border border-white/6 bg-white/[0.02]">
+      <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between px-3 py-2 text-left">
+        <span className="text-[13px] text-white/40">{title}</span>
+        {open ? <ChevronDown size={12} className="text-white/30" /> : <ChevronRight size={12} className="text-white/30" />}
+      </button>
+      {open && <div className="border-t border-white/4 px-3 py-2.5">{children}</div>}
     </div>
   );
 }
 
-function TagCard({ title, items }: { title: string; items: string[] }) {
+// ─── 迷你统计 ───
+
+function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-black/10 px-3 py-3">
-      <p className="text-[11px] text-white/34">{title}</p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {items.length === 0 ? (
-          <span className="text-xs text-white/38">暂无</span>
-        ) : (
-          items.map((item) => (
-            <span
-              key={item}
-              className="rounded-full border border-white/8 bg-white/[0.04] px-2 py-1 text-xs text-white/65"
-            >
-              {item}
-            </span>
-          ))
-        )}
+    <div className="rounded-xl border border-white/6 bg-black/10 px-2.5 py-2">
+      <p className="text-[13px] text-white/30">{label}</p>
+      <p className="mt-0.5 text-[13px] text-white/75">{value}</p>
+    </div>
+  );
+}
+
+// ─── 业务上下文（折叠内容） ───
+
+function BusinessContext({ roleId, employee, riskWindows, queues, positions, health, account, openRightPanel, workflowId }: {
+  roleId: EmployeeRoleType; employee: EmployeeState;
+  riskWindows: Array<{ guard_active: boolean; impact: string; event_name: string }>;
+  queues: Array<{ utilization_pct: number }>;
+  positions: Array<unknown>; health: { status: string } | null;
+  account: { balance: number; equity: number; margin: number; free_margin: number } | null;
+  openRightPanel: (s: import("@/store/ui").RightPanelState) => void;
+  workflowId: WorkflowId | null;
+}) {
+  const config = employeeConfigMap.get(roleId);
+  if (!config) return null;
+
+  const flowState = buildEmployeeFlowState(
+    roleId, employee,
+    riskWindows.filter((w) => w.guard_active).length,
+    queues.filter((q) => q.utilization_pct >= 80).length,
+    positions.length,
+    health?.status ?? "unknown",
+    account?.margin && account.margin > 0 ? (account.equity / account.margin) * 100 : null,
+  );
+
+  const supportEvidence = (!isSupportModuleRole(roleId) ? getRelatedSupportModules(roleId) : [])
+    .map((role) => buildSupportEvidence(role, health?.status ?? "unknown", queues, riskWindows, account))
+    .filter(Boolean) as Array<{ role: EmployeeRoleType; title: string; summary: string }>;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[13px] text-white/60">{config.responsibility}</p>
+      <div className="rounded-lg border border-white/6 bg-black/10 px-2.5 py-2">
+        <p className="text-[13px] text-white/30">当前交接</p>
+        <p className="mt-0.5 text-[13px] text-white/60">{flowState.handoff}</p>
       </div>
+      {/* 上下游角色 */}
+      <div className="flex flex-wrap gap-1">
+        {flowState.upstreamRoles.map((r) => (
+          <span key={r} className="rounded-md bg-sky-400/10 px-1.5 py-0.5 text-[13px] text-sky-300">
+            ← {getRoleName(r)}
+          </span>
+        ))}
+        {flowState.downstreamRoles.map((r) => (
+          <span key={r} className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[13px] text-amber-300">
+            → {getRoleName(r)}
+          </span>
+        ))}
+      </div>
+      {/* 支撑证据 */}
+      {supportEvidence.length > 0 && (
+        <div className="space-y-1">
+          {supportEvidence.map((ev) => (
+            <button key={ev.role} onClick={() => openRightPanel({ kind: "employee", workflowId: getWorkflowByRole(ev.role) ?? workflowId ?? "support", employeeId: ev.role })}
+              className="flex w-full items-center justify-between rounded-lg border border-white/6 bg-black/10 px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.04]">
+              <div className="min-w-0">
+                <p className="text-[13px] text-white/70">{ev.title}</p>
+                <p className="text-[13px] text-white/40">{ev.summary}</p>
+              </div>
+              <Link2 size={10} className="shrink-0 text-white/20" />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function EmptyText({ text }: { text: string }) {
-  return <p className="text-sm text-white/45">{text}</p>;
+// ─── 相关事件（折叠内容） ───
+
+function RelatedEvents({ roleId, employee, events, riskWindows, queues, positions, health, account }: {
+  roleId: EmployeeRoleType; employee: EmployeeState;
+  events: StudioEvent[];
+  riskWindows: Array<{ guard_active: boolean; impact: string; event_name: string }>;
+  queues: Array<{ utilization_pct: number }>;
+  positions: Array<unknown>; health: { status: string } | null;
+  account: { balance: number; equity: number; margin: number; free_margin: number } | null;
+}) {
+  const flowState = buildEmployeeFlowState(
+    roleId, employee,
+    riskWindows.filter((w) => w.guard_active).length,
+    queues.filter((q) => q.utilization_pct >= 80).length,
+    positions.length,
+    health?.status ?? "unknown",
+    account?.margin && account.margin > 0 ? (account.equity / account.margin) * 100 : null,
+  );
+
+  const relatedEvents = collectRelatedEvents(events, roleId, [...flowState.upstreamRoles, ...flowState.downstreamRoles]);
+
+  if (relatedEvents.length === 0) return <p className="text-[13px] text-white/40">暂无相关事件</p>;
+
+  return (
+    <div className="space-y-1">
+      {relatedEvents.map((evt) => (
+        <div key={evt.eventId} className="flex gap-2 text-[13px]">
+          <span className="shrink-0 text-white/25">{formatClock(evt.createdAt)}</span>
+          <span className="text-white/60">{evt.message}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
+
+// ─── RoleMetrics 路由 ───
 
 function RoleMetrics({ roleId }: { roleId: EmployeeRoleType }) {
   const quote = useMarketStore((s) => s.quotes.XAUUSD);
@@ -460,51 +378,36 @@ function RoleMetrics({ roleId }: { roleId: EmployeeRoleType }) {
   const signals = useLiveStore((s) => s.signals);
   const previewSignals = useLiveStore((s) => s.previewSignals);
   const queues = useLiveStore((s) => s.queues);
-
   const props = { quote, account, positions, connected, strategies, health, signals, previewSignals, queues };
 
   switch (roleId) {
-    case EmployeeRole.COLLECTOR:
-      return <CollectorMetrics {...props} />;
-    case EmployeeRole.ANALYST:
-      return <AnalystMetrics />;
-    case EmployeeRole.LIVE_ANALYST:
-      return <LiveAnalystMetrics />;
-    case EmployeeRole.STRATEGIST:
-      return <StrategistMetrics {...props} />;
-    case EmployeeRole.LIVE_STRATEGIST:
-      return <LiveStrategistMetrics {...props} />;
-    case EmployeeRole.FILTER_GUARD:
-      return <FilterGuardMetrics />;
-    case EmployeeRole.REGIME_GUARD:
-      return <RegimeGuardMetrics />;
-    case EmployeeRole.VOTER:
-      return <VoterMetrics {...props} />;
-    case EmployeeRole.RISK_OFFICER:
-      return <RiskOfficerMetrics />;
-    case EmployeeRole.TRADER:
-      return <TraderMetrics {...props} />;
-    case EmployeeRole.POSITION_MANAGER:
-      return <PositionManagerMetrics {...props} />;
-    case EmployeeRole.ACCOUNTANT:
-      return <AccountantMetrics {...props} />;
-    case EmployeeRole.CALENDAR_REPORTER:
-      return <CalendarReporterMetrics {...props} />;
-    case EmployeeRole.INSPECTOR:
-      return <InspectorMetrics {...props} />;
-    case EmployeeRole.BACKTESTER:
-      return (
-        <Suspense fallback={<EmptyText text="正在加载回测模块..." />}>
-          <LazyBacktesterMetrics />
-        </Suspense>
-      );
-    default:
-      return null;
+    case EmployeeRole.COLLECTOR: return <CollectorMetrics {...props} />;
+    case EmployeeRole.ANALYST: return <AnalystMetrics />;
+    case EmployeeRole.LIVE_ANALYST: return <LiveAnalystMetrics />;
+    case EmployeeRole.STRATEGIST: return <StrategistMetrics {...props} />;
+    case EmployeeRole.LIVE_STRATEGIST: return <LiveStrategistMetrics {...props} />;
+    case EmployeeRole.FILTER_GUARD: return <FilterGuardMetrics />;
+    case EmployeeRole.REGIME_GUARD: return <RegimeGuardMetrics />;
+    case EmployeeRole.VOTER: return <VoterMetrics {...props} />;
+    case EmployeeRole.RISK_OFFICER: return <RiskOfficerMetrics />;
+    case EmployeeRole.TRADER: return <TraderMetrics {...props} />;
+    case EmployeeRole.POSITION_MANAGER: return <PositionManagerMetrics {...props} />;
+    case EmployeeRole.ACCOUNTANT: return <AccountantMetrics {...props} />;
+    case EmployeeRole.CALENDAR_REPORTER: return <CalendarReporterMetrics {...props} />;
+    case EmployeeRole.INSPECTOR: return <InspectorMetrics {...props} />;
+    case EmployeeRole.BACKTESTER: return (
+      <Suspense fallback={<p className="text-[13px] text-white/40">加载中...</p>}>
+        <LazyBacktesterMetrics />
+      </Suspense>
+    );
+    default: return null;
   }
 }
 
-function dedupeRoles(roles: EmployeeRoleType[]): EmployeeRoleType[] {
-  return Array.from(new Set(roles));
+// ─── 工具函数 ───
+
+function isAbnormal(status: ActivityStatus): boolean {
+  return ["error", "warning", "alert", "blocked", "disconnected"].includes(status);
 }
 
 function getRoleName(role: EmployeeRoleType): string {
@@ -518,27 +421,26 @@ function getWorkflowStatusLabel(summary: { abnormalCount: number; activeCount: n
 }
 
 function formatClock(value: string | number) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--:--";
-  return date.toLocaleTimeString("zh-CN", { hour12: false });
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "--:--" : d.toLocaleTimeString("zh-CN", { hour12: false });
 }
 
-function formatEventPath(event: StudioEvent) {
-  const source = employeeConfigMap.get(event.source as EmployeeRoleType)?.name ?? event.source;
-  const target = event.target
-    ? employeeConfigMap.get(event.target as EmployeeRoleType)?.name ?? event.target
-    : null;
-  return target ? `${source} -> ${target}` : source;
+function dedupeRoles(roles: EmployeeRoleType[]): EmployeeRoleType[] {
+  return Array.from(new Set(roles));
+}
+
+function collectRelatedEvents(events: StudioEvent[], role: EmployeeRoleType, linkedRoles: EmployeeRoleType[]) {
+  const roleSet = new Set<EmployeeRoleType>([role, ...linkedRoles, ...getRelatedSupportModules(role)]);
+  return events
+    .filter((e) => roleSet.has(e.source as EmployeeRoleType) || (e.target ? roleSet.has(e.target as EmployeeRoleType) : false))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 6);
 }
 
 function buildEmployeeFlowState(
-  role: EmployeeRoleType,
-  employee: EmployeeState,
-  activeRiskWindows: number,
-  hotQueueCount: number,
-  openPositions: number,
-  healthStatus: string,
-  marginLevel: number | null,
+  role: EmployeeRoleType, employee: EmployeeState,
+  activeRiskWindows: number, hotQueueCount: number, openPositions: number,
+  healthStatus: string, marginLevel: number | null,
 ) {
   const workflowId = getWorkflowByRole(role);
   const workflow = workflowId ? workflowConfigMap.get(workflowId) : null;
@@ -547,205 +449,54 @@ function buildEmployeeFlowState(
   let downstreamRoles: EmployeeRoleType[] = [];
 
   if (workflow && roleIndex >= 0) {
-    if (roleIndex > 0) {
-      upstreamRoles = [workflow.roles[roleIndex - 1]!];
-    } else {
-      const previousWorkflow = workflowConfigMap.get(
-        WORKFLOW_ORDER[Math.max(WORKFLOW_ORDER.indexOf(workflow.id) - 1, 0)] ?? workflow.id,
-      );
-      if (previousWorkflow && previousWorkflow.id !== workflow.id) {
-        upstreamRoles = [previousWorkflow.roles[previousWorkflow.roles.length - 1]!];
-      }
+    if (roleIndex > 0) upstreamRoles = [workflow.roles[roleIndex - 1]!];
+    else {
+      const prev = workflowConfigMap.get(WORKFLOW_ORDER[Math.max(WORKFLOW_ORDER.indexOf(workflow.id) - 1, 0)] ?? workflow.id);
+      if (prev && prev.id !== workflow.id) upstreamRoles = [prev.roles[prev.roles.length - 1]!];
     }
-
-    if (roleIndex < workflow.roles.length - 1) {
-      downstreamRoles = [workflow.roles[roleIndex + 1]!];
-    } else {
-      const nextWorkflow = workflowConfigMap.get(
-        WORKFLOW_ORDER[WORKFLOW_ORDER.indexOf(workflow.id) + 1] ?? workflow.id,
-      );
-      if (nextWorkflow && nextWorkflow.id !== workflow.id) {
-        downstreamRoles = [nextWorkflow.roles[0]!];
-      }
+    if (roleIndex < workflow.roles.length - 1) downstreamRoles = [workflow.roles[roleIndex + 1]!];
+    else {
+      const next = workflowConfigMap.get(WORKFLOW_ORDER[WORKFLOW_ORDER.indexOf(workflow.id) + 1] ?? workflow.id);
+      if (next && next.id !== workflow.id) downstreamRoles = [next.roles[0]!];
     }
   }
 
+  const defaults = {
+    upstreamRoles, downstreamRoles,
+    handoff: upstreamRoles.length > 0 ? `接收${upstreamRoles.map(getRoleName).join("、")}输出` : employee.currentTask,
+    nextAction: downstreamRoles.length > 0 ? `交付给${downstreamRoles.map(getRoleName).join("、")}` : "等待调度",
+  };
+
   switch (role) {
-    case EmployeeRole.ACCOUNTANT:
-      return {
-        upstreamRoles: dedupeRoles([EmployeeRole.TRADER, EmployeeRole.POSITION_MANAGER]),
-        downstreamRoles: [EmployeeRole.RISK_OFFICER],
-        handoff: "持续向风控官输出余额、净值、保证金与可用资金状态。",
-        nextAction:
-          marginLevel !== null && marginLevel < 180
-            ? "优先确认保证金水位，必要时提醒风控官收紧准入。"
-            : "保持账户快照刷新，确保风控读取到最新账户事实。",
-      };
-    case EmployeeRole.CALENDAR_REPORTER:
-      return {
-        upstreamRoles: [],
-        downstreamRoles: dedupeRoles([
-          EmployeeRole.RISK_OFFICER,
-          EmployeeRole.STRATEGIST,
-          EmployeeRole.LIVE_STRATEGIST,
-        ]),
-        handoff: "向策略区和风控官暴露高影响事件窗口与保护期。",
-        nextAction:
-          activeRiskWindows > 0
-            ? "保持事件窗口跟踪，提醒决策区避免在保护期内放行。"
-            : "继续监控近端日历，提前为策略侧打上风险标签。",
-      };
-    case EmployeeRole.INSPECTOR:
-      return {
-        upstreamRoles: [],
-        downstreamRoles: dedupeRoles([EmployeeRole.RISK_OFFICER, EmployeeRole.TRADER]),
-        handoff: "把系统健康、连接状态和队列压力暴露给风控与执行链路。",
-        nextAction:
-          healthStatus !== "healthy" || hotQueueCount > 0
-            ? "优先处理降级组件和高压队列，避免拖慢主链路。"
-            : "保持巡检稳定运行，继续监听关键模块告警。",
-      };
-    case EmployeeRole.BACKTESTER:
-      return {
-        upstreamRoles: [],
-        downstreamRoles: [EmployeeRole.STRATEGIST, EmployeeRole.LIVE_STRATEGIST],
-        handoff: "向策略层提供回测结论、参数建议与稳定性验证结果。",
-        nextAction: "把新的验证结果回灌给策略区，避免策略调整脱离历史表现。",
-      };
-    case EmployeeRole.RISK_OFFICER:
-      return {
-        upstreamRoles: [EmployeeRole.VOTER],
-        downstreamRoles: [EmployeeRole.TRADER],
-        handoff: "等待投票结论，同时联合账户、日历与巡检证据完成交易前审批。",
-        nextAction:
-          activeRiskWindows > 0
-            ? "先核对保护窗口和账户水位，再决定是否放行执行。"
-            : "重点检查账户约束和系统健康，确认具备放行条件。",
-      };
-    case EmployeeRole.TRADER:
-      return {
-        upstreamRoles: [EmployeeRole.RISK_OFFICER],
-        downstreamRoles: [EmployeeRole.POSITION_MANAGER],
-        handoff: "接收已批准信号并下单，把回执交给持仓跟踪。",
-        nextAction:
-          openPositions > 0 ? "执行后继续核对持仓变化和成交回执。" : "等待风控放行后的新指令进入执行链。",
-      };
-    case EmployeeRole.POSITION_MANAGER:
-      return {
-        upstreamRoles: [EmployeeRole.TRADER],
-        downstreamRoles: [EmployeeRole.ACCOUNTANT],
-        handoff: "把成交回执整理成持仓与盈亏事实，回流到账户侧和执行监控。",
-        nextAction:
-          openPositions > 0 ? "持续跟踪保护状态与浮盈亏变化。" : "等待新的持仓变更进入仓位跟踪。",
-      };
-    default:
-      return {
-        upstreamRoles,
-        downstreamRoles,
-        handoff:
-          upstreamRoles.length > 0
-            ? `正在接收${upstreamRoles.map(getRoleName).join("、")}的输出，并准备交给${downstreamRoles.length > 0 ? downstreamRoles.map(getRoleName).join("、") : "下一环节"}。`
-            : employee.currentTask,
-        nextAction:
-          downstreamRoles.length > 0
-            ? `继续把结果稳定交给${downstreamRoles.map(getRoleName).join("、")}。`
-            : "等待新的输入或系统调度。",
-      };
+    case EmployeeRole.ACCOUNTANT: return { ...defaults, upstreamRoles: dedupeRoles([EmployeeRole.TRADER, EmployeeRole.POSITION_MANAGER]), downstreamRoles: [EmployeeRole.RISK_OFFICER], handoff: "向风控输出余额/净值/保证金状态", nextAction: marginLevel !== null && marginLevel < 180 ? "保证金水位偏低，提醒风控收紧" : "保持账户快照刷新" };
+    case EmployeeRole.CALENDAR_REPORTER: return { ...defaults, upstreamRoles: [], downstreamRoles: dedupeRoles([EmployeeRole.RISK_OFFICER, EmployeeRole.STRATEGIST, EmployeeRole.LIVE_STRATEGIST]), handoff: "暴露高影响事件窗口与保护期", nextAction: activeRiskWindows > 0 ? "保护窗口生效中，跟踪事件窗口" : "监控近端日历" };
+    case EmployeeRole.INSPECTOR: return { ...defaults, upstreamRoles: [], downstreamRoles: dedupeRoles([EmployeeRole.RISK_OFFICER, EmployeeRole.TRADER]), handoff: "暴露系统健康与队列压力", nextAction: healthStatus !== "healthy" || hotQueueCount > 0 ? "处理降级组件和高压队列" : "巡检稳定运行" };
+    case EmployeeRole.RISK_OFFICER: return { ...defaults, upstreamRoles: [EmployeeRole.VOTER], downstreamRoles: [EmployeeRole.TRADER], handoff: "联合账户/日历/巡检完成交易审批", nextAction: activeRiskWindows > 0 ? "先核对保护窗口和账户水位" : "检查账户约束和系统健康" };
+    case EmployeeRole.TRADER: return { ...defaults, upstreamRoles: [EmployeeRole.RISK_OFFICER], downstreamRoles: [EmployeeRole.POSITION_MANAGER], handoff: "接收已批准信号并下单", nextAction: openPositions > 0 ? "核对持仓变化和成交回执" : "等待风控放行" };
+    case EmployeeRole.POSITION_MANAGER: return { ...defaults, upstreamRoles: [EmployeeRole.TRADER], downstreamRoles: [EmployeeRole.ACCOUNTANT], handoff: "整理持仓与盈亏事实", nextAction: openPositions > 0 ? "跟踪保护状态与浮盈亏" : "等待新持仓变更" };
+    default: return defaults;
   }
 }
 
 function buildSupportEvidence(
-  role: EmployeeRoleType,
-  healthStatus: string,
+  role: EmployeeRoleType, healthStatus: string,
   queues: Array<{ utilization_pct: number }>,
   riskWindows: Array<{ guard_active: boolean; impact: string; event_name: string }>,
-  account: {
-    balance: number;
-    equity: number;
-    margin: number;
-    free_margin: number;
-  } | null,
-  openPositions: number,
-): SupportEvidence | null {
+  account: { balance: number; equity: number; margin: number; free_margin: number } | null,
+) {
   switch (role) {
     case EmployeeRole.ACCOUNTANT: {
-      const marginLevel = account && account.margin > 0 ? (account.equity / account.margin) * 100 : null;
-      return {
-        role,
-        title: "账户与保证金",
-        summary: account
-          ? `余额 $${account.balance.toFixed(2)}，净值 $${account.equity.toFixed(2)}`
-          : "等待账户状态进入支撑链",
-        detail:
-          marginLevel !== null
-            ? `保证金水位 ${marginLevel.toFixed(0)}%，当前持仓 ${openPositions} 笔`
-            : "当前暂无有效保证金水位",
-      };
+      const ml = account && account.margin > 0 ? (account.equity / account.margin) * 100 : null;
+      return { role, title: "账户与保证金", summary: account ? `余额 $${account.balance.toFixed(0)} | 水位 ${ml?.toFixed(0) ?? "--"}%` : "等待账户数据" };
     }
     case EmployeeRole.CALENDAR_REPORTER: {
-      const active = riskWindows.filter((item) => item.guard_active);
-      const highImpact = riskWindows.filter((item) => item.impact === "high");
-      return {
-        role,
-        title: "风险日历窗口",
-        summary: active.length > 0 ? `当前有 ${active.length} 个保护窗口生效` : "当前没有激活中的保护窗口",
-        detail:
-          highImpact[0] ? `最近高影响事件：${highImpact[0].event_name}` : "近端没有新的高影响事件压制",
-      };
+      const active = riskWindows.filter((w) => w.guard_active).length;
+      return { role, title: "风险日历", summary: active > 0 ? `${active} 个保护窗口生效` : "无激活保护窗口" };
     }
     case EmployeeRole.INSPECTOR: {
-      const hotQueues = queues.filter((item) => item.utilization_pct >= 80).length;
-      return {
-        role,
-        title: "系统健康巡检",
-        summary: `系统状态 ${formatHealthLabel(healthStatus)}，高压队列 ${hotQueues} 个`,
-        detail:
-          hotQueues > 0 ? "需要确认支撑链是否拖慢主链路响应。" : "当前巡检结果没有新增队列压力。",
-      };
+      const hot = queues.filter((q) => q.utilization_pct >= 80).length;
+      return { role, title: "系统巡检", summary: `${healthStatus === "healthy" ? "稳定" : "异常"} | ${hot} 高压队列` };
     }
-    default: {
-      const config = employeeConfigMap.get(role);
-      if (!config) return null;
-      return {
-        role,
-        title: config.name,
-        summary: config.deliverable,
-        detail: config.responsibility,
-      };
-    }
-  }
-}
-
-function collectRelatedEvents(
-  events: StudioEvent[],
-  role: EmployeeRoleType,
-  linkedRoles: EmployeeRoleType[],
-) {
-  const roleSet = new Set<EmployeeRoleType>([
-    role,
-    ...linkedRoles,
-    ...getRelatedSupportModules(role),
-  ]);
-
-  return events
-    .filter((event) => {
-      const source = event.source as EmployeeRoleType;
-      const target = event.target as EmployeeRoleType | undefined;
-      return roleSet.has(source) || (target ? roleSet.has(target) : false);
-    })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 6);
-}
-
-function formatHealthLabel(status: string) {
-  switch (status) {
-    case "healthy":
-      return "稳定";
-    case "degraded":
-      return "降级";
-    case "unhealthy":
-      return "异常";
-    default:
-      return "未知";
+    default: return null;
   }
 }

@@ -254,3 +254,10 @@ export function disposeAllShared3D() {
   for (const mat of _windowGlassCache.values()) mat.dispose();
   _windowGlassCache.clear();
 }
+
+// Vite HMR：模块热更新时释放旧资源，防止内存泄漏
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    disposeAllShared3D();
+  });
+}

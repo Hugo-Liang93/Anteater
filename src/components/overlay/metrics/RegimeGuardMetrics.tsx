@@ -45,8 +45,8 @@ export function RegimeGuardMetrics(): React.ReactNode {
   return (
     <div className="space-y-2.5">
       <div className="space-y-1">
-        <div className="text-[10px] text-text-muted">当前市场状态分布</div>
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px]">
+        <div className="text-[13px] text-text-muted">当前市场状态分布</div>
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[13px]">
           {Object.entries(distribution)
             .sort(([, a], [, b]) => b - a)
             .map(([regime, count]) => (
@@ -61,7 +61,7 @@ export function RegimeGuardMetrics(): React.ReactNode {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-border/50 pt-2 text-xs">
+      <div className="flex items-center justify-between border-t border-border/50 pt-2 text-[13px]">
         <span className="text-text-muted">跳过的低适配场景</span>
         <span className={cn("tabular-nums font-medium", affinitySkip > 0 ? "text-warning" : "text-success")}>
           {affinitySkip} 次
@@ -69,8 +69,8 @@ export function RegimeGuardMetrics(): React.ReactNode {
       </div>
 
       <div className="space-y-1 border-t border-border/50 pt-2">
-        <div className="text-[10px] text-text-muted">各品种周期状态</div>
-        <div className="space-y-0.5 text-[10px]">
+        <div className="text-[13px] text-text-muted">各品种周期状态</div>
+        <div className="space-y-0.5 text-[13px]">
           {Object.entries(details).map(([key, info]) => {
             const regime = info.current_regime;
             const bars = info.consecutive_bars ?? 0;

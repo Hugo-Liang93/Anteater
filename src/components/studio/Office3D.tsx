@@ -9,7 +9,7 @@
  * - 盆栽、书架、咖啡杯、角色专属道具
  */
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { Text, Html } from "@react-three/drei";
@@ -245,7 +245,7 @@ function AccountPanel() {
   const isConnected = acctStatus !== "idle" && acctStatus !== "disconnected";
 
   return (
-    <Html position={[-2.2, 0.25, 0.3]} center distanceFactor={5.5} transform occlude="blending">
+    <Html position={[-2.2, 0.25, 0.3]} center distanceFactor={5.5} transform occlude="blending" zIndexRange={[10, 0]}>
       <div style={{
         width: 240, padding: "8px 12px",
         background: "rgba(8,12,24,0.92)", border: "1.5px solid #26a69a",
@@ -284,7 +284,7 @@ function TrendPanel() {
   const arrow = stDir == null ? "" : stDir > 0 ? " \u25B2" : " \u25BC";
 
   return (
-    <Html position={[2.2, 0.9, 0.3]} center distanceFactor={5.5} transform occlude="blending">
+    <Html position={[2.2, 0.9, 0.3]} center distanceFactor={5.5} transform occlude="blending" zIndexRange={[10, 0]}>
       <div style={{
         padding: "4px 14px", background: "rgba(8,12,24,0.90)",
         border: `1.5px solid ${color}`, borderRadius: 6,
@@ -320,7 +320,7 @@ function CalendarPanel() {
   const hasGuard = riskWindows.some((w) => w.guard_active);
 
   return (
-    <Html position={[2.2, -0.25, 0.3]} center distanceFactor={5.5} transform occlude="blending">
+    <Html position={[2.2, -0.25, 0.3]} center distanceFactor={5.5} transform occlude="blending" zIndexRange={[10, 0]}>
       <div style={{
         width: 220, padding: "6px 10px",
         background: "rgba(8,12,24,0.92)", border: `1.5px solid ${hasGuard ? "#ff6b35" : "#7e57c2"}`,
@@ -381,6 +381,11 @@ function LEDTicker({ position, width }: { position: [number, number, number]; wi
     new THREE.MeshStandardMaterial({ color: "#001100", emissive: "#00d4aa", emissiveIntensity: 0.2 })), []);
   const groupRef = useRef<THREE.Group>(null);
 
+  useEffect(() => () => {
+    geos.forEach((g) => g.dispose());
+    mats.forEach((m) => m.dispose());
+  }, [geos, mats]);
+
   useFrame(() => {
     const t = performance.now() / 1000;
     for (let i = 0; i < segCount; i++) {
@@ -411,6 +416,10 @@ function BigScreen({ dayNight }: { dayNight: DayNightParams }) {
   const edgeMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: "#00d4aa", emissive: "#00d4aa", emissiveIntensity: 0.8, transparent: true, opacity: 0.6,
   }), []);
+
+  useEffect(() => () => {
+    frameGeo.dispose(); screenGeo.dispose(); edgeHGeo.dispose(); edgeVGeo.dispose(); edgeMat.dispose();
+  }, [frameGeo, screenGeo, edgeHGeo, edgeVGeo, edgeMat]);
 
   return (
     <group position={[0, BIG_SCREEN_Y, SCREEN_Z + 0.15]}>

@@ -11,7 +11,7 @@
  * 几何体从 engine/shared3d.ts 共享注册表获取。
  */
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ActivityStatus } from "@/store/employees";
@@ -61,6 +61,8 @@ export function DataFlowParticle({ from, to, active, sourceStatus = "idle", colo
     new THREE.MeshStandardMaterial({ transparent: true }),
     new THREE.MeshStandardMaterial({ transparent: true }),
   ], []);
+
+  useEffect(() => () => { materials.forEach((m) => m.dispose()); }, [materials]);
 
   useFrame(() => {
     if (!active && sourceStatus === "idle") {
@@ -160,6 +162,8 @@ export function FlowLine({ from, to, highlight }: {
   }, [geo, mat]);
 
   lineObjRef.current = lineObj;
+
+  useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
 
   useFrame(() => {
     // 仅在 highlight 变化时更新材质，避免每帧冗余操作

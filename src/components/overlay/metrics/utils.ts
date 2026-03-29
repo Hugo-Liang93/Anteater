@@ -1,3 +1,14 @@
+/** 安全数字转换：NaN 回退到 fallback */
+export function safeNum(v: unknown, fallback = 0): number {
+  const n = Number(v);
+  return Number.isNaN(n) ? fallback : n;
+}
+
+/** 安全数字转换：非 number 类型返回 null（用于条件渲染） */
+export function safeNumOrNull(v: unknown): number | null {
+  return typeof v === "number" ? v : null;
+}
+
 export function dirColor(dir: string): string {
   if (dir === "buy") return "text-buy";
   if (dir === "sell") return "text-sell";

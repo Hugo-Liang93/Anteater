@@ -66,16 +66,58 @@ export const useLiveStore = create<LiveState>((set) => ({
   setIndicators: (tf, data) =>
     set((s) => ({ indicators: { ...s.indicators, [tf]: data } })),
 
-  setSignals: (signals) =>
-    set(() => {
-      const names = new Set(signals.map((s) => s.strategy));
+  setSignals: (raw) =>
+    set((s) => {
+      // 每个 (strategy, timeframe) 只保留最新一条，去除历史流水重复
+      const signals = dedupeLatest(raw);
+      // 跳过无实质变化的更新：长度相同且首条 signal_id 一致
+      const first = signals[0];
+      const prevFirst = s.signals[0];
+      if (
+        signals.length === s.signals.length &&
+        first != null && prevFirst != null &&
+        first.signal_id === prevFirst.signal_id
+      ) {
+        return s;
+      }
+      const names = new Set(signals.map((sig) => sig.strategy));
       return { signals, activeStrategies: names };
     }),
 
-  setPreviewSignals: (previewSignals) => set({ previewSignals }),
+  setPreviewSignals: (raw) =>
+    set((s) => {
+      const previewSignals = dedupeLatest(raw);
+      const first = previewSignals[0];
+      const prevFirst = s.previewSignals[0];
+      if (
+        previewSignals.length === s.previewSignals.length &&
+        first != null && prevFirst != null &&
+        first.signal_id === prevFirst.signal_id
+      ) {
+        return s;
+      }
+      return { previewSignals };
+    }),
 
   setQueues: (queues) => set({ queues }),
 }));
+
+/**
+ * 对每个 (strategy, timeframe) 只保留 generated_at 最新的一条。
+ * 后端 /signals/recent 返回的是历史流水（每次 bar close 每个策略都产生一条），
+ * 前端只需要展示每个策略当前的最新判断。
+ */
+function dedupeLatest(signals: LiveSignal[]): LiveSignal[] {
+  const map = new Map<string, LiveSignal>();
+  for (const s of signals) {
+    const key = `${s.strategy}__${s.timeframe}`;
+    const existing = map.get(key);
+    if (!existing || s.generated_at > existing.generated_at) {
+      map.set(key, s);
+    }
+  }
+  return [...map.values()].sort((a, b) => b.generated_at.localeCompare(a.generated_at));
+}
 
 /** 选择器 */
 export const selectIndicatorsByTF = (tf: string) =>

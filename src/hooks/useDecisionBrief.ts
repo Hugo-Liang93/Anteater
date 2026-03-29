@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { requestDecisionBrief } from "@/api/endpoints";
 import { config } from "@/config";
 import {
@@ -13,19 +13,36 @@ interface DecisionBriefState {
   brief: DecisionBrief;
   loading: boolean;
   error: string | null;
+  /** 手动刷新：用最新 store 数据重新计算 */
   refresh: () => void;
 }
 
+/**
+ * AI 决策摘要 hook — 快照模式
+ *
+ * 设计理念：交易员需要一个稳定可阅读的决策参考，而非每 3 秒跳动的实时数据。
+ * - 首次挂载时用当前数据生成一次 brief
+ * - 之后只在用户主动调用 refresh() 时用最新数据重新生成
+ * - 不自动跟随轮询更新，避免内容持续跳动
+ */
 export function useDecisionBrief(input: DecisionDeskInput): DecisionBriefState {
-  const [version, setVersion] = useState(0);
-  const context = useMemo(() => buildDecisionContext(input), [input]);
+  // 保留最新 input 引用，refresh 时使用
+  const latestInputRef = useRef(input);
+  latestInputRef.current = input;
+
+  // 快照：只在 refresh 时更新
+  const [snapshotInput, setSnapshotInput] = useState(input);
+
+  const context = useMemo(() => buildDecisionContext(snapshotInput), [snapshotInput]);
   const fallback = useMemo(() => buildHeuristicDecisionBrief(context), [context]);
+
   const [state, setState] = useState<Omit<DecisionBriefState, "refresh">>(() => ({
     brief: fallback,
     loading: false,
     error: null,
   }));
 
+  // 当 fallback 变化时（仅在 snapshotInput 变化后），更新 brief
   useEffect(() => {
     setState((prev) => ({
       ...prev,
@@ -75,10 +92,12 @@ export function useDecisionBrief(input: DecisionDeskInput): DecisionBriefState {
       window.clearTimeout(timeout);
       window.clearTimeout(debounce);
     };
-  }, [context, fallback, version]);
+  }, [context, fallback]);
 
-  return {
-    ...state,
-    refresh: () => setVersion((current) => current + 1),
-  };
+  const refresh = useCallback(() => {
+    // 用最新的 store 数据重新生成快照
+    setSnapshotInput({ ...latestInputRef.current });
+  }, []);
+
+  return { ...state, refresh };
 }

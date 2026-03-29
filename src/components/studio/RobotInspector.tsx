@@ -154,7 +154,7 @@ export function RobotInspector({ position, onClick }: RobotInspectorProps) {
       <mesh position={[0.12, 0.1, 0.03]} geometry={_footGeo} material={_limbMat} />
 
       {/* 名牌 */}
-      <Html position={[0, 1.65, 0]} center distanceFactor={7} sprite zIndexRange={[0, 0]}>
+      <Html position={[0, 1.65, 0]} center distanceFactor={7} sprite zIndexRange={[24, 0]}>
         <div style={{
           background: hovered ? "rgba(10,20,30,0.95)" : "rgba(15,25,35,0.88)",
           border: "1.5px solid #26c6da",

@@ -47,7 +47,7 @@ export function LiveAnalystMetrics(): React.ReactNode {
 
             return (
               <div key={timeframe} className="space-y-0.5">
-                <div className="flex items-center justify-between text-[10px]">
+                <div className="flex items-center justify-between text-[13px]">
                   <span className="flex items-center gap-1.5">
                     <span className="font-mono font-medium text-accent">{timeframe}</span>
                     {barTime && <span className="text-text-muted">最新 Bar {barTime}</span>}
@@ -67,13 +67,13 @@ export function LiveAnalystMetrics(): React.ReactNode {
       )}
 
       <div className="space-y-1 border-t border-border/50 pt-2">
-        <div className="text-[10px] text-text-muted">
+        <div className="text-[13px] text-text-muted">
           采集更新效率
           <span className={updateRate > 50 ? "ml-1 text-success" : "ml-1 text-text-secondary"}>
             {updateRate.toFixed(0)}%
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-xs">
+        <div className="grid grid-cols-3 gap-2 text-[13px]">
           <KV k="轮询次数" v={String(polls)} />
           <KV k="重复过滤" v={String(deduped)} color="text-text-muted" />
           <KV k="有效更新" v={String(updated)} color="text-success" />
@@ -81,11 +81,11 @@ export function LiveAnalystMetrics(): React.ReactNode {
       </div>
 
       <div className="space-y-1 border-t border-border/50 pt-2">
-        <div className="text-[10px] text-text-muted">盘中指标计算 {liveComputations} 次</div>
+        <div className="text-[13px] text-text-muted">盘中指标计算 {liveComputations} 次</div>
         {indicatorNames.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {indicatorNames.map((name) => (
-              <span key={name} className="rounded bg-accent/10 px-1.5 py-0.5 text-[9px] text-accent">
+              <span key={name} className="rounded bg-accent/10 px-1.5 py-0.5 text-[13px] text-accent">
                 {name}
               </span>
             ))}

@@ -10,12 +10,12 @@ export function CollectorMetrics({ quote }: CollectorMetricsProps): React.ReactN
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-3 gap-2 text-[13px]">
         <KV k="买价" v={quote.bid.toFixed(2)} color="text-buy" />
         <KV k="卖价" v={quote.ask.toFixed(2)} color="text-sell" />
         <KV k="点差" v={quote.spread.toFixed(1)} />
       </div>
-      <div className="text-[10px] text-text-muted">
+      <div className="text-[13px] text-text-muted">
         最新更新时间：{quote.time || "--"}
       </div>
     </div>

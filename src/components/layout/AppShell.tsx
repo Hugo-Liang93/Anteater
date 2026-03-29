@@ -1,45 +1,37 @@
-import { lazy, Suspense } from "react";
 import { usePolling } from "@/hooks/usePolling";
 import { useStudioSSE } from "@/hooks/useStudioSSE";
 import { TopBar } from "./TopBar";
-import { Sidebar } from "./Sidebar";
-import { BottomEventFeed } from "./BottomEventFeed";
-import { EmployeeDetail } from "../overlay/EmployeeDetail";
-import { AIDecisionDeck } from "../overlay/AIDecisionDeck";
-
-const LazyStudio3D = lazy(() =>
-  import("../studio/Studio3D").then((module) => ({
-    default: module.Studio3D,
-  })),
-);
+import { NavRail } from "./NavRail";
+import { SecondaryPanel } from "./SecondaryPanel";
+import { CenterStage } from "./CenterStage";
+import { RightPanel } from "./RightPanel";
+import { StatusStrip } from "./StatusStrip";
 
 export function AppShell() {
   usePolling();
   useStudioSSE();
 
   return (
-    <div className="flex h-full flex-col bg-[radial-gradient(circle_at_top,rgba(35,224,179,0.08),transparent_28%),linear-gradient(180deg,#09111c_0%,#0c1420_100%)]">
-      <TopBar />
-      <div className="flex flex-1 overflow-hidden p-3 pt-2">
-        <div className="flex flex-1 overflow-hidden rounded-[28px] border border-white/8 bg-[#0e1622]/72 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
-          <Sidebar />
-          <main className="relative flex-1 overflow-hidden bg-[#101923]">
-            <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_top,rgba(255,218,167,0.14),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0)_20%,rgba(9,17,28,0.16)_100%)]" />
-            <Suspense
-              fallback={
-                <div className="flex h-full items-center justify-center bg-bg-primary text-sm text-text-muted">
-                  正在加载工作室场景...
-                </div>
-              }
-            >
-              <LazyStudio3D />
-            </Suspense>
-            <AIDecisionDeck />
-            <EmployeeDetail />
-          </main>
-        </div>
+    <div className="grid h-screen overflow-hidden grid-rows-[48px_1fr_32px] grid-cols-[56px_auto_1fr_auto] bg-[radial-gradient(circle_at_top,rgba(35,224,179,0.08),transparent_28%),linear-gradient(180deg,#09111c_0%,#0c1420_100%)]">
+      {/* NavRail — spans all 3 rows on the far left */}
+      <div className="row-span-3">
+        <NavRail />
       </div>
-      <BottomEventFeed />
+
+      {/* TopBar — spans remaining 3 columns */}
+      <header className="col-span-3">
+        <TopBar />
+      </header>
+
+      {/* Main content row */}
+      <SecondaryPanel />
+      <CenterStage />
+      <RightPanel />
+
+      {/* StatusStrip — spans remaining 3 columns */}
+      <footer className="col-span-3">
+        <StatusStrip />
+      </footer>
     </div>
   );
 }

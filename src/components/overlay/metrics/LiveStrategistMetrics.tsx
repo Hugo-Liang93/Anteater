@@ -24,10 +24,10 @@ export function LiveStrategistMetrics({
       <div className="space-y-2">
         {strategyNames.length > 0 ? (
           <>
-            <div className="text-[10px] text-text-muted">{strategyNames.length} 个盘中策略已就绪</div>
+            <div className="text-[13px] text-text-muted">{strategyNames.length} 个盘中策略已就绪</div>
             <div className="flex flex-wrap gap-1">
               {strategyNames.map((name) => (
-                <span key={name} className="rounded bg-accent/10 px-1.5 py-0.5 text-[9px] text-accent">
+                <span key={name} className="rounded bg-accent/10 px-1.5 py-0.5 text-[13px] text-accent">
                   {name}
                 </span>
               ))}
@@ -59,19 +59,19 @@ export function LiveStrategistMetrics({
 
   return (
     <div className="space-y-2.5">
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-3 gap-2 text-[13px]">
         <MetricBox title="盘中策略" value={String(strategyNames.length)} />
         <MetricBox title="预览信号" value={String(activePreview)} accent={activePreview > 0} />
         <MetricBox title="覆盖周期" value={String(byTF.size)} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-xs">
+      <div className="grid grid-cols-2 gap-2 text-[13px]">
         <MetricBox title="偏多预览" value={String(totalBuy)} color="text-buy" />
         <MetricBox title="偏空预览" value={String(totalSell)} color="text-sell" />
       </div>
 
       <div className="space-y-1 border-t border-border/50 pt-2">
-        <div className="text-[10px] text-text-muted">按周期查看盘中预览</div>
+        <div className="text-[13px] text-text-muted">按周期查看盘中预览</div>
         {sortedTFs.map((timeframe) => {
           const tfSignals = byTF.get(timeframe)!;
           const buy = tfSignals.filter((signal) => signal.direction === "buy").length;
@@ -81,7 +81,7 @@ export function LiveStrategistMetrics({
           );
 
           return (
-            <div key={timeframe} className="flex items-center justify-between text-[10px]">
+            <div key={timeframe} className="flex items-center justify-between text-[13px]">
               <span className="font-mono text-accent">{timeframe}</span>
               <span className="text-text-muted">
                 <span className="text-buy">{buy} 条偏多</span>
@@ -101,6 +101,12 @@ export function LiveStrategistMetrics({
   );
 }
 
+function cnMetric(color?: string, accent?: boolean): string {
+  if (color) return `font-mono ${color}`;
+  if (accent) return "font-mono text-accent";
+  return "font-mono text-text-primary";
+}
+
 function MetricBox({
   title,
   value,
@@ -118,10 +124,4 @@ function MetricBox({
       <div className={cnMetric(color, accent)}>{value}</div>
     </div>
   );
-}
-
-function cnMetric(color?: string, accent?: boolean): string {
-  if (color) return `font-mono ${color}`;
-  if (accent) return "font-mono text-accent";
-  return "font-mono text-text-primary";
 }

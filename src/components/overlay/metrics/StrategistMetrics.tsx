@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { config } from "@/config";
@@ -45,7 +46,7 @@ export function StrategistMetrics({
 
   return (
     <div className="space-y-2.5">
-      <div className="grid grid-cols-2 gap-2 text-xs">
+      <div className="grid grid-cols-2 gap-2 text-[13px]">
         <MetricBox title="参与策略" value={String(strategies.length)} />
         <MetricBox title="覆盖周期" value={String(byTF.size)} />
         <MetricBox title="偏多信号" value={String(buyCount)} color="text-buy" />
@@ -53,7 +54,7 @@ export function StrategistMetrics({
       </div>
 
       <div className="space-y-1 border-t border-border/50 pt-2">
-        <div className="text-[10px] text-text-muted">按周期查看策略输出</div>
+        <div className="text-[13px] text-text-muted">按周期查看策略输出</div>
         {sortedTFs.map((timeframe) => {
           const tfSignals = byTF.get(timeframe)!;
           const buy = tfSignals.filter((signal) => signal.direction === "buy").length;
@@ -63,7 +64,7 @@ export function StrategistMetrics({
           );
 
           return (
-            <div key={timeframe} className="flex items-center justify-between text-[10px]">
+            <div key={timeframe} className="flex items-center justify-between text-[13px]">
               <span className="font-mono text-accent">{timeframe}</span>
               <span className="text-text-muted">
                 <span className="text-buy">{buy} 条偏多</span>
@@ -79,7 +80,7 @@ export function StrategistMetrics({
       </div>
 
       {latestSignal?.reason && (
-        <div className="rounded-lg border border-border/60 bg-bg-secondary/70 px-3 py-2 text-[11px] text-text-secondary">
+        <div className="rounded-lg border border-border/60 bg-bg-secondary/70 px-3 py-2 text-[13px] text-text-secondary">
           最新判断：{latestSignal.timeframe} 周期由 {latestSignal.strategy} 给出
           {latestSignal.direction === "buy" ? "偏多" : latestSignal.direction === "sell" ? "偏空" : "观望"}
           ，原因是“{latestSignal.reason}”。
@@ -136,15 +137,15 @@ export function SignalFullView({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-1 rounded bg-bg-hover py-1 text-[10px] text-text-secondary transition-colors hover:text-accent"
+        className="flex w-full items-center justify-center gap-1 rounded bg-bg-hover py-1 text-[13px] text-text-secondary transition-colors hover:text-accent"
       >
         <ChevronDown size={12} />
         查看全部信号
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setOpen(false)}
         >
           <div
@@ -161,7 +162,7 @@ export function SignalFullView({
             </div>
 
             <div className="overflow-auto p-4" style={{ maxHeight: "calc(85vh - 52px)" }}>
-              <table className="w-full border-collapse text-[11px]">
+              <table className="w-full border-collapse text-[13px]">
                 <thead>
                   <tr className="border-b border-border">
                     <th className="sticky left-0 z-10 bg-bg-panel py-1.5 pr-3 text-left font-medium text-text-secondary">
@@ -211,7 +212,7 @@ export function SignalFullView({
                     </tr>
                   ))}
                   <tr className="border-t-2 border-border">
-                    <td className="sticky left-0 z-10 bg-bg-panel py-1.5 pr-2 text-[10px] font-semibold text-text-secondary">
+                    <td className="sticky left-0 z-10 bg-bg-panel py-1.5 pr-2 text-[13px] font-semibold text-text-secondary">
                       汇总
                     </td>
                     {sortedTFs.map((timeframe) => {
@@ -224,7 +225,7 @@ export function SignalFullView({
                           : 0;
 
                       return (
-                        <td key={timeframe} className="px-3 py-1.5 text-center text-[10px]">
+                        <td key={timeframe} className="px-3 py-1.5 text-center text-[13px]">
                           <div>
                             <span className="font-medium text-buy">{buy} 偏多</span>
                             {" "}
@@ -241,7 +242,8 @@ export function SignalFullView({
               </table>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

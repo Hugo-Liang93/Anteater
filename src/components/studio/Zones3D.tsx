@@ -4,8 +4,7 @@ import * as THREE from "three";
 import { SCENE_ZONES } from "@/config/layout";
 import type { EmployeeRoleType } from "@/config/employees";
 import { getWorkflowByRole, workflowConfigMap } from "@/config/workflows";
-import { useEmployeeStore } from "@/store/employees";
-import { useUIStore } from "@/store/ui";
+import { useUIStore, selectSelectedEmployee } from "@/store/ui";
 
 function ZoneRug({
   center,
@@ -75,7 +74,7 @@ function ZoneRug({
         center
         distanceFactor={12}
         sprite
-        zIndexRange={[0, 0]}
+        zIndexRange={[18, 0]}
       >
         <div
           style={{
@@ -100,7 +99,7 @@ function ZoneRug({
 }
 
 export function Zones3D() {
-  const selectedEmployee = useEmployeeStore((s) => s.selectedEmployee);
+  const selectedEmployee = useUIStore(selectSelectedEmployee);
   const selectedWorkflow = useUIStore((s) => s.selectedWorkflow);
   const activeWorkflow = selectedEmployee
     ? getWorkflowByRole(selectedEmployee as EmployeeRoleType)

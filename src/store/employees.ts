@@ -55,10 +55,6 @@ interface EmployeeStore {
 
   /** 给员工添加一条动作日志 */
   addAction: (role: EmployeeRoleType, log: Omit<ActionLog, "id">) => void;
-
-  /** 当前选中查看详情的员工 */
-  selectedEmployee: EmployeeRoleType | null;
-  setSelectedEmployee: (role: EmployeeRoleType | null) => void;
 }
 
 const MAX_ACTIONS = 50;
@@ -99,15 +95,26 @@ const initialEmployees = Object.fromEntries(
 
 export const useEmployeeStore = create<EmployeeStore>((set) => ({
   employees: initialEmployees,
-  selectedEmployee: null,
 
   updateEmployee: (role, patch) =>
-    set((s) => ({
-      employees: {
-        ...s.employees,
-        [role]: { ...s.employees[role], ...patch, lastUpdate: Date.now() },
-      },
-    })),
+    set((s) => {
+      const prev = s.employees[role];
+      if (!prev) return s;
+      // 浅比较：status 和 currentTask 不变时跳过更新，避免无效 re-render
+      if (
+        patch.status === prev.status &&
+        patch.currentTask === prev.currentTask &&
+        patch.stats === undefined
+      ) {
+        return s;
+      }
+      return {
+        employees: {
+          ...s.employees,
+          [role]: { ...prev, ...patch, lastUpdate: Date.now() },
+        },
+      };
+    }),
 
   addAction: (role, log) =>
     set((s) => {
@@ -125,8 +132,6 @@ export const useEmployeeStore = create<EmployeeStore>((set) => ({
         },
       };
     }),
-
-  setSelectedEmployee: (selectedEmployee) => set({ selectedEmployee }),
 }));
 
 /** 选择单个员工状态 */
