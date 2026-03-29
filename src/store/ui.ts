@@ -1,49 +1,38 @@
-/**
- * UI 状态 Store — 按 ARCHITECTURE.md 要求
- *
- * 管理所有 UI 层状态：面板可见性、场景模式、过滤器等。
- */
-
 import { create } from "zustand";
+import type { WorkflowId } from "@/config/workflows";
 
-export type SidebarTab = "tasks" | "data" | "calendar" | "logs" | "alerts";
+export type SidebarTab = "data" | "calendar" | "logs" | "alerts";
 export type SceneMode = "3d" | "2d";
 
 interface UIState {
-  /** 左侧面板当前 tab */
   sidebarTab: SidebarTab;
   setSidebarTab: (tab: SidebarTab) => void;
 
-  /** 左侧面板是否折叠 */
-  sidebarCollapsed: boolean;
-  toggleSidebar: () => void;
+  selectedWorkflow: WorkflowId | null;
+  setSelectedWorkflow: (workflow: WorkflowId | null) => void;
 
-  /** 员工详情面板是否打开 */
-  detailPanelOpen: boolean;
-  setDetailPanelOpen: (open: boolean) => void;
+  aiWorkbenchOpen: boolean;
+  setAiWorkbenchOpen: (open: boolean) => void;
 
-  /** 场景模式：3D / 2D */
   sceneMode: SceneMode;
   setSceneMode: (mode: SceneMode) => void;
 
-  /** 底部事件流是否显示 */
   eventFeedVisible: boolean;
   setEventFeedVisible: (visible: boolean) => void;
 
-  /** 告警过滤：显示的最低级别 */
   alertFilter: "all" | "warning" | "error";
   setAlertFilter: (filter: "all" | "warning" | "error") => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  sidebarTab: "tasks",
+  sidebarTab: "data",
   setSidebarTab: (sidebarTab) => set({ sidebarTab }),
 
-  sidebarCollapsed: false,
-  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  selectedWorkflow: null,
+  setSelectedWorkflow: (selectedWorkflow) => set({ selectedWorkflow }),
 
-  detailPanelOpen: false,
-  setDetailPanelOpen: (detailPanelOpen) => set({ detailPanelOpen }),
+  aiWorkbenchOpen: false,
+  setAiWorkbenchOpen: (aiWorkbenchOpen) => set({ aiWorkbenchOpen }),
 
   sceneMode: "3d",
   setSceneMode: (sceneMode) => set({ sceneMode }),
@@ -55,9 +44,8 @@ export const useUIStore = create<UIState>((set) => ({
   setAlertFilter: (alertFilter) => set({ alertFilter }),
 }));
 
-/** 选择器 */
 export const selectSidebarTab = (s: UIState) => s.sidebarTab;
-export const selectSidebarCollapsed = (s: UIState) => s.sidebarCollapsed;
+export const selectSelectedWorkflow = (s: UIState) => s.selectedWorkflow;
+export const selectAiWorkbenchOpen = (s: UIState) => s.aiWorkbenchOpen;
 export const selectSceneMode = (s: UIState) => s.sceneMode;
-export const selectDetailPanelOpen = (s: UIState) => s.detailPanelOpen;
 export const selectEventFeedVisible = (s: UIState) => s.eventFeedVisible;

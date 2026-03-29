@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-primary: #0f1923;
-  --color-bg-secondary: #1a2634;
-  --color-bg-panel: #152028;
-  --color-bg-hover: #1e3044;
-  --color-border: #2a3f52;
-  --color-accent: #00d4aa;
-  --color-accent-dim: #00a88a;
-  --color-danger: #ff4757;
-  --color-warning: #ffa726;
-  --color-success: #00d4aa;
-  --color-text-primary: #e8edf2;
-  --color-text-secondary: #8899aa;
-  --color-text-muted: #5a6d7e;
-  --color-buy: #00d4aa;
-  --color-sell: #ff4757;
+  --color-bg-primary: #0c1420;
+  --color-bg-secondary: #121d2b;
+  --color-bg-panel: #142132;
+  --color-bg-hover: #1b2b40;
+  --color-border: #2d3d53;
+  --color-accent: #23e0b3;
+  --color-accent-dim: #18b994;
+  --color-danger: #ff667f;
+  --color-warning: #ffb14a;
+  --color-success: #23e0b3;
+  --color-text-primary: #eff4fb;
+  --color-text-secondary: #a6b4c6;
+  --color-text-muted: #708196;
+  --color-buy: #20d6ab;
+  --color-sell: #ff5d77;
 }
 
 @keyframes ticker-scroll {
@@ -34,7 +34,17 @@ body,
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: var(--color-bg-primary);
+  background:
+    radial-gradient(circle at top, rgba(35, 224, 179, 0.08), transparent 28%),
+    linear-gradient(180deg, #09111c 0%, #0c1420 100%);
   color: var(--color-text-primary);
+  font-family: "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+}
+
+.font-display {
+  font-family: "Bahnschrift SemiCondensed", "Arial Narrow", "Segoe UI Semibold", sans-serif;
+}
+
+.font-data {
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
 }

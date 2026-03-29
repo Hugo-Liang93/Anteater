@@ -1,41 +1,36 @@
-/** 应用配置 — 通过 Vite proxy 转发到 MT5Services 后端 */
+const apiBase = import.meta.env.VITE_API_BASE ?? "/api";
+
 export const config = {
-  /** Mock 模式：true 时使用模拟数据，不连接后端（通过 ?mock=1 或 env 控制） */
-  mockMode: typeof window !== "undefined"
-    ? new URLSearchParams(window.location.search).has("mock")
-    : (import.meta.env.VITE_MOCK_MODE === "true"),
+  mockMode:
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).has("mock")
+      : import.meta.env.VITE_MOCK_MODE === "true",
 
-  /** API 基础路径（Vite dev server proxy 会将 /api → http://localhost:8808/v1） */
-  apiBase: "/api",
+  apiBase,
+  apiKey: import.meta.env.VITE_API_KEY ?? "",
 
-  /** 轮询间隔（ms） */
   polling: {
-    /** 健康状态、组件状态 */
     health: 5_000,
-    /** 信号 & 策略状态 */
     signals: 3_000,
-    /** 持仓 & 账户 */
     account: 5_000,
-    /** 指标快照 */
     indicators: 3_000,
   },
 
-  /** SSE 实时流端点 */
-  sseEndpoint: "/api/stream",
+  sseEndpoint: `${apiBase}/studio/stream`,
+  wsEndpoint: `${
+    typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:"
+  }//${typeof window !== "undefined" ? window.location.host : "localhost:8808"}/ws/studio`,
 
-  /** WebSocket 实时通道端点 */
-  wsEndpoint: `${typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:"}//${typeof window !== "undefined" ? window.location.host : "localhost:8808"}/ws/studio`,
+  decision: {
+    provider: (import.meta.env.VITE_DECISION_PROVIDER ?? "hybrid") as "heuristic" | "remote" | "hybrid",
+    briefPath: import.meta.env.VITE_DECISION_BRIEF_PATH ?? "/decision/brief",
+    modelLabel: import.meta.env.VITE_DECISION_MODEL_LABEL ?? "远程模型",
+    requestTimeoutMs: Number(import.meta.env.VITE_DECISION_TIMEOUT_MS ?? 12_000),
+  },
 
-  /** 交易品种（与后端 app.ini 对齐） */
   symbols: ["XAUUSD"] as const,
-
-  /** 时间框架（与后端 app.ini [trading] timeframes 对齐） */
   timeframes: ["M5", "M15", "M30", "H1", "H4", "D1"] as const,
-
-  /** 默认时间框架（轮询指标/信号时使用，可由未来 TF 选择器覆盖） */
   defaultTimeframe: "M5" as const,
-
-  /** 日夜交替：false 时锁定为白天（正午光照） */
   enableDayNight: false,
 } as const;
 

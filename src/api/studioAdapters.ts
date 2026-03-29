@@ -60,7 +60,7 @@ export function normalizeStudioAgent(raw: unknown): StudioAgent | null {
     status: normalizeStatus(raw.status),
     task: str(raw.task) || str(raw.currentTask),
     symbol: typeof raw.symbol === "string" ? raw.symbol : undefined,
-    metrics: isObj(raw.metrics) ? raw.metrics as Record<string, string | number | boolean | null> : undefined,
+    metrics: isObj(raw.metrics) ? raw.metrics as Record<string, unknown> : undefined,
     alertLevel: (raw.alertLevel === "info" || raw.alertLevel === "warning" || raw.alertLevel === "error")
       ? raw.alertLevel
       : "none",

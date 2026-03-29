@@ -11,6 +11,8 @@ import { employeeConfigs } from "@/config/employees";
 import type { EmployeeRoleType } from "@/config/employees";
 import { AGENT_POSITIONS, DATA_FLOWS, SCREEN_ONLY_AGENTS } from "@/config/layout";
 import { useEmployeeStore } from "@/store/employees";
+import { useUIStore } from "@/store/ui";
+import { getWorkflowByRole, workflowConfigMap } from "@/config/workflows";
 import { CharacterModel } from "./CharacterModel";
 import { RobotInspector } from "./RobotInspector";
 import { Office3D } from "./Office3D";
@@ -80,19 +82,92 @@ function DynamicLighting({ params }: { params: DayNightParams }) {
 /** 单条数据流线 — 通过 ref 读取 employee 状态，不触发 React 重渲染 */
 import type { EmployeeState } from "@/store/employees";
 
-function DataFlowLine({ from, to, fromPos, toPos, employeesRef }: {
+function DataFlowLine({ from, to, fromPos, toPos, employeesRef, activeRoleSet }: {
   from: EmployeeRoleType; to: EmployeeRoleType;
   fromPos: [number, number, number]; toPos: [number, number, number];
   employeesRef: React.RefObject<Record<EmployeeRoleType, EmployeeState>>;
+  activeRoleSet: ReadonlySet<EmployeeRoleType>;
 }) {
   const fromStatus = employeesRef.current?.[from]?.status ?? "idle";
   const toStatus = employeesRef.current?.[to]?.status ?? "idle";
-  const isActive = fromStatus !== "idle";
-  const isHighlight = fromStatus === "success" || toStatus === "success";
+  const inFocus = activeRoleSet.has(from) || activeRoleSet.has(to);
+  const isActive = fromStatus !== "idle" || inFocus;
+  const isHighlight = inFocus || fromStatus === "success" || toStatus === "success";
   return (
     <group>
       <FlowLine from={fromPos} to={toPos} highlight={isHighlight} />
       <DataFlowParticle from={fromPos} to={toPos} active={isActive} sourceStatus={fromStatus} targetStatus={toStatus} />
+    </group>
+  );
+}
+
+function FocusMarker({
+  position,
+  color,
+  active,
+  strong,
+}: {
+  position: [number, number, number];
+  color: string;
+  active: boolean;
+  strong: boolean;
+}) {
+  const ringRef = useRef<THREE.Mesh>(null);
+  const glowRef = useRef<THREE.Mesh>(null);
+  const ringMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: active ? (strong ? 0.92 : 0.42) : 0,
+        side: THREE.DoubleSide,
+      }),
+    [active, color, strong],
+  );
+  const glowMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: active ? (strong ? 0.16 : 0.06) : 0,
+        side: THREE.DoubleSide,
+      }),
+    [active, color, strong],
+  );
+
+  useEffect(() => {
+    return () => {
+      ringMat.dispose();
+      glowMat.dispose();
+    };
+  }, [glowMat, ringMat]);
+
+  useFrame(() => {
+    const t = performance.now() / 1000;
+    if (ringRef.current) {
+      ringRef.current.visible = active;
+      if (active) {
+        const scale = 1 + Math.sin(t * 3) * (strong ? 0.08 : 0.04);
+        ringRef.current.scale.setScalar(scale);
+      }
+    }
+    if (glowRef.current) {
+      glowRef.current.visible = active;
+      if (active) {
+        const scale = 1 + Math.sin(t * 2 + 0.7) * (strong ? 0.14 : 0.08);
+        glowRef.current.scale.setScalar(scale);
+      }
+    }
+  });
+
+  return (
+    <group position={[position[0], 0.03, position[2]]}>
+      <mesh ref={glowRef} rotation={[-Math.PI / 2, 0, 0]} material={glowMat}>
+        <ringGeometry args={[0.58, 1.15, 48]} />
+      </mesh>
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} material={ringMat}>
+        <ringGeometry args={[0.78, 0.9, 48]} />
+      </mesh>
     </group>
   );
 }
@@ -117,6 +192,20 @@ function useCharacterClickHandlers() {
 
 const Scene = memo(function Scene({ dayNight }: { dayNight: DayNightParams }) {
   const getClickHandler = useCharacterClickHandlers();
+  const selectedEmployee = useEmployeeStore((s) => s.selectedEmployee);
+  const selectedWorkflow = useUIStore((s) => s.selectedWorkflow);
+  const activeWorkflow = selectedEmployee
+    ? getWorkflowByRole(selectedEmployee)
+    : selectedWorkflow;
+  const activeRoles = useMemo(
+    () => (selectedEmployee
+      ? [selectedEmployee]
+      : activeWorkflow
+        ? (workflowConfigMap.get(activeWorkflow)?.roles ?? [])
+        : []),
+    [activeWorkflow, selectedEmployee],
+  );
+  const activeRoleSet = useMemo(() => new Set<EmployeeRoleType>(activeRoles), [activeRoles]);
 
   // 数据流状态通过 ref 订阅，不触发 React 重渲染（由 useFrame 驱动视觉更新）
   const employeesRef = useRef(useEmployeeStore.getState().employees);
@@ -148,7 +237,15 @@ const Scene = memo(function Scene({ dayNight }: { dayNight: DayNightParams }) {
 
       {/* 数据流 — 粒子动画由 useFrame 内部读 ref，不触发 React 重渲染 */}
       {flowConfigs.map(({ from, to, fromPos, toPos }, i) => (
-        <DataFlowLine key={i} from={from} to={to} fromPos={fromPos} toPos={toPos} employeesRef={employeesRef} />
+        <DataFlowLine
+          key={i}
+          from={from}
+          to={to}
+          fromPos={fromPos}
+          toPos={toPos}
+          employeesRef={employeesRef}
+          activeRoleSet={activeRoleSet}
+        />
       ))}
 
       {/* 角色 — SCREEN_ONLY 不渲染，inspector 用机器人 */}
@@ -159,19 +256,41 @@ const Scene = memo(function Scene({ dayNight }: { dayNight: DayNightParams }) {
 
         // inspector → 机器人
         if (cfg.id === "inspector") {
-          return <RobotInspector key={cfg.id} position={pos} onClick={getClickHandler(cfg.id)} />;
+          const isFocused = activeRoleSet.has(cfg.id);
+          return (
+            <group key={cfg.id}>
+              <FocusMarker
+                position={pos}
+                color={cfg.color}
+                active={isFocused}
+                strong={selectedEmployee === cfg.id}
+              />
+              <group scale={isFocused ? 1.04 : 1}>
+                <RobotInspector position={pos} onClick={getClickHandler(cfg.id)} />
+              </group>
+            </group>
+          );
         }
 
         const dx = -pos[0];
         const dz = -6 - pos[2];
         const rotY = Math.atan2(dx, dz);
+        const isFocused = activeRoleSet.has(cfg.id);
         return (
-          <group key={cfg.id} position={pos} rotation={[0, rotY, 0]}>
-            <CharacterModel
-              role={cfg.id}
-              position={[0, 0, 0]}
-              onClick={getClickHandler(cfg.id)}
+          <group key={cfg.id}>
+            <FocusMarker
+              position={pos}
+              color={cfg.color}
+              active={isFocused}
+              strong={selectedEmployee === cfg.id}
             />
+            <group position={pos} rotation={[0, rotY, 0]} scale={isFocused ? 1.05 : 1}>
+              <CharacterModel
+                role={cfg.id}
+                position={[0, 0, 0]}
+                onClick={getClickHandler(cfg.id)}
+              />
+            </group>
           </group>
         );
       })}
@@ -192,25 +311,22 @@ export function Studio3D() {
 
   return (
     <div className="absolute inset-0">
-      <div className="absolute left-2 top-2 z-10 rounded-md bg-black/30 px-2 py-1 text-[10px] text-white/70 backdrop-blur-sm">
+      <div className="hidden">
         {dayNight.periodName} {dayNight.isNight ? "🌙" : "☀️"}
       </div>
       <Canvas
         shadows
-        camera={{ position: [0, 14, 12], fov: 45, near: 0.1, far: 80 }}
+        dpr={[1, 1.5]}
+        camera={{ position: [0, 8.8, 15.4], fov: 34, near: 0.1, far: 80 }}
         onPointerMissed={() => setSelected(null)}
         style={{ background: bgHex }}
       >
         <Scene dayNight={dayNight} />
         <OrbitControls
-          enablePan
-          enableZoom
-          enableRotate
-          maxPolarAngle={Math.PI / 2.2}
-          minPolarAngle={0.1}
-          minDistance={5}
-          maxDistance={35}
-          target={[0, 0.5, 0]}
+          enablePan={false}
+          enableZoom={false}
+          enableRotate={false}
+          target={[0, 1.15, -0.2]}
         />
         <fog attach="fog" args={[dayNight.bgColor, 18, 35]} />
       </Canvas>

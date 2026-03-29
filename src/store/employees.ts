@@ -32,7 +32,7 @@ export interface EmployeeState {
   /** 最近完成的动作日志 */
   recentActions: ActionLog[];
   /** 统计数据（角色相关） */
-  stats: Record<string, number | string>;
+  stats: Record<string, unknown>;
   /** 上次状态更新时间 */
   lastUpdate: number;
 }

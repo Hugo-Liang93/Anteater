@@ -13,15 +13,16 @@ import type {
   BacktestRunResult,
   BacktestRunPayload,
   HealthStatus,
-  IndicatorSnapshot,
+  OhlcBar,
   Position,
   Quote,
   QueueStatus,
   RiskWindow,
-  SignalQuality,
+  SignalMonitoringPayload,
   StrategyInfo,
   WalkForwardPayload,
 } from "./types";
+import type { DecisionBrief, DecisionContext } from "@/types/decision";
 
 // ─── 市场数据 ───
 
@@ -29,9 +30,9 @@ export function fetchQuote(symbol: string) {
   return apiClient.get<Quote>(`/quote?symbol=${symbol}`);
 }
 
-export function fetchOhlc(symbol: string, timeframe: string, count = 100) {
-  return apiClient.get<unknown>(
-    `/ohlc?symbol=${symbol}&timeframe=${timeframe}&count=${count}`,
+export function fetchOhlc(symbol: string, timeframe: string, limit = 100) {
+  return apiClient.get<OhlcBar[]>(
+    `/ohlc?symbol=${symbol}&timeframe=${timeframe}&limit=${limit}`,
   );
 }
 
@@ -48,13 +49,13 @@ export function fetchPositions() {
 // ─── 指标 ───
 
 export function fetchIndicators(symbol: string, timeframe: string) {
-  return apiClient.get<IndicatorSnapshot>(
+  return apiClient.get<Record<string, Record<string, unknown>>>(
     `/indicators/${symbol}/${timeframe}`,
   );
 }
 
 export function fetchIndicatorList() {
-  return apiClient.get<unknown[]>("/indicators/list");
+  return apiClient.get<string[]>("/indicators/list");
 }
 
 // ─── 信号 ───
@@ -71,7 +72,7 @@ export function fetchStrategies() {
 }
 
 export function fetchSignalQuality(symbol: string, timeframe: string) {
-  return apiClient.get<SignalQuality[]>(
+  return apiClient.get<SignalMonitoringPayload>(
     `/signals/monitoring/quality/${symbol}/${timeframe}`,
   );
 }
@@ -189,4 +190,16 @@ export function fetchStudioSummary() {
 
 export function fetchStudioAgentDetail(agentId: string) {
   return apiClient.get<unknown>(`/studio/agents/${agentId}`);
+}
+
+export function requestDecisionBrief(
+  context: DecisionContext,
+  path: string,
+  signal?: AbortSignal,
+) {
+  return apiClient.post<DecisionBrief>(
+    path,
+    { context },
+    { signal },
+  );
 }

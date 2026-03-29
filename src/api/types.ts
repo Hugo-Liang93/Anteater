@@ -3,12 +3,18 @@
  * 与后端 src/api/schemas.py 对齐
  */
 
+export interface ApiError {
+  code: string;
+  message: string;
+  suggested_action?: string | null;
+  details?: Record<string, unknown>;
+}
+
 /** 通用 API 响应包装 */
 export interface ApiResponse<T> {
   success: boolean;
   data: T | null;
-  error: string | null;
-  error_code: string | null;
+  error: ApiError | null;
   metadata: Record<string, unknown> | null;
 }
 
@@ -348,4 +354,11 @@ export interface SignalQuality {
   losses: number;
   win_rate: number;
   avg_pnl: number;
+}
+
+export interface SignalMonitoringPayload {
+  symbol: string;
+  timeframe: string;
+  regime: Record<string, unknown>;
+  quality: Record<string, unknown>;
 }

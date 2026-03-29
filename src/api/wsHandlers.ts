@@ -57,7 +57,7 @@ function handleSnapshot(payload: unknown): void {
             ...updated[role],
             status: agent.status,
             currentTask: agent.task,
-            stats: (agent.metrics ?? {}) as Record<string, number | string>,
+            stats: agent.metrics ?? {},
             lastUpdate: Date.now(),
           };
         }
@@ -99,7 +99,7 @@ function handleAgentUpdate(payload: unknown): void {
   useEmployeeStore.getState().updateEmployee(agent.id as EmployeeRoleType, {
     status: agent.status,
     currentTask: agent.task,
-    stats: (agent.metrics ?? {}) as Record<string, number | string>,
+    stats: agent.metrics ?? {},
   });
 }
 

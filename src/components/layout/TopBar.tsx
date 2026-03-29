@@ -3,7 +3,45 @@ import { config } from "@/config";
 import { useMarketStore } from "@/store/market";
 import { useSignalStore, selectRiskWindows } from "@/store/signals";
 import { useEmployeeStore } from "@/store/employees";
-import { Activity, CalendarClock, ShieldAlert, Wifi, WifiOff } from "lucide-react";
+
+type NoticeTone = "neutral" | "warning" | "danger";
+
+function buildGlobalNotice({
+  connected,
+  healthStatus,
+  riskWindows,
+  marginState,
+  marginLevel,
+}: {
+  connected: boolean;
+  healthStatus?: string;
+  riskWindows: import("@/api/types").RiskWindow[];
+  marginState?: string;
+  marginLevel?: number;
+}): { tone: NoticeTone; text: string } {
+  if (!connected) {
+    return { tone: "danger", text: "STREAM OFFLINE" };
+  }
+
+  if (marginState === "critical" || marginState === "danger") {
+    const suffix = marginLevel != null ? ` ${Math.round(marginLevel)}%` : "";
+    return { tone: "danger", text: `MARGIN WATCH${suffix}` };
+  }
+
+  if (riskWindows.some((w) => w.guard_active)) {
+    return { tone: "warning", text: "NEWS GUARD ACTIVE" };
+  }
+
+  if (healthStatus === "degraded") {
+    return { tone: "warning", text: "SYSTEM DEGRADED" };
+  }
+
+  if (healthStatus === "unhealthy") {
+    return { tone: "danger", text: "SYSTEM UNHEALTHY" };
+  }
+
+  return { tone: "neutral", text: config.mockMode ? "MOCK SESSION" : "SYSTEM NOMINAL" };
+}
 
 export function TopBar() {
   const quote = useMarketStore((s) => s.quotes["XAUUSD"]);
@@ -11,152 +49,77 @@ export function TopBar() {
   const connected = useMarketStore((s) => s.connected);
   const health = useSignalStore((s) => s.health);
   const riskWindows = useSignalStore(selectRiskWindows);
+  const accountantStats = useEmployeeStore((s) => s.employees.accountant?.stats ?? {});
 
-  const healthColor =
-    health?.status === "healthy"
-      ? "text-success"
-      : health?.status === "degraded"
+  const marginGuard =
+    typeof accountantStats.margin_guard === "object" && accountantStats.margin_guard !== null
+      ? (accountantStats.margin_guard as { state?: string; margin_level?: number })
+      : null;
+
+  const notice = buildGlobalNotice({
+    connected,
+    healthStatus: health?.status,
+    riskWindows,
+    marginState: marginGuard?.state,
+    marginLevel: marginGuard?.margin_level,
+  });
+
+  const noticeTone =
+    notice.tone === "danger"
+      ? "text-danger"
+      : notice.tone === "warning"
         ? "text-warning"
-        : "text-danger";
+        : "text-text-secondary";
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-bg-secondary px-4">
-      {/* 左：品牌 */}
-      <div className="flex items-center gap-3">
-        <span className="text-lg font-bold tracking-wide text-accent">
+    <header className="relative z-20 flex h-[72px] shrink-0 items-center justify-between border-b border-white/8 bg-[#0a111b]/90 px-6 backdrop-blur-xl">
+      <div className="flex items-center gap-4">
+        <div className="font-display text-[36px] font-semibold leading-none tracking-[0.12em] text-accent">
           ANTEATER
+        </div>
+        <div className="text-[15px] text-white/45">Trading Studio</div>
+        <span
+          className={cn(
+            "rounded-xl px-3 py-1 text-xs font-semibold tracking-[0.18em]",
+            config.mockMode
+              ? "bg-warning/15 text-warning"
+              : "bg-success/15 text-success",
+          )}
+        >
+          {config.mockMode ? "MOCK" : "LIVE"}
         </span>
-        <span className="text-xs text-text-muted">Trading Studio</span>
-        {config.mockMode ? (
-          <span className="rounded bg-warning/20 px-1.5 py-0.5 text-[10px] font-semibold text-warning">
-            MOCK
-          </span>
-        ) : (
-          <span className="rounded bg-success/20 px-1.5 py-0.5 text-[10px] font-semibold text-success">
-            LIVE
-          </span>
-        )}
       </div>
 
-      {/* 中：行情 */}
-      <div className="flex items-center gap-6 text-sm">
-        {quote?.bid != null ? (
-          <>
-            <span className="font-mono text-text-primary">
-              XAUUSD{" "}
+      <div className="flex items-center gap-8 font-data text-[15px]">
+        <div className="flex items-baseline gap-3">
+          <span className="font-semibold tracking-[0.08em] text-white">XAUUSD</span>
+          {quote ? (
+            <>
               <span className="text-buy">{quote.bid.toFixed(2)}</span>
-              {" / "}
-              <span className="text-sell">{quote.ask?.toFixed(2) ?? "—"}</span>
-            </span>
-            {quote.spread != null && (
-              <span className="text-text-muted">
-                spread {quote.spread.toFixed(1)}
-              </span>
-            )}
-          </>
-        ) : (
-          <span className="text-text-muted">等待行情...</span>
-        )}
+              <span className="text-white/40">/</span>
+              <span className="text-sell">{quote.ask.toFixed(2)}</span>
+            </>
+          ) : (
+            <span className="text-white/35">--.--</span>
+          )}
+        </div>
 
-        {account && (
-          <span className="text-text-secondary">
-            余额{" "}
-            <span className="font-mono text-text-primary">
-              ${account.balance.toFixed(2)}
-            </span>
+        <div className="flex items-center gap-2 text-white/45">
+          <span>spread</span>
+          <span className="text-white/75">{quote?.spread?.toFixed(1) ?? "--"}</span>
+        </div>
+
+        <div className="flex items-center gap-2 text-white/45">
+          <span>余额</span>
+          <span className="text-[18px] font-semibold text-white">
+            ${account?.balance.toFixed(2) ?? "--"}
           </span>
-        )}
+        </div>
       </div>
 
-      {/* 右：保证金告警 + 日历 + 状态 */}
-      <div className="flex items-center gap-3 text-xs">
-        <MarginAlert />
-        <CalendarAlert riskWindows={riskWindows} />
-        <span className={cn("flex items-center gap-1", healthColor)}>
-          <Activity size={14} />
-          {health?.status ?? "unknown"}
-        </span>
-        {connected ? (
-          <Wifi size={14} className="text-success" />
-        ) : (
-          <WifiOff size={14} className="text-danger" />
-        )}
+      <div className={cn("min-w-[180px] text-right font-display text-[18px] tracking-[0.14em]", noticeTone)}>
+        {notice.text}
       </div>
     </header>
-  );
-}
-
-/** 保证金水位告警指示器 */
-function MarginAlert() {
-  const stats = useEmployeeStore((s) => s.employees["accountant"]?.stats ?? {});
-  const mg = typeof stats.margin_guard === "object" && stats.margin_guard !== null
-    ? stats.margin_guard as { state?: string; margin_level?: number; should_block_new_trades?: boolean; should_emergency_close?: boolean }
-    : null;
-
-  if (!mg || mg.state === "safe" || mg.state === "unknown") return null;
-
-  const level = mg.margin_level != null ? `${Math.round(mg.margin_level)}%` : "";
-  const isCritical = mg.state === "critical";
-  const isDanger = mg.state === "danger";
-
-  const label = isCritical
-    ? `保证金 ${level} 紧急`
-    : isDanger
-      ? `保证金 ${level} 危险`
-      : `保证金 ${level} 预警`;
-
-  return (
-    <span className={cn(
-      "flex items-center gap-1 rounded px-1.5 py-0.5",
-      isCritical
-        ? "bg-danger/20 text-danger animate-pulse"
-        : isDanger
-          ? "bg-warning/20 text-warning animate-pulse"
-          : "bg-yellow-400/20 text-yellow-400",
-    )}>
-      <ShieldAlert size={12} />
-      <span>{label}</span>
-    </span>
-  );
-}
-
-/** 经济日历预警指示器 */
-function CalendarAlert({ riskWindows }: { riskWindows: import("@/api/types").RiskWindow[] }) {
-  if (riskWindows.length === 0) return null;
-
-  const now = Date.now();
-  const activeGuards = riskWindows.filter((w) => w.guard_active);
-  const nearest = riskWindows
-    .filter((w) => w.impact === "high")
-    .map((w) => ({ ...w, ms: new Date(w.scheduled_at || w.datetime).getTime() - now }))
-    .filter((w) => w.ms > 0)
-    .sort((a, b) => a.ms - b.ms)[0];
-
-  // 无高影响事件且无防护 → 静默
-  if (!nearest && activeGuards.length === 0) return null;
-
-  const isUrgent = activeGuards.length > 0 || (nearest && nearest.ms < 3600_000);
-  const timeStr = nearest
-    ? nearest.ms < 3600_000
-      ? `${Math.round(nearest.ms / 60_000)}m`
-      : `${Math.round(nearest.ms / 3600_000)}h`
-    : "";
-
-  const label = activeGuards.length > 0
-    ? `防护中`
-    : nearest
-      ? `${nearest.currency} ${nearest.event_name.length > 8 ? nearest.event_name.slice(0, 8) + "…" : nearest.event_name} ${timeStr}`
-      : "";
-
-  return (
-    <span className={cn(
-      "flex items-center gap-1 rounded px-1.5 py-0.5",
-      isUrgent
-        ? "bg-warning/20 text-warning animate-pulse"
-        : "bg-text-muted/10 text-text-muted",
-    )}>
-      <CalendarClock size={12} />
-      <span className="max-w-[120px] truncate">{label}</span>
-    </span>
   );
 }

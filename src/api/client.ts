@@ -6,15 +6,36 @@
  */
 
 import { config } from "@/config";
-import type { ApiResponse } from "./types";
+import type { ApiError, ApiResponse } from "./types";
 
-const BASE = import.meta.env.VITE_API_BASE ?? config.apiBase;
+const BASE = config.apiBase;
+
+function buildApiError(
+  code: string,
+  message: string,
+  details?: Record<string, unknown>,
+): ApiError {
+  return { code, message, details };
+}
+
+function isApiResponse<T>(value: unknown): value is ApiResponse<T> {
+  return (
+    value != null &&
+    typeof value === "object" &&
+    "success" in value &&
+    typeof (value as { success?: unknown }).success === "boolean"
+  );
+}
 
 class ApiClient {
-  private apiKey: string | null = null;
+  private apiKey: string | null = config.apiKey || null;
 
   setApiKey(key: string) {
     this.apiKey = key;
+  }
+
+  getApiKey() {
+    return this.apiKey;
   }
 
   async request<T>(
@@ -37,41 +58,64 @@ class ApiClient {
       return {
         success: false,
         data: null,
-        error: "Network error: backend unreachable",
-        error_code: "NETWORK_ERROR",
+        error: buildApiError("network_error", "Network error: backend unreachable"),
         metadata: null,
       };
+    }
+
+    let body: unknown = null;
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      try {
+        body = await res.json();
+      } catch {
+        body = null;
+      }
+    }
+
+    if (isApiResponse<T>(body)) {
+      return body;
     }
 
     if (!res.ok) {
       return {
         success: false,
         data: null,
-        error: `HTTP ${res.status}: ${res.statusText}`,
-        error_code: "HTTP_ERROR",
+        error: buildApiError(
+          "http_error",
+          `HTTP ${res.status}: ${res.statusText}`,
+          body != null && typeof body === "object"
+            ? { body: body as Record<string, unknown> }
+            : { status: res.status },
+        ),
         metadata: null,
       };
     }
 
-    try {
-      return (await res.json()) as ApiResponse<T>;
-    } catch {
+    if (body !== null) {
       return {
-        success: false,
-        data: null,
-        error: "Invalid JSON response",
-        error_code: "PARSE_ERROR",
+        success: true,
+        data: body as T,
+        error: null,
         metadata: null,
       };
     }
+
+    return {
+      success: false,
+      data: null,
+      error: buildApiError("parse_error", "Invalid JSON response"),
+      metadata: null,
+    };
   }
 
-  get<T>(path: string) {
-    return this.request<T>(path);
+  get<T>(path: string, init?: RequestInit) {
+    return this.request<T>(path, init);
   }
 
-  post<T>(path: string, body?: unknown) {
+  post<T>(path: string, body?: unknown, init?: Omit<RequestInit, "method" | "body">) {
     return this.request<T>(path, {
+      ...init,
       method: "POST",
       body: body ? JSON.stringify(body) : undefined,
     });

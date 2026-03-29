@@ -5,6 +5,20 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("@react-three/drei")) return "vendor-r3f-drei";
+          if (id.includes("@react-three/fiber")) return "vendor-r3f-core";
+          if (id.includes("three/examples/jsm")) return "vendor-three-examples";
+          if (id.includes("three")) return "vendor-three";
+          return undefined;
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

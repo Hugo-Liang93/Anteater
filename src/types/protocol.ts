@@ -29,7 +29,7 @@ export interface StudioAgent {
   /** 关联品种 */
   symbol?: string;
   /** 角色相关指标 */
-  metrics?: Record<string, string | number | boolean | null>;
+  metrics?: Record<string, unknown>;
   /** 告警级别 */
   alertLevel?: AlertLevel;
   /** 上次更新时间 (ISO 8601) */

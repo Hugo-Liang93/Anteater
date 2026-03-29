@@ -1,191 +1,277 @@
-# CLAUDE.md — Anteater (MT5 3D 虚拟办公室)
+# CLAUDE.md - Anteater 前端工作说明
 
-## 项目概述
+## 项目定位
 
-将 MT5 自动交易系统的后端模块**人格化**为 10 个数字员工，在 3D 虚拟办公室中实时可视化系统运行状态、交易链路和模块协作。
+Anteater 不是纯数据看板，也不是装饰性的 3D 页面。
+它的目标是把 MT5Services 的后端交易链路转成一个可阅读、可调度、可辅助决策的前端工作台。
 
-**核心理念：** 不是装饰性 3D 页面，而是让用户直观看到——系统在做什么、流程卡在哪、哪个模块异常。
+当前产品分成三层：
+
+- 业务事实层：展示行情、账户、持仓、指标、信号、风险窗口、系统健康等真实数据
+- 流程调度层：把散点数据整理成交易链路、交接关系、阻塞、风险和机会
+- AI 决策层：汇总上下文，输出建议、证据、风险和下一步动作，但不直接执行交易
 
 ## 技术栈
 
-| 层 | 技术 |
-|---|---|
-| 框架 | React 19 + TypeScript 5.8 (strict) |
-| 3D | Three.js + @react-three/fiber + @react-three/drei |
-| 状态 | Zustand 5 |
-| 样式 | Tailwind CSS 4 (主题变量在 `src/index.css` @theme) |
-| 构建 | Vite 6 |
-| 2D 备选 | PixiJS 8 + @pixi/react |
+- React 19
+- TypeScript 5.8 strict
+- Vite 6
+- Tailwind CSS 4
+- Zustand 5
+- Three.js + @react-three/fiber + @react-three/drei
 
 ## 常用命令
 
 ```bash
-npm run dev        # 开发服务器 http://localhost:3000
-npm run build      # tsc -b && vite build
-npm run lint       # eslint
-npm run preview    # 预览构建产物
+npm run dev
+npm run build
+npm run lint
+npm run preview
 ```
 
-**Mock 模式（无需后端）：** 访问 `http://localhost:3000/?mock` 或设置 `VITE_MOCK_MODE=true`
+## 当前核心结构
 
-## 项目结构
-
-```
+```text
 src/
-├── api/              # 后端通信层
-│   ├── endpoints.ts  #   REST API 请求函数
-│   ├── ws.ts         #   WebSocket 客户端（自动重连）
-│   ├── wsHandlers.ts #   WS 消息路由 → store
-│   ├── adapters.ts   #   后端原始数据 → 前端标准化
-│   ├── mockData.ts   #   Mock 模式模拟数据
-│   └── types.ts      #   API 响应类型
-├── components/
-│   ├── studio/       # 3D 场景组件
-│   │   ├── Studio3D.tsx      # Canvas 入口 + 光照 + 雾效
-│   │   ├── Office3D.tsx      # 办公室模型（墙/窗/地面）
-│   │   ├── Character3D.tsx   # Q版角色（几何体 + 状态动画）
-│   │   ├── DataFlow3D.tsx    # 数据流线 + 粒子
-│   │   └── Zones3D.tsx       # 功能区域地面标记
-│   ├── layout/       # 页面骨架
-│   │   ├── AppShell.tsx      # 主布局
-│   │   ├── TopBar.tsx        # 顶栏（行情/账户/健康/环境）
-│   │   ├── Sidebar.tsx       # 左侧可折叠导航
-│   │   └── BottomEventFeed.tsx # 底部事件滚动条
-│   ├── overlay/      # 浮层
-│   │   └── EmployeeDetail.tsx # 右侧角色详情面板
-│   └── panels/       # 侧边栏面板内容
-├── config/           # 集中配置（不散落在组件中）
-│   ├── index.ts      #   API/WS 地址、轮询间隔、mockMode
-│   ├── employees.ts  #   10 角色定义（ID/名称/颜色/后端映射）
-│   ├── layout.ts     #   3D 坐标、2D 坐标、区域、数据流连接
-│   └── assets.ts     #   角色外观配色、模型路径
-├── engine/           # 渲染引擎逻辑（非组件）
-│   ├── sync.ts       #   store → employees 状态映射（主驱动）
-│   ├── character.ts  #   2D 像素角色渲染
-│   └── daynight.ts   #   日夜循环
-├── hooks/
-│   ├── usePolling.ts     # REST 轮询 + Mock 初始化 + 事件生成
-│   └── useWebSocket.ts   # WS 连接管理
-├── store/            # Zustand stores（单一数据源）
-│   ├── employees.ts  #   10 角色运行时状态 + 选中状态
-│   ├── events.ts     #   全局事件流（StudioEvent[]）
-│   ├── market.ts     #   行情/账户/持仓
-│   ├── signals.ts    #   健康/策略
-│   ├── live.ts       #   指标/信号/队列
-│   └── ui.ts         #   UI 状态（面板/Tab/过滤器）
-├── types/
-│   └── protocol.ts   #   StudioAgent + StudioEvent 协议类型
-└── lib/utils.ts      #   cn() 工具函数
+├─ api/                  # REST / SSE / 协议适配
+├─ components/
+│  ├─ layout/            # 顶栏、左栏、整体骨架
+│  ├─ overlay/           # 详情面板、AI 决策区
+│  ├─ panels/            # 左栏辅助数据面板
+│  └─ studio/            # 3D 工作室场景
+├─ config/               # 员工、流程、布局、API 配置
+├─ hooks/                # 轮询、SSE、AI brief 等
+├─ lib/                  # 纯计算逻辑，如 workflowPanel / decisionDesk
+├─ store/                # Zustand 状态源
+└─ types/                # 协议与视图类型
 ```
 
-## 架构要点
+## 产品分层与展示职责
 
-### 6 层架构（从底到顶）
+### 1. 员工
 
+员工只代表主链路里的真实业务节点。
+一个模块要想成为“员工”，必须同时满足：
+
+- 在交易链路里承担明确的输入 -> 处理 -> 输出职责
+- 会和上下游形成持续交接关系
+- 当前状态变化会直接影响主流程推进
+- 用户有必要把它当成“工位”来观察和定位
+
+适合做员工的典型角色：
+
+- 采集员
+- 分析师 / 实时分析员
+- 过滤员 / 市场研判
+- 策略师 / 实时策略员
+- 投票主席
+- 风控官
+- 交易员
+- 仓管员
+
+原则：
+
+- 员工是主链路节点，不是信息来源标签
+- 员工要能解释“我接了谁的输入，我把结果交给谁”
+- 如果一个模块没有明确交接语义，就不应先做成员工
+
+### 2. 支撑模块
+
+支撑模块服务于主链路，但本身不是主链路工位。
+一个模块符合以下特征时，应优先做成支撑模块：
+
+- 主要职责是提供证据、约束、背景信息或验证结果
+- 不直接推进主链路，只影响主链路的判断条件
+- 更像能力服务，而不是流程节点
+- 用户更关心它提供了什么事实，而不是它“站在场景里做事”
+
+适合做支撑模块的典型能力：
+
+- 账户与保证金
+- 经济日历
+- 系统巡检
+- 回测与研究
+
+原则：
+
+- 支撑模块可以保留数据模型中的角色 id，但 UI 不必拟人化
+- 支撑模块应通过“证据”或“约束”挂接到主链路角色
+- 不要把账户、日历、回测这类信息源伪装成独立员工
+
+当前明确结论：
+
+- `accountant` 应作为账户状态与保证金支撑模块
+- `calendar_reporter` 应作为风险日历支撑模块
+- `backtester` 应作为研究与验证支撑模块
+- `inspector` 可以保留一定工位表达，但本质仍是支撑能力
+
+### 3. 数据面板
+
+数据面板承载的是低层、通用、辅助性的原始信息浏览。
+一个内容应放入数据面板而不是员工/支撑模块，当它符合以下条件：
+
+- 主要用途是查数，而不是表达交接关系
+- 内容是宽表、日志流、事件流、时间序列、明细列表
+- 用户只需要浏览或过滤，不需要把它当作业务角色理解
+- 它更适合作为辅助入口，而不是流程中的主导航对象
+
+适合进入数据面板的内容：
+
+- 原始数据流
+- 日志
+- 告警列表
+- 日历明细
+- 明细行情/信号列表
+
+原则：
+
+- 数据面板负责“看数据”
+- 支撑模块负责“把数据变成某类业务证据”
+- 员工负责“消费证据并推动流程”
+
+## 模块化设计准则
+
+后续新增模块时，必须先做分类，不要直接拟人化。
+
+按下面顺序判断：
+
+### 第一步：它是否直接推进交易主链路？
+
+- 是：优先考虑员工
+- 否：继续下一步
+
+### 第二步：它是否主要提供证据、约束或背景条件？
+
+- 是：优先做支撑模块
+- 否：继续下一步
+
+### 第三步：它是否主要承载原始明细浏览？
+
+- 是：放数据面板
+- 否：再评估是否需要独立模块页，而不是硬塞进员工体系
+
+### 禁止的错误方向
+
+- 不要因为后端有一个模块，就默认前端一定要新增一个员工
+- 不要把信息源、明细表、日志流拟人化
+- 不要让左栏沦为“另一个点员工入口”
+- 不要让支撑模块和主链路角色抢同一层级叙事
+
+## 新增模块评估模板
+
+后续新增任何后端能力或前端模块时，必须先按下面模板评估，再决定归类和展示位置。
+
+### 评估字段
+
+1. 模块名称
+2. 后端职责
+3. 输入来源
+4. 输出内容
+5. 是否直接推进交易主链路
+6. 是否存在明确上下游交接
+7. 对决策的作用类型
+8. 用户最需要的使用方式
+9. 最终归类
+10. 前端展示位置
+
+### 推荐填写格式
+
+```text
+模块名称：
+后端职责：
+输入：
+输出：
+是否直接推进交易主链路：是 / 否
+上下游交接：上游是谁，下游是谁；若没有则明确写无
+对决策的作用类型：推进流程 / 提供证据 / 提供约束 / 提供背景 / 提供验证 / 提供明细浏览
+用户最需要怎么使用它：看工位状态 / 看证据摘要 / 看原始明细 / 看跨流程总结
+最终归类：员工 / 支撑模块 / 数据面板 / 独立模块
+前端展示位置：左栏流程角色 / 左栏支撑模块 / 辅助数据面板 / 右侧证据区 / AI 决策区 / 独立页面
 ```
-后端接口层   api/endpoints.ts, api/ws.ts
-     ↓
-数据适配层   api/adapters.ts, api/wsHandlers.ts → 标准化为 protocol.ts 类型
-     ↓
-状态层       store/*.ts (Zustand) — 单一数据源
-     ↓
-驱动引擎     engine/sync.ts — 定时将 market/signal/live 数据映射为 employee 状态
-     ↓
-3D 表现层    components/studio/* — Canvas/角色/流线/区域
-     ↓
-2D UI 层     components/layout/* + overlay/* + panels/*
+
+### 归类硬规则
+
+- 如果它直接推进交易主链路，并且有明确输入、处理、输出和上下游交接，才允许归类为员工
+- 如果它主要提供证据、约束、背景条件或验证结果，应归类为支撑模块
+- 如果它主要提供原始明细、列表、日志、查数能力，应归类为数据面板
+- 如果它跨多个流程工作，不适合挂到单个角色下面，应归类为独立模块
+
+### 快速判断口诀
+
+- 推流程的，才可能是员工
+- 给证据的，优先做支撑模块
+- 只查数的，放数据面板
+- 跨流程总结的，做独立模块
+
+### 当前典型样例
+
+- `accountant`：支撑模块
+- `calendar_reporter`：支撑模块
+- `backtester`：支撑模块
+- `risk_officer`：员工
+- `AI decision`：独立模块
+
+## 关键交互语义
+
+- 左栏：看流程、看支撑关系、看待处理事项
+- 主场景：看工位、看当前焦点角色
+- 右侧详情：看流程详情、员工详情、支撑证据
+- AI 决策区：看跨流程总结、建议、证据与风险
+
+这四层语义必须保持分离，不要重新做成同一个入口。
+
+## AI 决策层原则
+
+AI 决策层不是新员工，不进入主场景工位链路。
+
+它的职责是：
+
+- 汇总当前上下文
+- 给出结论与置信度
+- 展示证据、冲突因素、风险提示、失效条件
+- 给出建议动作
+- 记录“采纳 / 暂缓 / 忽略”的反馈
+
+实现原则：
+
+- 先模块，后人格
+- 先建议，后执行
+- 先结构化输出，后自由对话
+
+## 重要目录
+
+- `src/config/employees.ts`：员工与支撑模块的定义边界
+- `src/config/workflows.ts`：流程分段与流程角色归属
+- `src/lib/workflowPanel.ts`：流程摘要、待处理事项、调度逻辑
+- `src/components/layout/Sidebar.tsx`：左栏流程导航与支撑模块入口
+- `src/components/overlay/EmployeeDetail.tsx`：流程详情、员工详情、支撑证据
+- `src/components/overlay/AIDecisionDeck.tsx`：AI 决策摘要与工作台
+- `src/lib/decisionDesk.ts`：AI 决策上下文与建议生成
+
+## 代码修改约束
+
+- 保持中文统一，不新增英文业务标题
+- 复杂判断优先下沉到 `src/lib/` 或 `src/config/`
+- 组件负责展示，不要把大量业务判断散落在 JSX 中
+- 新增模块前先判断它属于员工、支撑模块还是数据面板
+- 若改动影响交互语义，必须同步更新对应文档说明
+
+## 验证要求
+
+前端改动完成后至少运行：
+
+```bash
+npm run lint
+npm run build
 ```
 
-### 交易主链路（9 核心角色 + 4 支持角色 = 13）
+如果无法运行，必须明确说明原因和影响面。
 
+## AI 决策层环境变量
+
+```bash
+VITE_DECISION_PROVIDER=hybrid
+VITE_DECISION_BRIEF_PATH=/decision/brief
+VITE_DECISION_MODEL_LABEL=远程模型
+VITE_DECISION_TIMEOUT_MS=12000
 ```
-              采集员(collector)
-             ↙              ↘
-  分析师(analyst)    实时分析员(live_analyst)
-  (confirmed指标)     (intrabar指标+迷你K线)
-         ↓                    ↓
-  策略师(strategist)  实时策略员(live_strategist)
-  (confirmed信号)     (preview/armed信号)
-         ↘              ↙
-         审核员(auditor)
-    (FilterChain+Regime亲和度过滤)
-              ↓
-  投票主席(voter) → 风控官(risk_officer) → 交易员(trader)
-```
-
-另有 4 个支持角色：position_manager, accountant, calendar_reporter, inspector
-
-**前后端分工**：后端只返回结构化数据（`status`/`alertLevel`/`metrics`），`task` 不含数值；前端负责所有渲染
-
-### 状态驱动动画
-
-角色动画完全由 `ActivityStatus` 驱动，不手动控制：
-- idle → 呼吸浮动
-- working → 手臂旋转
-- thinking → 头部晃动
-- warning → 黄色光环
-- error → 红色闪烁 + 抖动
-- success → 绿色脉冲
-
-完整状态列表见 `store/employees.ts` 的 `ActivityStatus` 类型。
-
-## 后端接口
-
-- **REST:** Vite proxy `/api` → `http://localhost:8808/v1`
-- **WebSocket:** `ws://localhost:8808/ws/studio`
-- 协议类型定义在 `types/protocol.ts`（StudioAgent / StudioEvent / WsMessage）
-
-## 开发规范
-
-### TypeScript
-- 严格模式 (strict: true, noUncheckedIndexedAccess: true)
-- 路径别名 `@/` → `src/`
-- 无 any，无隐式类型
-
-### 样式
-- 仅用 Tailwind 工具类 + `@theme` 自定义变量
-- 无 CSS modules，无 SCSS
-- 暗色系交易终端风格（背景 #0f1923）
-
-### 3D 场景
-- 修改坐标/位置 → 改 `config/layout.ts`，不硬编码在组件中
-- 添加角色 → 改 `config/employees.ts` + `config/assets.ts`
-- 角色状态 → 只通过 store 驱动，不在组件中直接设置
-
-### 状态管理
-- 所有数据通过 Zustand store 流转
-- engine/sync.ts 是唯一的 "store → employee 状态" 映射点
-- 组件只读取 store，不直接修改其他 store
-
-## 设计文档
-
-保留在 `anteater/.ai/` 目录：
-
-| 文档 | 用途 |
-|------|------|
-| ARCHITECTURE.md | 分层架构、数据流、模块边界 |
-| API_CONTRACT.md | REST/WS 接口协议 |
-| CHARACTER_ROSTER.md | 13 角色设计（外观/职责/动画） |
-| VISUAL_STYLE_GUIDE.md | 视觉风格（暖色卡通 3D 工作室） |
-| FOLLOW_UP_BACKEND.md | 后端待实现的状态推送清单 |
-
-## 当前进度
-
-**已完成（Phase A-H）：**
-- 3D 场景 + 13 角色 + 12 功能区域 + 数据流粒子（错行流水线布局）
-- 完整 UI（TopBar/Sidebar/DetailPanel/EventFeed）
-- 状态驱动动画系统（10+ 状态映射）
-- SSE 实时通道 + REST 轮询
-- 13 角色详情面板：
-  - 分析师(confirmed) / 实时分析员(intrabar+迷你K线) 双链路
-  - 策略师(confirmed) / 实时策略员(preview信号) 双链路
-  - 审核员（FilterChain 通过/拦截统计 + 滑动窗口）
-  - 投票主席（TF 拔河条 + 类别投票倾向）
-  - 风控官（信号决策漏斗 + 拦截原因明细）
-  - 交易员（入场区间可视化 + pending entry）
-  - 巡检员（组件健康 + 队列健康）
-- Mock 模式已清空（使用真实后端数据）
-
-**待实现：**
-- Phase I: GLB 角色模型替换（等美术资源）
-- Phase J: 扩展功能（多视图/巡检逻辑/回测可视化/intrabar 指标面板）

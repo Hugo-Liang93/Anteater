@@ -1,48 +1,49 @@
-/**
- * 3D 功能区域组件 — 温暖卡通风格
- *
- * 用半透明圆形地毯（而非硬边矩形色带）标记功能区域，
- * 配合区域名牌，让分区在 3D 场景中柔和可见。
- */
-
 import { useEffect, useMemo } from "react";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { SCENE_ZONES } from "@/config/layout";
+import type { EmployeeRoleType } from "@/config/employees";
+import { getWorkflowByRole, workflowConfigMap } from "@/config/workflows";
+import { useEmployeeStore } from "@/store/employees";
+import { useUIStore } from "@/store/ui";
 
-/** 单个区域地毯标记 */
-function ZoneRug({ center, size, color, label }: {
+function ZoneRug({
+  center,
+  size,
+  color,
+  label,
+  active,
+}: {
   center: [number, number, number];
   size: [number, number];
   color: string;
   label: string;
+  active: boolean;
 }) {
-  // 椭圆地毯：width/2 为 X 半径，depth/2 为 Z 半径
-  const rugGeo = useMemo(() => {
-    const g = new THREE.CircleGeometry(1, 48);
-    // 椭圆缩放在 mesh 层做
-    return g;
-  }, []);
+  const rugGeo = useMemo(() => new THREE.CircleGeometry(1, 48), []);
 
-  const mat = useMemo(() =>
-    new THREE.MeshStandardMaterial({
-      color,
-      transparent: true,
-      opacity: 0.08,
-      side: THREE.DoubleSide,
-      roughness: 1.0,
-    }),
-  [color]);
+  const mat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color,
+        transparent: true,
+        opacity: active ? 0.18 : 0.08,
+        side: THREE.DoubleSide,
+        roughness: 1.0,
+      }),
+    [active, color],
+  );
 
-  // 柔和光晕边缘（第二层更大更透明）
-  const glowMat = useMemo(() =>
-    new THREE.MeshStandardMaterial({
-      color,
-      transparent: true,
-      opacity: 0.03,
-      side: THREE.DoubleSide,
-    }),
-  [color]);
+  const glowMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color,
+        transparent: true,
+        opacity: active ? 0.1 : 0.03,
+        side: THREE.DoubleSide,
+      }),
+    [active, color],
+  );
 
   useEffect(() => {
     return () => {
@@ -50,22 +51,25 @@ function ZoneRug({ center, size, color, label }: {
       mat.dispose();
       glowMat.dispose();
     };
-  }, [rugGeo, mat, glowMat]);
+  }, [glowMat, mat, rugGeo]);
 
   return (
     <group position={center}>
-      {/* 主地毯 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.005, 0]}
         scale={[size[0] / 2, size[1] / 2, 1]}
-        geometry={rugGeo} material={mat}
+        geometry={rugGeo}
+        material={mat}
       />
-      {/* 外层光晕 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]}
-        scale={[size[0] / 2 + 0.3, size[1] / 2 + 0.3, 1]}
-        geometry={rugGeo} material={glowMat}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.003, 0]}
+        scale={[size[0] / 2 + (active ? 0.55 : 0.3), size[1] / 2 + (active ? 0.55 : 0.3), 1]}
+        geometry={rugGeo}
+        material={glowMat}
       />
 
-      {/* 区域名牌 */}
       <Html
         position={[0, 0.08, -size[1] / 2 + 0.15]}
         center
@@ -76,14 +80,16 @@ function ZoneRug({ center, size, color, label }: {
         <div
           style={{
             color,
-            fontSize: 9,
+            fontSize: active ? 11 : 9,
             fontWeight: 700,
             letterSpacing: 3,
-            opacity: 0.4,
+            opacity: active ? 0.9 : 0.38,
             pointerEvents: "none",
             userSelect: "none",
             whiteSpace: "nowrap",
             textTransform: "uppercase",
+            textShadow: active ? `0 0 18px ${color}` : "none",
+            transition: "all 160ms ease",
           }}
         >
           {label}
@@ -93,8 +99,16 @@ function ZoneRug({ center, size, color, label }: {
   );
 }
 
-/** 渲染所有功能区域 */
 export function Zones3D() {
+  const selectedEmployee = useEmployeeStore((s) => s.selectedEmployee);
+  const selectedWorkflow = useUIStore((s) => s.selectedWorkflow);
+  const activeWorkflow = selectedEmployee
+    ? getWorkflowByRole(selectedEmployee as EmployeeRoleType)
+    : selectedWorkflow;
+  const activeZones = activeWorkflow
+    ? (workflowConfigMap.get(activeWorkflow)?.sceneZones ?? [])
+    : [];
+
   return (
     <group>
       {SCENE_ZONES.map((zone) => (
@@ -104,6 +118,7 @@ export function Zones3D() {
           size={zone.size}
           color={zone.color}
           label={zone.label}
+          active={activeZones.includes(zone.id)}
         />
       ))}
     </group>

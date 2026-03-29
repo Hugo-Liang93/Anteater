@@ -1,4 +1,4 @@
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+﻿import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useEffect, useState } from "react";
 import { config } from "@/config";
 import { cn } from "@/lib/utils";
@@ -251,7 +251,7 @@ function metricColor(value: number, goodThreshold = 0): string | undefined {
 function jobTypeLabel(jobType: BacktestJob["job_type"]): string {
   if (jobType === "backtest") return "回测";
   if (jobType === "optimization") return "优化";
-  return "WF验证";
+  return "前推验证";
 }
 
 export function BacktesterMetrics() {
@@ -617,7 +617,7 @@ export function BacktesterMetrics() {
                 : "text-text-muted hover:text-text-primary",
             )}
           >
-            {{ config: "配置", jobs: "任务", result: "结果", recs: "推荐" }[key]}
+            {{ config: "配置台", jobs: "任务队列", result: "结果分析", recs: "参数推荐" }[key]}
           </button>
         ))}
         <button
@@ -656,7 +656,7 @@ export function BacktesterMetrics() {
       {tab === "jobs" && (
         <div className="space-y-1.5">
           {jobs.length === 0 ? (
-            <Empty text="暂无回测任务，先到配置页提交一条任务" />
+            <Empty text="暂无回测任务，先到配置台提交一条任务" />
           ) : (
             <div className="max-h-48 space-y-1 overflow-y-auto">
               {jobs.map((job) => (
@@ -677,7 +677,7 @@ export function BacktesterMetrics() {
         selectedResult ? (
           <ResultPanel result={selectedResult} />
         ) : (
-          <Empty text="先从任务页选择一个结果" />
+          <Empty text="先从任务队列里选择一个结果" />
         )
       )}
 
@@ -738,19 +738,19 @@ function ConfigPanel({
         defaultOpen={true}
         badge={
           defaults
-            ? `defaults ${Object.keys(defaults.defaults).length} / supported ${supportedCount}`
+            ? `默认项 ${Object.keys(defaults.defaults).length} / 支持字段 ${supportedCount}`
             : undefined
         }
       >
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Symbol">
+          <Field label="交易品种">
             <input
               value={form.symbol}
               onChange={(e) => onChange((s) => ({ ...s, symbol: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Timeframe">
+          <Field label="时间周期">
             <select
               value={form.timeframe}
               onChange={(e) => onChange((s) => ({ ...s, timeframe: e.target.value }))}
@@ -763,7 +763,7 @@ function ConfigPanel({
               ))}
             </select>
           </Field>
-          <Field label="Start">
+          <Field label="开始日期">
             <input
               type="date"
               value={form.startTime}
@@ -771,7 +771,7 @@ function ConfigPanel({
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="End">
+          <Field label="结束日期">
             <input
               type="date"
               value={form.endTime}
@@ -780,7 +780,7 @@ function ConfigPanel({
             />
           </Field>
         </div>
-        <Field label="Strategies (csv)">
+        <Field label="策略列表（逗号分隔）">
           <input
             value={form.strategiesText}
             onChange={(e) => onChange((s) => ({ ...s, strategiesText: e.target.value }))}
@@ -792,28 +792,28 @@ function ConfigPanel({
 
       <CollapsibleSection title={"运行参数"} defaultOpen={true}>
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Initial Balance">
+          <Field label="初始资金">
             <input
               value={form.initialBalance}
               onChange={(e) => onChange((s) => ({ ...s, initialBalance: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Min Confidence">
+          <Field label="最低置信度">
             <input
               value={form.minConfidence}
               onChange={(e) => onChange((s) => ({ ...s, minConfidence: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Warmup Bars">
+          <Field label="预热 K 线数">
             <input
               value={form.warmupBars}
               onChange={(e) => onChange((s) => ({ ...s, warmupBars: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Search Mode">
+          <Field label="搜索模式">
             <select
               value={form.searchMode}
               onChange={(e) => onChange((s) => ({ ...s, searchMode: e.target.value }))}
@@ -826,14 +826,14 @@ function ConfigPanel({
               ))}
             </select>
           </Field>
-          <Field label="Max Combinations">
+          <Field label="最大组合数">
             <input
               value={form.maxCombinations}
               onChange={(e) => onChange((s) => ({ ...s, maxCombinations: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Sort Metric">
+          <Field label="排序指标">
             <select
               value={form.sortMetric}
               onChange={(e) => onChange((s) => ({ ...s, sortMetric: e.target.value }))}
@@ -846,14 +846,14 @@ function ConfigPanel({
               ))}
             </select>
           </Field>
-          <Field label="WF Splits">
+          <Field label="前推切分数">
             <input
               value={form.nSplits}
               onChange={(e) => onChange((s) => ({ ...s, nSplits: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Train Ratio">
+          <Field label="训练比例">
             <input
               value={form.trainRatio}
               onChange={(e) => onChange((s) => ({ ...s, trainRatio: e.target.value }))}
@@ -867,76 +867,76 @@ function ConfigPanel({
             checked={form.anchored}
             onChange={(e) => onChange((s) => ({ ...s, anchored: e.target.checked }))}
           />
-          anchored window
+          使用锚定窗口
         </label>
       </CollapsibleSection>
 
       <CollapsibleSection title={"风控限制"} defaultOpen={false}>
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Risk Percent">
+          <Field label="单笔风险百分比">
             <input
               value={form.riskPercent}
               onChange={(e) => onChange((s) => ({ ...s, riskPercent: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Max Positions">
+          <Field label="最大持仓数">
             <input
               value={form.maxPositions}
               onChange={(e) => onChange((s) => ({ ...s, maxPositions: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Min Volume">
+          <Field label="最小手数">
             <input
               value={form.minVolume}
               onChange={(e) => onChange((s) => ({ ...s, minVolume: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Max Volume">
+          <Field label="最大手数">
             <input
               value={form.maxVolume}
               onChange={(e) => onChange((s) => ({ ...s, maxVolume: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Max Volume / Order">
+          <Field label="单笔最大手数">
             <input
               value={form.maxVolumePerOrder}
               onChange={(e) => onChange((s) => ({ ...s, maxVolumePerOrder: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Max Volume / Symbol">
+          <Field label="单品种最大手数">
             <input
               value={form.maxVolumePerSymbol}
               onChange={(e) => onChange((s) => ({ ...s, maxVolumePerSymbol: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Max Volume / Day">
+          <Field label="单日最大手数">
             <input
               value={form.maxVolumePerDay}
               onChange={(e) => onChange((s) => ({ ...s, maxVolumePerDay: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Daily Loss Limit %">
+          <Field label="日亏损上限 %">
             <input
               value={form.dailyLossLimitPct}
               onChange={(e) => onChange((s) => ({ ...s, dailyLossLimitPct: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Max Trades / Day">
+          <Field label="单日最大交易数">
             <input
               value={form.maxTradesPerDay}
               onChange={(e) => onChange((s) => ({ ...s, maxTradesPerDay: e.target.value }))}
               className="w-full rounded bg-bg-secondary px-2 py-1 text-text-primary"
             />
           </Field>
-          <Field label="Max Trades / Hour">
+          <Field label="单小时最大交易数">
             <input
               value={form.maxTradesPerHour}
               onChange={(e) => onChange((s) => ({ ...s, maxTradesPerHour: e.target.value }))}
@@ -946,12 +946,12 @@ function ConfigPanel({
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title={"高级 JSON"} defaultOpen={false}>
+      <CollapsibleSection title={"高级配置"} defaultOpen={false}>
         <div className="mb-2 flex items-center justify-between rounded border border-border/50 bg-bg-panel/40 px-2 py-2">
           <div>
             <div className="text-text-primary">参数范围模板</div>
             <div className="text-text-muted">
-              按当前 timeframe、strategies 和 signal.ini 生效参数生成 param_space
+              按当前周期、策略和 `signal.ini` 生效参数生成 `param_space`
             </div>
           </div>
           <button
@@ -964,12 +964,12 @@ function ConfigPanel({
           </button>
         </div>
         <JsonField
-          label="strategy_params"
+          label="strategy_params（全局参数）"
           value={form.strategyParamsText}
           onChange={(value) => onChange((s) => ({ ...s, strategyParamsText: value }))}
         />
         <JsonField
-          label="strategy_params_per_tf"
+          label="strategy_params_per_tf（按周期参数）"
           value={form.strategyParamsPerTfText}
           onChange={(value) => onChange((s) => ({ ...s, strategyParamsPerTfText: value }))}
         />
@@ -978,7 +978,7 @@ function ConfigPanel({
           onChange={(value) => onChange((s) => ({ ...s, paramSpaceText: value }))}
         />
         <JsonField
-          label="advanced_config"
+          label="advanced_config（附加配置）"
           value={form.extraConfigText}
           onChange={(value) => onChange((s) => ({ ...s, extraConfigText: value }))}
         />
@@ -992,7 +992,7 @@ function ConfigPanel({
           提交优化
         </ActionButton>
         <ActionButton disabled={loading} tone="success" onClick={onWalkForward}>
-          提交 WF
+          提交前推
         </ActionButton>
       </div>
     </div>
@@ -1020,7 +1020,7 @@ function CollapsibleSection({
           <Label>{title}</Label>
           {badge && <span className="text-text-muted">{badge}</span>}
         </div>
-        <span className="text-text-muted">展开/收起</span>
+        <span className="text-text-muted">展开 / 收起</span>
       </summary>
       <div className="border-t border-border/50 px-2 py-2">{children}</div>
     </details>
@@ -1238,14 +1238,14 @@ function JobCard({
         {job.status === "completed" && (
           <>
             <button onClick={onView} className="text-accent hover:underline">
-              查看结果
+              查看分析
             </button>
             <button onClick={onRecs} className="text-warning hover:underline">
-              推荐列表
+              参数推荐
             </button>
             {job.job_type === "walk_forward" && (
               <button onClick={onGenerate} className="text-success hover:underline">
-                生成推荐
+                生成建议
               </button>
             )}
           </>
@@ -1268,7 +1268,7 @@ function ResultPanel({ result }: { result: BacktestRunResult }) {
   if (isPendingResult(result)) {
     return (
       <div className="space-y-2">
-        <Empty text={`任务状态: ${result.status}`} />
+        <Empty text={`任务状态：${JOB_STATUS_STYLE[result.status]?.label ?? result.status}`} />
         {typeof result.progress === "number" && (
           <div className="text-[10px] text-text-muted">
             进度 {(result.progress * 100).toFixed(0)}%
@@ -1287,7 +1287,7 @@ function ResultPanel({ result }: { result: BacktestRunResult }) {
   return (
     <div className="space-y-2">
       <div className="text-[10px] text-text-muted">
-        {result.config.symbol} {result.config.timeframe} | {strategies}
+        研究标的 {result.config.symbol} / 周期 {result.config.timeframe} / 策略 {strategies}
       </div>
       <MetricsGrid metrics={metrics} />
       <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1303,7 +1303,7 @@ function OptimizationResultPanel({ results }: { results: BacktestResult[] }) {
   const best = results[0]!;
   return (
     <div className="space-y-2">
-      <div className="text-[10px] text-text-muted">优化结果 {results.length} 组，展示最佳结果</div>
+      <div className="text-[10px] text-text-muted">共返回 {results.length} 组优化结果，当前先展示最佳组合</div>
       <ResultPanel result={best} />
     </div>
   );
@@ -1314,7 +1314,7 @@ function WalkForwardPanel({ result }: { result: WalkForwardResultSummary }) {
   return (
     <div className="space-y-2">
       <div className="text-[10px] text-text-muted">
-        WF {result.n_splits} splits | OF {result.overfitting_ratio.toFixed(2)} | Consistency{" "}
+        前推验证 {result.n_splits} 段 | 过拟合系数 {result.overfitting_ratio.toFixed(2)} | 一致性{" "}
         {(result.consistency_rate * 100).toFixed(0)}%
       </div>
       <div className="grid grid-cols-3 gap-2 text-xs">
@@ -1328,7 +1328,7 @@ function WalkForwardPanel({ result }: { result: WalkForwardResultSummary }) {
       <div className="space-y-1">
         {result.splits.slice(0, 4).map((split) => (
           <div key={split.split_index} className="rounded bg-bg-secondary px-2 py-1 text-[10px]">
-            Split {split.split_index + 1} | IS {split.in_sample_sharpe.toFixed(2)} | OOS{" "}
+            第 {split.split_index + 1} 段 | 样本内 {split.in_sample_sharpe.toFixed(2)} | 样本外{" "}
             {split.out_of_sample_sharpe.toFixed(2)}
           </div>
         ))}
@@ -1373,7 +1373,7 @@ function RecommendationList({
   }
 
   if (recs.length === 0) {
-    return <Empty text="当前任务暂无推荐，先从 Walk-Forward 任务生成推荐" />;
+    return <Empty text="当前任务暂无推荐，先从前推任务生成建议" />;
   }
 
   return (
@@ -1390,7 +1390,7 @@ function RecommendationList({
               <span className={cn("rounded-full px-1.5 py-0.5", style.cls)}>{style.label}</span>
             </div>
             <div className="mt-0.5 text-text-muted">
-              OOS Sharpe {rec.oos_sharpe.toFixed(2)} | OF {rec.overfitting_ratio.toFixed(2)} | 一致性{" "}
+              样本外 Sharpe {rec.oos_sharpe.toFixed(2)} | 过拟合系数 {rec.overfitting_ratio.toFixed(2)} | 一致性{" "}
               {(rec.consistency_rate * 100).toFixed(0)}%
             </div>
             <div className="mt-1 space-y-0.5">

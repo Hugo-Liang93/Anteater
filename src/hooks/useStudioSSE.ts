@@ -16,8 +16,17 @@ import { handleWsMessage } from "@/api/wsHandlers";
 import { useMarketStore } from "@/store/market";
 import { setStudioSSEActive } from "@/engine/sync";
 
-/** SSE 端点（经 Vite proxy 转发: /api/studio/stream → /v1/studio/stream） */
-const SSE_URL = `${config.apiBase}/studio/stream`;
+function resolveSseUrl(): string {
+  if (!config.apiKey) {
+    return config.sseEndpoint;
+  }
+
+  const base =
+    typeof window !== "undefined" ? window.location.origin : "http://localhost";
+  const url = new URL(config.sseEndpoint, base);
+  url.searchParams.set("api_key", config.apiKey);
+  return url.origin === base ? `${url.pathname}${url.search}` : url.toString();
+}
 
 export function useStudioSSE() {
   const sourceRef = useRef<EventSource | null>(null);
@@ -25,7 +34,7 @@ export function useStudioSSE() {
   useEffect(() => {
     if (config.mockMode) return;
 
-    const source = new EventSource(SSE_URL);
+    const source = new EventSource(resolveSseUrl());
     sourceRef.current = source;
 
     // ── 按 SSE event type 分发（对应后端 _format_sse 的 event: 字段）──
