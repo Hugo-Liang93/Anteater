@@ -21,7 +21,7 @@ const GROUP_LABELS: Record<string, string> = {
 };
 
 export function VoterMetrics({ signals }: VoterMetricsProps): React.ReactNode {
-  const employee = useEmployeeStore.getState().employees.voter;
+  const employee = useEmployeeStore((s) => s.employees.voter);
   const metrics = employee?.stats ?? {};
 
   const votingGroups: VotingGroup[] = Array.isArray(metrics.voting_groups)
@@ -39,6 +39,22 @@ export function VoterMetrics({ signals }: VoterMetricsProps): React.ReactNode {
     }
   }
 
+  // vote 结果信号：strategy === group.name（如 "reversion_vote"），直接取 confidence
+  const voteResults = new Map<
+    string,
+    { direction: "buy" | "sell" | "hold"; confidence: number }
+  >();
+  const groupNames = new Set(votingGroups.map((g) => g.name));
+  for (const signal of signals) {
+    if (groupNames.has(signal.strategy)) {
+      voteResults.set(signal.strategy, {
+        direction: signal.direction,
+        confidence: signal.confidence,
+      });
+    }
+  }
+
+  // 成员策略统计（用于 TugOfWarBar 拉锯图和 hold 计数）
   const groupSignals = new Map<
     string,
     { buy: number; sell: number; hold: number; buyConf: number; sellConf: number }
@@ -110,22 +126,35 @@ export function VoterMetrics({ signals }: VoterMetricsProps): React.ReactNode {
           <div className="text-[13px] text-text-muted">按投票分组查看</div>
           {votingGroups.map((group) => {
             const current = groupSignals.get(group.name);
-            if (!current) return null;
+            const voteResult = voteResults.get(group.name);
+            if (!current && !voteResult) return null;
 
-            const total = current.buy + current.sell + current.hold;
-            if (total === 0) return null;
+            const total = current ? current.buy + current.sell + current.hold : 0;
+            const memberCount = (current?.buy ?? 0) + (current?.sell ?? 0) + (current?.hold ?? 0);
 
             return (
               <div key={group.name} className="space-y-0.5">
                 <div className="flex items-center justify-between text-[13px]">
                   <span className="text-accent">{GROUP_LABELS[group.name] ?? group.name}</span>
-                  <span className="tabular-nums text-text-muted">
-                    <span className="text-buy">{current.buy}</span> /
-                    <span className="text-sell">{current.sell}</span>
-                    {current.hold > 0 && <span> / {current.hold}</span>}
-                  </span>
+                  {voteResult ? (
+                    <span className="tabular-nums font-medium">
+                      <span className={voteResult.direction === "buy" ? "text-buy" : voteResult.direction === "sell" ? "text-sell" : "text-text-muted"}>
+                        {voteResult.direction === "buy" ? "偏多" : voteResult.direction === "sell" ? "偏空" : "观望"}
+                        {" "}{(voteResult.confidence * 100).toFixed(0)}%
+                      </span>
+                      <span className="text-text-muted ml-1 text-[11px]">({memberCount}票)</span>
+                    </span>
+                  ) : (
+                    <span className="tabular-nums text-text-muted">
+                      <span className="text-buy">{current?.buy ?? 0}</span> /
+                      <span className="text-sell">{current?.sell ?? 0}</span>
+                      {(current?.hold ?? 0) > 0 && <span> / {current?.hold}</span>}
+                    </span>
+                  )}
                 </div>
-                <TugOfWarBar buy={current.buy} sell={current.sell} total={total} small />
+                {total > 0 && (
+                  <TugOfWarBar buy={current?.buy ?? 0} sell={current?.sell ?? 0} total={total} small />
+                )}
               </div>
             );
           })}
