@@ -79,11 +79,16 @@ export function StrategistMetrics({
         })}
       </div>
 
-      {latestSignal?.reason && (
-        <div className="rounded-lg border border-border/60 bg-bg-secondary/70 px-3 py-2 text-[13px] text-text-secondary">
-          最新判断：{latestSignal.timeframe} 周期由 {latestSignal.strategy} 给出
-          {latestSignal.direction === "buy" ? "偏多" : latestSignal.direction === "sell" ? "偏空" : "观望"}
-          ，原因是“{latestSignal.reason}”。
+      {latestSignal && latestSignal.direction !== "hold" && (
+        <div className="rounded-lg border border-border/60 bg-bg-secondary/70 px-3 py-2 text-[13px]">
+          <div className="flex items-center gap-1.5">
+            <span className={cn("font-medium", latestSignal.direction === "buy" ? "text-buy" : "text-sell")}>
+              {latestSignal.direction === "buy" ? "▲ 偏多" : "▼ 偏空"}
+            </span>
+            <span className="text-text-muted">
+              {latestSignal.timeframe} · {latestSignal.strategy} · {(latestSignal.confidence * 100).toFixed(0)}%
+            </span>
+          </div>
         </div>
       )}
 
@@ -119,7 +124,7 @@ export function SignalFullView({
   byTF: Map<string, LiveSignal[]>;
 }) {
   const [open, setOpen] = useState(false);
-  const strategies = useSignalStore.getState().strategies;
+  const strategies = useSignalStore((s) => s.strategies);
   const categoryMap = new Map(strategies.map((strategy) => [strategy.name, strategy.category]));
 
   const tailCategories = new Set(["composite"]);
