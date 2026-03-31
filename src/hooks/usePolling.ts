@@ -211,10 +211,15 @@ export function usePolling() {
                 }))
                 .filter((s) => {
                   if (!validTFs.has(s.timeframe)) return false;
-                  // 只保留最近 4 小时内的信号，过滤掉已禁用策略的历史残留
+                  // 按 TF 差异化过期：低 TF 信号频繁更新可以短一些，高 TF 信号稀少需要保留更久
                   if (s.generated_at) {
-                    const age = Date.now() - new Date(s.generated_at).getTime();
-                    if (age > 4 * 60 * 60 * 1000) return false;
+                    const maxAgeMs: Record<string, number> = {
+                      M1: 1 * 3600_000, M5: 2 * 3600_000,
+                      M15: 4 * 3600_000, M30: 8 * 3600_000,
+                      H1: 12 * 3600_000, H4: 24 * 3600_000, D1: 48 * 3600_000,
+                    };
+                    const maxAge = maxAgeMs[s.timeframe] ?? 12 * 3600_000;
+                    if (Date.now() - new Date(s.generated_at).getTime() > maxAge) return false;
                   }
                   return true;
                 });
