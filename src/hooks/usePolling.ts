@@ -209,7 +209,15 @@ export function usePolling() {
                   scope: String(s.scope ?? ""),
                   generated_at: String(s.generated_at ?? ""),
                 }))
-                .filter((s) => validTFs.has(s.timeframe));
+                .filter((s) => {
+                  if (!validTFs.has(s.timeframe)) return false;
+                  // 只保留最近 4 小时内的信号，过滤掉已禁用策略的历史残留
+                  if (s.generated_at) {
+                    const age = Date.now() - new Date(s.generated_at).getTime();
+                    if (age > 4 * 60 * 60 * 1000) return false;
+                  }
+                  return true;
+                });
               store.setSignals(allSignals.filter((s) => s.scope === "confirmed"));
               store.setPreviewSignals(allSignals.filter((s) => s.scope !== "confirmed"));
             }
