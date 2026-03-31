@@ -59,7 +59,7 @@ const STATUS_BADGE: Partial<Record<ActivityStatus, { label: string; cls: string 
 };
 
 const WORKFLOW_ORDER: WorkflowId[] = [
-  "collection", "analysis", "filter", "strategy", "decision", "execution", "support",
+  "collection", "analysis", "filter", "strategy", "decision", "execution",
 ];
 
 // ─── 主组件 ───
@@ -168,6 +168,7 @@ export function EmployeeDetail() {
   const workflowId = panelWorkflowId ?? getWorkflowByRole(roleId);
   const workflow = workflowId ? workflowConfigMap.get(workflowId) : null;
   const badge = STATUS_BADGE[employee.status] ?? STATUS_BADGE.idle!;
+  const isSupportModule = isSupportModuleRole(roleId);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -178,11 +179,17 @@ export function EmployeeDetail() {
         badge={badge.label}
         badgeCls={badge.cls}
         onClose={closeRightPanel}
-        extra={workflow && (
-          <span className="rounded-lg border border-white/8 bg-black/10 px-1.5 py-0.5 text-[13px] text-white/45">
-            {workflow.label}
-          </span>
-        )}
+        extra={
+          isSupportModule ? (
+            <span className="rounded-lg border border-white/8 bg-black/10 px-1.5 py-0.5 text-[13px] text-white/45">
+              支撑模块
+            </span>
+          ) : workflow ? (
+            <span className="rounded-lg border border-white/8 bg-black/10 px-1.5 py-0.5 text-[13px] text-white/45">
+              {workflow.label}
+            </span>
+          ) : undefined
+        }
       />
 
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
@@ -198,12 +205,12 @@ export function EmployeeDetail() {
         <RoleMetrics roleId={roleId} />
 
         {/* 业务上下文（可折叠，默认收起） */}
-        <CollapsibleSection title="业务上下文" defaultOpen={false}>
+        <CollapsibleSection title={isSupportModule ? "证据上下文" : "业务上下文"} defaultOpen={false}>
           <BusinessContext roleId={roleId} employee={employee} riskWindows={riskWindows} queues={queues} positions={positions} health={health} account={account} openRightPanel={openRightPanel} workflowId={workflowId} />
         </CollapsibleSection>
 
         {/* 相关事件（可折叠） */}
-        <CollapsibleSection title="相关事件" defaultOpen={false}>
+        <CollapsibleSection title={isSupportModule ? "证据动态" : "相关事件"} defaultOpen={false}>
           <RelatedEvents roleId={roleId} employee={employee} events={events} riskWindows={riskWindows} queues={queues} positions={positions} health={health} account={account} />
         </CollapsibleSection>
       </div>
@@ -291,30 +298,49 @@ function BusinessContext({ roleId, employee, riskWindows, queues, positions, hea
   const supportEvidence = (!isSupportModuleRole(roleId) ? getRelatedSupportModules(roleId) : [])
     .map((role) => buildSupportEvidence(role, health?.status ?? "unknown", queues, riskWindows, account))
     .filter(Boolean) as Array<{ role: EmployeeRoleType; title: string; summary: string }>;
+  const isSupportModule = isSupportModuleRole(roleId);
 
   return (
     <div className="space-y-2">
       <p className="text-[13px] text-white/60">{config.responsibility}</p>
+      {isSupportModule && (
+        <div className="rounded-lg border border-sky-400/12 bg-sky-400/5 px-2.5 py-2 text-[13px] text-sky-200/80">
+          该模块提供证据、约束或验证，不直接承担交易主链路推进职责。
+        </div>
+      )}
       <div className="rounded-lg border border-white/6 bg-black/10 px-2.5 py-2">
-        <p className="text-[13px] text-white/30">当前交接</p>
+        <p className="text-[13px] text-white/30">{isSupportModule ? "证据输出" : "当前交接"}</p>
         <p className="mt-0.5 text-[13px] text-white/60">{flowState.handoff}</p>
       </div>
-      {/* 上下游角色 */}
-      <div className="flex flex-wrap gap-1">
-        {flowState.upstreamRoles.map((r) => (
-          <span key={r} className="rounded-md bg-sky-400/10 px-1.5 py-0.5 text-[13px] text-sky-300">
-            ← {getRoleName(r)}
-          </span>
-        ))}
-        {flowState.downstreamRoles.map((r) => (
-          <span key={r} className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[13px] text-amber-300">
-            → {getRoleName(r)}
-          </span>
-        ))}
-      </div>
+      {isSupportModule ? (
+        <div className="space-y-1">
+          <p className="text-[13px] text-white/30">服务对象</p>
+          <div className="flex flex-wrap gap-1">
+            {flowState.downstreamRoles.map((r) => (
+              <span key={r} className="rounded-md bg-sky-400/10 px-1.5 py-0.5 text-[13px] text-sky-300">
+                {getRoleName(r)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-1">
+          {flowState.upstreamRoles.map((r) => (
+            <span key={r} className="rounded-md bg-sky-400/10 px-1.5 py-0.5 text-[13px] text-sky-300">
+              ← {getRoleName(r)}
+            </span>
+          ))}
+          {flowState.downstreamRoles.map((r) => (
+            <span key={r} className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[13px] text-amber-300">
+              → {getRoleName(r)}
+            </span>
+          ))}
+        </div>
+      )}
       {/* 支撑证据 */}
       {supportEvidence.length > 0 && (
         <div className="space-y-1">
+          <p className="text-[13px] text-white/30">上游支撑证据</p>
           {supportEvidence.map((ev) => (
             <button key={ev.role} onClick={() => openRightPanel({ kind: "employee", workflowId: getWorkflowByRole(ev.role) ?? workflowId ?? "support", employeeId: ev.role })}
               className="flex w-full items-center justify-between rounded-lg border border-white/6 bg-black/10 px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.04]">
@@ -341,6 +367,7 @@ function RelatedEvents({ roleId, employee, events, riskWindows, queues, position
   positions: Array<unknown>; health: { status: string } | null;
   account: { balance: number; equity: number; margin: number; free_margin: number } | null;
 }) {
+  const isSupportModule = isSupportModuleRole(roleId);
   const flowState = buildEmployeeFlowState(
     roleId, employee,
     riskWindows.filter((w) => w.guard_active).length,
@@ -352,7 +379,7 @@ function RelatedEvents({ roleId, employee, events, riskWindows, queues, position
 
   const relatedEvents = collectRelatedEvents(events, roleId, [...flowState.upstreamRoles, ...flowState.downstreamRoles]);
 
-  if (relatedEvents.length === 0) return <p className="text-[13px] text-white/40">暂无相关事件</p>;
+  if (relatedEvents.length === 0) return <p className="text-[13px] text-white/40">{isSupportModule ? "暂无相关证据动态" : "暂无相关事件"}</p>;
 
   return (
     <div className="space-y-1">
@@ -429,10 +456,10 @@ function dedupeRoles(roles: EmployeeRoleType[]): EmployeeRoleType[] {
   return Array.from(new Set(roles));
 }
 
-function collectRelatedEvents(events: StudioEvent[], role: EmployeeRoleType, linkedRoles: EmployeeRoleType[]) {
-  const roleSet = new Set<EmployeeRoleType>([role, ...linkedRoles, ...getRelatedSupportModules(role)]);
+function collectRelatedEvents(events: StudioEvent[], role: EmployeeRoleType, _linkedRoles: EmployeeRoleType[]) {
+  // 每个角色只显示自己作为 source 或 target 的事件，不冒泡上下游
   return events
-    .filter((e) => roleSet.has(e.source as EmployeeRoleType) || (e.target ? roleSet.has(e.target as EmployeeRoleType) : false))
+    .filter((e) => e.source === role || e.target === role)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 6);
 }
@@ -471,6 +498,7 @@ function buildEmployeeFlowState(
     case EmployeeRole.ACCOUNTANT: return { ...defaults, upstreamRoles: dedupeRoles([EmployeeRole.TRADER, EmployeeRole.POSITION_MANAGER]), downstreamRoles: [EmployeeRole.RISK_OFFICER], handoff: "向风控输出余额/净值/保证金状态", nextAction: marginLevel !== null && marginLevel < 180 ? "保证金水位偏低，提醒风控收紧" : "保持账户快照刷新" };
     case EmployeeRole.CALENDAR_REPORTER: return { ...defaults, upstreamRoles: [], downstreamRoles: dedupeRoles([EmployeeRole.RISK_OFFICER, EmployeeRole.STRATEGIST, EmployeeRole.LIVE_STRATEGIST]), handoff: "暴露高影响事件窗口与保护期", nextAction: activeRiskWindows > 0 ? "保护窗口生效中，跟踪事件窗口" : "监控近端日历" };
     case EmployeeRole.INSPECTOR: return { ...defaults, upstreamRoles: [], downstreamRoles: dedupeRoles([EmployeeRole.RISK_OFFICER, EmployeeRole.TRADER]), handoff: "暴露系统健康与队列压力", nextAction: healthStatus !== "healthy" || hotQueueCount > 0 ? "处理降级组件和高压队列" : "巡检稳定运行" };
+    case EmployeeRole.BACKTESTER: return { ...defaults, upstreamRoles: [], downstreamRoles: dedupeRoles([EmployeeRole.STRATEGIST, EmployeeRole.LIVE_STRATEGIST]), handoff: "输出研究验证结论与参数稳定性证据", nextAction: "确认回测结论是否支持当前策略参数" };
     case EmployeeRole.RISK_OFFICER: return { ...defaults, upstreamRoles: [EmployeeRole.VOTER], downstreamRoles: [EmployeeRole.TRADER], handoff: "联合账户/日历/巡检完成交易审批", nextAction: activeRiskWindows > 0 ? "先核对保护窗口和账户水位" : "检查账户约束和系统健康" };
     case EmployeeRole.TRADER: return { ...defaults, upstreamRoles: [EmployeeRole.RISK_OFFICER], downstreamRoles: [EmployeeRole.POSITION_MANAGER], handoff: "接收已批准信号并下单", nextAction: openPositions > 0 ? "核对持仓变化和成交回执" : "等待风控放行" };
     case EmployeeRole.POSITION_MANAGER: return { ...defaults, upstreamRoles: [EmployeeRole.TRADER], downstreamRoles: [EmployeeRole.ACCOUNTANT], handoff: "整理持仓与盈亏事实", nextAction: openPositions > 0 ? "跟踪保护状态与浮盈亏" : "等待新持仓变更" };
@@ -496,6 +524,9 @@ function buildSupportEvidence(
     case EmployeeRole.INSPECTOR: {
       const hot = queues.filter((q) => q.utilization_pct >= 80).length;
       return { role, title: "系统巡检", summary: `${healthStatus === "healthy" ? "稳定" : "异常"} | ${hot} 高压队列` };
+    }
+    case EmployeeRole.BACKTESTER: {
+      return { role, title: "研究与验证", summary: "用于确认参数稳定性与策略适配性" };
     }
     default: return null;
   }
