@@ -19,10 +19,11 @@ import {
   normalizeHealth,
   normalizeStrategies,
   normalizePositions,
+  normalizeQueues,
 } from "@/api/adapters";
 import { useMarketStore } from "@/store/market";
 import { useSignalStore } from "@/store/signals";
-import { useLiveStore, type LiveSignal, type QueueInfo } from "@/store/live";
+import { useLiveStore, type LiveSignal } from "@/store/live";
 import { syncAll, isStudioSSEActive } from "@/engine/sync";
 import type { RiskWindow } from "@/api/types";
 
@@ -203,7 +204,7 @@ export function usePolling() {
                   direction: (["buy", "sell", "hold"].includes(s.direction as string)
                     ? s.direction
                     : "hold") as "buy" | "sell" | "hold",
-                  confidence: Number(s.confidence ?? 0),
+                  confidence: Math.min(Number(s.confidence ?? 0), 0.95),
                   reason: String(s.reason ?? ""),
                   scope: String(s.scope ?? ""),
                   generated_at: String(s.generated_at ?? ""),
@@ -225,22 +226,8 @@ export function usePolling() {
         const res = await fetchQueues();
         if (cancelled) return;
         if (res.success && res.data != null) {
-          const raw = res.data as unknown;
-          const rawObj = (typeof raw === "object" && raw !== null) ? raw as Record<string, unknown> : null;
-          const queuesSource = rawObj && "queues" in rawObj && typeof rawObj.queues === "object" && rawObj.queues !== null
-            ? rawObj.queues as Record<string, Record<string, unknown>>
-            : rawObj as Record<string, Record<string, unknown>> | null;
-          const queuesObj = queuesSource;
-          if (queuesObj) {
-            const list: QueueInfo[] = Object.entries(queuesObj).map(([name, q]) => ({
-              name,
-              size: Number(q.size ?? 0),
-              max: Number(q.max ?? 0),
-              utilization_pct: Number(q.utilization_pct ?? 0),
-              status: String(q.status ?? "unknown"),
-              drops_oldest: Number(q.drops_oldest ?? 0),
-              drops_newest: Number(q.drops_newest ?? 0),
-            }));
+          const list = normalizeQueues(res);
+          if (list.length > 0) {
             useLiveStore.getState().setQueues(list);
           }
         }
