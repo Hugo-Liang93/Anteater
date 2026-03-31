@@ -123,54 +123,54 @@ export function FilterGuardMetrics(): React.ReactNode {
         </div>
       )}
 
-      {totalSnapshots > 0 && (
-      <div className="flex items-center justify-between text-[13px] border-t border-border/50 pt-2">
-        <span className="text-text-muted">样本通过率</span>
-        <span
-          className={cn(
-            "font-medium tabular-nums",
-            passRate >= 70 ? "text-success" : passRate >= 40 ? "text-warning" : "text-danger",
-          )}
-        >
-          {passRate.toFixed(0)}%
-        </span>
-      </div>
-      <TugOfWarBar buy={totalPassed} sell={totalBlocked} total={totalSnapshots} />
-
-      <div className="space-y-1 border-t border-border/50 pt-2">
-        <div className="text-[13px] text-text-muted">按输入范围查看</div>
-        <div className="space-y-0.5 text-[13px]">
-          <div className="flex items-center justify-between">
-            <span className="text-text-muted">确认态样本</span>
-            <span className="tabular-nums">
-              <span className="text-success">{confirmedPassed}</span> 通过 /{" "}
-              <span className="text-danger">{confirmedBlocked}</span> 阻断
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-text-muted">盘中样本</span>
-            <span className="tabular-nums">
-              <span className="text-success">{intrabarPassed}</span> 通过 /{" "}
-              <span className="text-danger">{intrabarBlocked}</span> 阻断
-            </span>
-          </div>
+      {totalSnapshots > 0 && (<>
+        <div className="flex items-center justify-between text-[13px] border-t border-border/50 pt-2">
+          <span className="text-text-muted">样本通过率</span>
+          <span
+            className={cn(
+              "font-medium tabular-nums",
+              passRate >= 70 ? "text-success" : passRate >= 40 ? "text-warning" : "text-danger",
+            )}
+          >
+            {passRate.toFixed(0)}%
+          </span>
         </div>
-      </div>
+        <TugOfWarBar buy={totalPassed} sell={totalBlocked} total={totalSnapshots} />
 
-      {Object.keys(allBlocks).length > 0 && (
         <div className="space-y-1 border-t border-border/50 pt-2">
-          <div className="text-[13px] text-text-muted">阻断原因</div>
-          {Object.entries(allBlocks)
-            .sort(([, a], [, b]) => b - a)
-            .map(([reason, count]) => (
-              <div key={reason} className="flex items-center justify-between text-[13px]">
-                <span className="text-text-secondary">{FILTER_LABELS[reason] ?? reason}</span>
-                <span className="tabular-nums text-danger">{count}</span>
-              </div>
-            ))}
+          <div className="text-[13px] text-text-muted">按输入范围查看</div>
+          <div className="space-y-0.5 text-[13px]">
+            <div className="flex items-center justify-between">
+              <span className="text-text-muted">确认态样本</span>
+              <span className="tabular-nums">
+                <span className="text-success">{confirmedPassed}</span> 通过 /{" "}
+                <span className="text-danger">{confirmedBlocked}</span> 阻断
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-text-muted">盘中样本</span>
+              <span className="tabular-nums">
+                <span className="text-success">{intrabarPassed}</span> 通过 /{" "}
+                <span className="text-danger">{intrabarBlocked}</span> 阻断
+              </span>
+            </div>
+          </div>
         </div>
-      )}
-      )}
+
+        {Object.keys(allBlocks).length > 0 && (
+          <div className="space-y-1 border-t border-border/50 pt-2">
+            <div className="text-[13px] text-text-muted">阻断原因</div>
+            {Object.entries(allBlocks)
+              .sort(([, a], [, b]) => b - a)
+              .map(([reason, count]) => (
+                <div key={reason} className="flex items-center justify-between text-[13px]">
+                  <span className="text-text-secondary">{FILTER_LABELS[reason] ?? reason}</span>
+                  <span className="tabular-nums text-danger">{count}</span>
+                </div>
+              ))}
+          </div>
+        )}
+      </>)}
     </div>
   );
 }
