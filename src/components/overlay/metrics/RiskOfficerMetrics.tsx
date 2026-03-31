@@ -21,10 +21,13 @@ const SKIP_LABELS: Record<string, string> = {
   spread_to_stop_ratio_too_high: "执行成本过高",
   missing_signal_id: "信号 ID 缺失",
   margin_guard_block: "保证金不足",
+  pnl_circuit_paused: "PnL 熔断暂停",
+  after_eod_block: "日终后禁止开仓",
+  htf_conflict_block: "HTF 方向冲突",
 };
 
 export function RiskOfficerMetrics(): React.ReactNode {
-  const employee = useEmployeeStore.getState().employees.risk_officer;
+  const employee = useEmployeeStore((s) => s.employees.risk_officer);
   const stats = employee?.stats ?? {};
   const received = Number(stats.signals_received ?? 0);
   const passed = Number(stats.signals_passed ?? 0);
@@ -38,9 +41,12 @@ export function RiskOfficerMetrics(): React.ReactNode {
       ? (stats.by_timeframe as Record<string, TfEntry>)
       : {};
 
-  if (received === 0) return <Empty text="等待审批信号进入" />;
+  const pnlPaused = Boolean(stats.pnl_circuit_paused);
+  const afterEod = Boolean(stats.after_eod_block);
 
-  const passRate = (passed / received) * 100;
+  if (received === 0 && !pnlPaused && !afterEod) return <Empty text="等待审批信号进入" />;
+
+  const passRate = received > 0 ? (passed / received) * 100 : 0;
   const tfOrder = [...config.timeframes];
   const sortedTFs = Object.keys(byTimeframe).sort((a, b) => {
     const ai = tfOrder.indexOf(a as (typeof tfOrder)[number]);
@@ -50,6 +56,16 @@ export function RiskOfficerMetrics(): React.ReactNode {
 
   return (
     <div className="space-y-2.5">
+      {pnlPaused && (
+        <div className="rounded bg-danger/15 px-2.5 py-1.5 text-[13px] font-medium text-danger">
+          PnL 熔断器已触发 — 交易暂停中
+        </div>
+      )}
+      {afterEod && (
+        <div className="rounded bg-warning/15 px-2.5 py-1.5 text-[13px] font-medium text-warning">
+          日终平仓后 — 今日不再开仓
+        </div>
+      )}
       <div className="flex items-center justify-between text-[13px]">
         <span className="text-text-muted">审批通过率</span>
         <span
