@@ -118,11 +118,7 @@ export function MarketPanel() {
               value={marketClosed ? "休盘" : quote ? formatAge(quote.time) : "--"}
               ok={marketClosed || !!quote}
             />
-            <StatusRow
-              label={`K线时间 (${statusTimeframe})`}
-              value={marketClosed ? "休盘" : latestStatusBar ? formatAge(latestStatusBar.time) : "--"}
-              ok={marketClosed || !!latestStatusBar}
-            />
+            <BarFreshnessGrid symbol={symbol} marketClosed={marketClosed} />
             <StatusRow
               label="采集状态"
               value={marketClosed
@@ -265,6 +261,34 @@ function formatAge(timeStr: string): string {
   return `${Math.floor(minutes / 60)}小时前`;
 }
 
+/**
+ * 格式化 bar 时间显示 — bar.time 是开盘时间，需加上 TF 周期才是收盘时间。
+ * 显示 "收盘时间 (距今 Xm)" 格式，避免与报价时间混淆。
+ */
+function formatBarTime(barTimeStr: string, timeframe: string): string {
+  const barOpen = new Date(barTimeStr).getTime();
+  if (Number.isNaN(barOpen)) return "--";
+  const tfMs = timeframeToMinutes(timeframe) * 60_000;
+  const barClose = barOpen + tfMs;
+  const closeDate = new Date(barClose);
+  const hh = String(closeDate.getHours()).padStart(2, "0");
+  const mm = String(closeDate.getMinutes()).padStart(2, "0");
+  const ageSec = Math.floor((Date.now() - barClose) / 1000);
+  if (ageSec < 5) return `${hh}:${mm} (刚收盘)`;
+  if (ageSec < 60) return `${hh}:${mm} (${ageSec}s前)`;
+  const ageMin = Math.floor(ageSec / 60);
+  if (ageMin < 60) return `${hh}:${mm} (${ageMin}m前)`;
+  return `${hh}:${mm} (${Math.floor(ageMin / 60)}h前)`;
+}
+
+/** 判断 bar 是否在合理新鲜度内（2 个周期以内） */
+function isBarFresh(barTimeStr: string, timeframe: string): boolean {
+  const barOpen = new Date(barTimeStr).getTime();
+  if (Number.isNaN(barOpen)) return false;
+  const tfMs = timeframeToMinutes(timeframe) * 60_000;
+  return Date.now() - barOpen < tfMs * 3;
+}
+
 function isLikelyMarketClosed(input: {
   connected: boolean;
   quoteTime?: string;
@@ -286,6 +310,34 @@ function isLikelyMarketClosed(input: {
   // 前端当前没有后端显式 market_state，这里用保守启发式：
   // 报价和 M15 bar 同时长时间停滞，但后端链路仍可达，优先视为休盘而不是故障。
   return quoteAgeMs >= 45 * 60 * 1000 && barAgeMs >= tfMinutes * 3 * 60 * 1000;
+}
+
+function BarFreshnessGrid({ symbol, marketClosed }: { symbol: string; marketClosed: boolean }) {
+  const ohlcBars = useMarketStore((s) => s.latestOhlcBars);
+
+  return (
+    <div className="space-y-0.5">
+      <div className="text-[11px] text-white/30 px-2">各周期最新收盘</div>
+      {config.timeframes.map((tf) => {
+        const bar = ohlcBars[`${symbol}:${tf}`];
+        const fresh = bar ? isBarFresh(bar.time, tf) : false;
+        const display = marketClosed
+          ? "休盘"
+          : bar
+            ? formatBarTime(bar.time, tf)
+            : "--";
+        return (
+          <div key={tf} className="flex items-center justify-between rounded bg-white/[0.02] px-2 py-1">
+            <span className="font-mono text-[13px] text-white/50">{tf}</span>
+            <div className="flex items-center gap-1.5">
+              <span className={`h-1.5 w-1.5 rounded-full ${marketClosed || fresh ? "bg-emerald-400" : "bg-white/20"}`} />
+              <span className="text-[13px] text-white/70">{display}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function timeframeToMinutes(timeframe: string): number {

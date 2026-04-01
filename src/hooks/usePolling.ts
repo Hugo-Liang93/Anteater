@@ -146,31 +146,38 @@ export function usePolling() {
     // ─── 指标 & 信号（3s） ───
     // 指标：拉取所有配置的 TF；信号：不传 TF 拉取全部
     const INDICATOR_TFS = config.timeframes;
-    const STATUS_TF = config.defaultTimeframe;
     const pollLive = async () => {
       if (cancelled) return;
       try {
         const indPromises = INDICATOR_TFS.map((tf) =>
           fetchIndicators(config.symbols[0], tf).then((res) => ({ tf, res })),
         );
-        const [sigRes, latestOhlcRes, ...indResults] = await Promise.allSettled([
+        const ohlcPromises = INDICATOR_TFS.map((tf) =>
+          fetchOhlc(config.symbols[0], tf, 1).then((res) => ({ tf, res })),
+        );
+        const [sigRes, ...rest] = await Promise.allSettled([
           fetchRecentSignals(config.symbols[0], undefined, "all"),
-          fetchOhlc(config.symbols[0], STATUS_TF, 1),
+          ...ohlcPromises,
           ...indPromises,
         ]);
 
         if (cancelled) return;
 
-        // 指标：按 TF 写入 store
-        if (latestOhlcRes.status === "fulfilled" && latestOhlcRes.value.success) {
-          const bars = latestOhlcRes.value.data;
-          const latestBar = Array.isArray(bars) ? bars[bars.length - 1] : null;
-          if (latestBar) {
-            useMarketStore.getState().setLatestOhlcBar(
-              config.symbols[0],
-              STATUS_TF,
-              latestBar,
-            );
+        // OHLC：按 TF 写入 store（用于各周期收盘时间展示）
+        const ohlcResults = rest.slice(0, INDICATOR_TFS.length);
+        const indResults = rest.slice(INDICATOR_TFS.length);
+        for (let i = 0; i < ohlcResults.length; i++) {
+          const r = ohlcResults[i];
+          if (r.status === "fulfilled" && r.value.res.success) {
+            const bars = r.value.res.data;
+            const latestBar = Array.isArray(bars) ? bars[bars.length - 1] : null;
+            if (latestBar) {
+              useMarketStore.getState().setLatestOhlcBar(
+                config.symbols[0],
+                r.value.tf,
+                latestBar,
+              );
+            }
           }
         }
 
