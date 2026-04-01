@@ -22,11 +22,11 @@
 | `GET /monitoring/queues` | `GET /v1/monitoring/queues` | ⚠️ 字段名混乱 | 双方 |
 | `GET /economic/calendar/risk-windows` | `GET /v1/economic/calendar/risk-windows` | ✅ 匹配 | — |
 | `POST /trade/precheck` | `POST /v1/trade/precheck` | ✅ 匹配 | — |
-| `GET /studio/agents` | — | ❌ 后端未实现 | **后端** |
-| `GET /studio/events` | — | ❌ 后端未实现 | **后端** |
-| `GET /studio/summary` | — | ❌ 后端未实现 | **后端** |
-| `GET /studio/agents/{id}` | — | ❌ 后端未实现 | **后端** |
-| `WS /ws/studio` | — | ❌ 后端未实现 | **后端** |
+| `GET /studio/agents` | `GET /v1/studio/agents` | ✅ 已实现 | — |
+| `GET /studio/events` | `GET /v1/studio/events` | ✅ 已实现 | — |
+| `GET /studio/summary` | `GET /v1/studio/summary` | ✅ 已实现 | — |
+| `GET /studio/agents/{id}` | `GET /v1/studio/agents/{id}` | ✅ 已实现 | — |
+| `SSE /studio/stream` | `GET /v1/studio/stream` | ✅ SSE 推送 | — |
 
 ### 路由前缀
 

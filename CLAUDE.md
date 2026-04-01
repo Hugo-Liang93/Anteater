@@ -248,6 +248,64 @@ AI 决策层不是新员工，不进入主场景工位链路。
 - `src/components/overlay/AIDecisionDeck.tsx`：AI 决策摘要与工作台
 - `src/lib/decisionDesk.ts`：AI 决策上下文与建议生成
 
+## 员工 Metrics 组件与数据映射
+
+每个员工在右侧详情面板有一个 Metrics 组件，数据来自后端 Studio mapper → `employee.stats`。
+
+### 组件 → 后端数据源 映射表
+
+| 组件文件 | 员工 ID | 后端 mapper | 关键 metrics 字段 |
+|---------|---------|------------|------------------|
+| `CollectorMetrics.tsx` | collector | `map_collector(queue_stats, is_backfilling)` | channels, full, critical |
+| `AnalystMetrics.tsx` | analyst | `map_analyst(indicator_perf_stats)` | success_rate, computations, indicator_names |
+| `LiveAnalystMetrics.tsx` | live_analyst | `map_live_analyst(perf_stats, bars_by_tf, ingest_stats)` | computations, bars_by_tf(迷你K线), ingest_polls |
+| `StrategistMetrics.tsx` | strategist | `map_strategist(count, recent_signals, runtime_status)` | strategy_count, buy/sell_count, per_tf_eval_stats, per_tf_skips |
+| `LiveStrategistMetrics.tsx` | live_strategist | `map_live_strategist(strategies, preview_signals, runtime)` | preview_signal_count, buy/sell, active_preview |
+| `FilterGuardMetrics.tsx` | filter_guard | `map_filter_guard(runtime_status)` | by_scope passed/blocked, realtime_filters(各规则实时状态) |
+| `RegimeGuardMetrics.tsx` | regime_guard | `map_regime_guard(runtime_status)` | regime_distribution, regime_details(per-TF), per_tf_skips, affinity_skipped |
+| `VoterMetrics.tsx` | voter | `map_voter(runtime_status)` | voting_groups, processed_events + 前端从 signals 计算 vote 结果 |
+| `RiskOfficerMetrics.tsx` | risk_officer | `map_risk_officer(executor_status, support_evidence)` | received/passed/blocked, skip_reasons, pnl_circuit_paused, after_eod_block |
+| `TraderMetrics.tsx` | trader | `map_trader(executor_status, pending_status)` | execution_count, circuit_open, pending_entries, fill_rate |
+| `SupportMetrics.tsx` | position_manager / accountant / calendar / inspector | 各自 mapper | tracked_positions, balance/equity, risk_windows, health |
+
+### 数据流
+
+```
+后端 MT5Services:
+  src/studio/runtime.py         → register_agent(id, provider_fn)
+  src/studio/mappers.py         → map_*(data) → {status, task, metrics}
+  src/studio/service.py         → SSE /studio/stream 推送
+
+前端 Anteater:
+  src/api/wsHandlers.ts         → handleAgentUpdate → employeeStore.updateEmployee
+  src/hooks/usePolling.ts       → 轮询 /studio/agents + /signals/recent → employeeStore + liveStore
+  src/store/employees.ts        → employees[role].stats = metrics
+  src/components/overlay/metrics/*.tsx → 读取 employee.stats 渲染
+```
+
+### 信号数据流（策略师/投票员共用）
+
+```
+后端: /signals/recent?scope=all → 返回 signal_events 列表
+前端: usePolling → setSignals(confirmed) + setPreviewSignals(intrabar)
+      → liveStore.signals: LiveSignal[]
+      → StrategistMetrics / VoterMetrics / DecisionSummaryBar 消费
+      
+LiveSignal 字段: signal_id, symbol, timeframe, strategy, direction, confidence, reason, scope, generated_at
+前端过滤: 按 TF 差异化最大保留时长（M5=2h, M15=4h, H1=12h, D1=48h）
+前端 cap: confidence = min(原始值, 0.95)
+```
+
+### 事件流
+
+```
+后端: StudioService.emit_event() → SSE 推送
+前端: useEventStore.appendEvent() → 全局事件流
+      employeeStore.addAction(role, log) → 角色级事件
+      
+事件隔离: collectRelatedEvents() 只展示 source=role 或 target=role 的事件
+```
+
 ## 代码修改约束
 
 - 保持中文统一，不新增英文业务标题
