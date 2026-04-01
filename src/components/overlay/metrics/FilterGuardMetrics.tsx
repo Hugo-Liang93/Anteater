@@ -3,13 +3,18 @@ import { useEmployeeStore } from "@/store/employees";
 import { Empty, TugOfWarBar } from "./shared";
 import { extractBlocks, safeNum } from "./utils";
 
-const FILTER_LABELS: Record<string, string> = {
-  outside_allowed_sessions: "交易时段限制",
-  spread_too_wide: "点差过大",
-  volatility_spike: "波动率异常",
-  session_transition_cooldown: "时段切换冷却",
-  trade_guard: "经济事件保护",
-};
+function formatBlockReason(reason: string): string {
+  const [category, detail] = reason.split(":", 2);
+  const labels: Record<string, string> = {
+    outside_allowed_sessions: "时段限制",
+    spread_too_wide: "点差过大",
+    volatility_spike: "波动率异常",
+    session_transition_cooldown: "时段切换冷却",
+    trade_guard: "经济事件保护",
+  };
+  const label = labels[category] ?? category;
+  return detail ? `${label} (${detail})` : label;
+}
 
 const RULE_CONFIG: Array<{
   key: string;
@@ -164,7 +169,7 @@ export function FilterGuardMetrics(): React.ReactNode {
               .sort(([, a], [, b]) => b - a)
               .map(([reason, count]) => (
                 <div key={reason} className="flex items-center justify-between text-[13px]">
-                  <span className="text-text-secondary">{FILTER_LABELS[reason] ?? reason}</span>
+                  <span className="text-text-secondary">{formatBlockReason(reason)}</span>
                   <span className="tabular-nums text-danger">{count}</span>
                 </div>
               ))}
