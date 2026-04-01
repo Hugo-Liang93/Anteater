@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { config } from "@/config";
+import { useEmployeeStore } from "@/store/employees";
 import { useSignalStore } from "@/store/signals";
 import type { StrategyInfo } from "@/api/types";
 import type { LiveSignal } from "@/store/live";
@@ -44,6 +45,16 @@ export function StrategistMetrics({
   const buyCount = signals.filter((signal) => signal.direction === "buy").length;
   const sellCount = signals.filter((signal) => signal.direction === "sell").length;
 
+  const employee = useEmployeeStore((s) => s.employees.strategist);
+  const evalStats =
+    typeof employee?.stats?.per_tf_eval_stats === "object" && employee.stats.per_tf_eval_stats !== null
+      ? (employee.stats.per_tf_eval_stats as Record<string, { evaluated?: number; hold?: number; buy_sell?: number }>)
+      : {};
+  const tfSkips =
+    typeof employee?.stats?.per_tf_skips === "object" && employee.stats.per_tf_skips !== null
+      ? (employee.stats.per_tf_skips as Record<string, { affinity?: number; raw_conf?: number }>)
+      : {};
+
   return (
     <div className="space-y-2.5">
       <div className="grid grid-cols-2 gap-2 text-[13px]">
@@ -52,6 +63,35 @@ export function StrategistMetrics({
         <MetricBox title="偏多信号" value={String(buyCount)} color="text-buy" />
         <MetricBox title="偏空信号" value={String(sellCount)} color="text-sell" />
       </div>
+
+      {Object.keys(evalStats).length > 0 && (
+        <div className="space-y-1 border-t border-border/50 pt-2">
+          <div className="text-[13px] text-text-muted">管线评估统计（by TF）</div>
+          {timeframeOrder
+            .filter((tf) => evalStats[tf] || tfSkips[tf])
+            .map((tf) => {
+              const ev = evalStats[tf] ?? {};
+              const sk = tfSkips[tf] ?? {};
+              const evaluated = ev.evaluated ?? 0;
+              const buySell = ev.buy_sell ?? 0;
+              const hold = ev.hold ?? 0;
+              const affinitySkip = sk.affinity ?? 0;
+              return (
+                <div key={tf} className="flex items-center justify-between text-[13px]">
+                  <span className="font-mono text-accent">{tf}</span>
+                  <span className="tabular-nums text-text-muted">
+                    <span className="text-success">{buySell} 信号</span>
+                    {" / "}
+                    <span className="text-text-muted">{hold} hold</span>
+                    {affinitySkip > 0 && (
+                      <span className="ml-1 text-warning">跳{affinitySkip}</span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+        </div>
+      )}
 
       <div className="space-y-1 border-t border-border/50 pt-2">
         <div className="text-[13px] text-text-muted">按周期查看策略输出</div>
