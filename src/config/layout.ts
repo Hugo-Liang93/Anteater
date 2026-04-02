@@ -62,31 +62,61 @@ export const DATA_FLOWS: { from: EmployeeRoleType; to: EmployeeRoleType }[] = [
   { from: "strategist", to: "regime_guard" },
   { from: "live_strategist", to: "regime_guard" },
   { from: "regime_guard", to: "voter" },
+  { from: "regime_guard", to: "risk_officer" },
   { from: "voter", to: "risk_officer" },
   { from: "risk_officer", to: "trader" },
   { from: "trader", to: "position_manager" },
 ];
 
-/** 角色在 2D Canvas 中的位置（比例 0~1） */
+/**
+ * 角色在 2D 拓扑图中的位置（比例 0~1）
+ *
+ * 布局反映真实数据流拓扑：
+ * - 主链路（纵向 top→bottom）：采集 → 分析 → 过滤 → 策略 → 统一研判 → 分流决策 → 风控 → 执行
+ * - 双路径分叉：先统一进入 regime_guard，再分流到 voter 或直接进入 risk_officer
+ * - 支撑模块（右侧证据区）：会计/日历/巡检
+ * - 回测独立区（左下角研究区）
+ *
+ * 设计原则：
+ * - 主链路居中偏左（x=0.18~0.55），给右侧支撑区留空间
+ * - 纵向紧凑（y 间距约 0.11），减少空白浪费
+ * - 双路径分叉明确区分投票路径和直达路径
+ */
 export const AGENT_POSITIONS_2D: Record<string, { x: number; y: number }> = {
-  collector:         { x: 0.50, y: 0.08 },
-  analyst:           { x: 0.30, y: 0.22 },
-  live_analyst:      { x: 0.70, y: 0.22 },
-  strategist:        { x: 0.22, y: 0.38 },
-  filter_guard:      { x: 0.50, y: 0.38 },
-  live_strategist:   { x: 0.78, y: 0.38 },
-  regime_guard:      { x: 0.25, y: 0.55 },
-  voter:             { x: 0.50, y: 0.55 },
-  risk_officer:      { x: 0.75, y: 0.55 },
-  trader:            { x: 0.30, y: 0.75 },
-  position_manager:  { x: 0.70, y: 0.75 },
-  inspector:         { x: 0.92, y: 0.12 },
-  accountant:        { x: 0.08, y: 0.08 },  // 大屏
-  calendar_reporter: { x: 0.92, y: 0.08 },
-  backtester:        { x: 0.08, y: 0.12 },
+  // ── 主链路（紧凑排列，top padding 给 DecisionSummaryBar 留 0.10） ──
+  collector:         { x: 0.36, y: 0.10 },   // 采集
+  analyst:           { x: 0.22, y: 0.21 },   // 分析（confirmed）
+  live_analyst:      { x: 0.50, y: 0.21 },   // 分析（intrabar）
+  filter_guard:      { x: 0.36, y: 0.32 },   // 过滤
+
+  // ── 策略层 ──
+  strategist:        { x: 0.22, y: 0.43 },   // 策略（confirmed）
+  live_strategist:   { x: 0.50, y: 0.43 },   // 策略（intrabar）
+
+  // ── 双路径分叉 ──
+  regime_guard:      { x: 0.36, y: 0.55 },   // 统一研判
+  voter:             { x: 0.18, y: 0.70 },   // 投票分支
+  risk_officer:      { x: 0.54, y: 0.70 },   // 风控分支 / 汇合点
+
+  // ── 执行 ──
+  trader:            { x: 0.30, y: 0.84 },   // 交易
+  position_manager:  { x: 0.50, y: 0.84 },   // 仓管
+
+  // ── 支撑模块（右侧证据区） ──
+  accountant:        { x: 0.82, y: 0.22 },
+  inspector:         { x: 0.82, y: 0.38 },
+  calendar_reporter: { x: 0.82, y: 0.56 },
+
+  // ── 左侧独立模块 ──
+  backtester:        { x: 0.10, y: 0.68 },   // 回测验证
 };
 
-/** 2D 数据流连接 */
+/**
+ * 2D 数据流连接 — 反映真实信号流转拓扑
+ *
+ * 路径 A（voting group）：策略 → 统一研判 → 投票 → 风控 → 执行
+ * 路径 B（非 group）：策略 → 统一研判 → 风控 → 执行
+ */
 export const DATA_FLOWS_2D: [string, string][] = [
   ["collector", "analyst"],
   ["collector", "live_analyst"],
@@ -98,17 +128,21 @@ export const DATA_FLOWS_2D: [string, string][] = [
   ["live_strategist", "regime_guard"],
   ["regime_guard", "voter"],
   ["voter", "risk_officer"],
+  ["regime_guard", "risk_officer"],
   ["risk_officer", "trader"],
   ["trader", "position_manager"],
 ];
 
 /** 区域标签 */
 export const ZONE_LABELS = [
-  { label: "采 集 区", x: 0.50, y: 0.03 },
-  { label: "分 析 区", x: 0.50, y: 0.16 },
-  { label: "策 略 区", x: 0.50, y: 0.30 },
-  { label: "研 判 区", x: 0.50, y: 0.46 },
-  { label: "执 行 区", x: 0.50, y: 0.65 },
+  { label: "采 集",   x: 0.36, y: 0.05 },
+  { label: "分 析",   x: 0.36, y: 0.16 },
+  { label: "过 滤",   x: 0.36, y: 0.27 },
+  { label: "策 略",   x: 0.36, y: 0.38 },
+  { label: "决 策",   x: 0.36, y: 0.50 },
+  { label: "执 行",   x: 0.40, y: 0.79 },
+  { label: "支撑证据", x: 0.82, y: 0.10 },
+  { label: "研究验证", x: 0.10, y: 0.60 },
 ] as const;
 
 /** 3D 场景功能区域定义 */

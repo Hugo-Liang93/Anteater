@@ -250,7 +250,7 @@ export const employeeConfigs: EmployeeConfig[] = [
     deliverable: "健康状态与告警",
     inputs: ["模块状态", "连接状态", "队列利用率"],
     outputs: ["健康报告", "异常告警", "恢复提示"],
-    presentation: "employee",
+    presentation: "module",
     relatedRoles: [EmployeeRole.RISK_OFFICER, EmployeeRole.TRADER],
   },
   {

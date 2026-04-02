@@ -154,19 +154,19 @@ export function RobotInspector({ position, onClick }: RobotInspectorProps) {
       <mesh position={[0.12, 0.1, 0.03]} geometry={_footGeo} material={_limbMat} />
 
       {/* 名牌 */}
-      <Html position={[0, 1.65, 0]} center distanceFactor={7} sprite zIndexRange={[24, 0]}>
+      <Html position={[0, 1.65, 0]} center distanceFactor={2.33} sprite zIndexRange={[24, 0]}>
         <div style={{
           background: hovered ? "rgba(10,20,30,0.95)" : "rgba(15,25,35,0.88)",
-          border: "1.5px solid #26c6da",
-          borderRadius: 8, padding: hovered ? "6px 12px" : "4px 10px",
+          border: "2px solid #26c6da",
+          borderRadius: 24, padding: hovered ? "18px 36px" : "12px 30px",
           whiteSpace: "nowrap", pointerEvents: "none", userSelect: "none",
-          textAlign: "center", minWidth: 90,
+          textAlign: "center", minWidth: 270,
         }}>
-          <div style={{ color: "#26c6da", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor(status), display: "inline-block" }} />
+          <div style={{ color: "#26c6da", fontSize: 33, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <span style={{ width: 18, height: 18, borderRadius: "50%", background: statusColor(status), display: "inline-block" }} />
             Inspector Bot
           </div>
-          <div style={{ color: "#8899aa", fontSize: 9, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", marginTop: 1 }}>
+          <div style={{ color: "#8899aa", fontSize: 27, maxWidth: 480, overflow: "hidden", textOverflow: "ellipsis", marginTop: 3 }}>
             {hovered ? currentTask : currentTask.length > 25 ? currentTask.slice(0, 24) + "..." : currentTask}
           </div>
         </div>

@@ -18,6 +18,20 @@ export interface WorkflowConfig {
   sceneZones: string[];
 }
 
+export const supportWorkflowConfig: WorkflowConfig = {
+  id: "support",
+  label: "支撑模块",
+  subtitle: "账户、日历、巡检与回测支撑",
+  color: "#63b7ea",
+  roles: [
+    EmployeeRole.ACCOUNTANT,
+    EmployeeRole.CALENDAR_REPORTER,
+    EmployeeRole.INSPECTOR,
+    EmployeeRole.BACKTESTER,
+  ],
+  sceneZones: [],
+};
+
 export const workflowConfigs: WorkflowConfig[] = [
   {
     id: "collection",
@@ -38,10 +52,10 @@ export const workflowConfigs: WorkflowConfig[] = [
   {
     id: "filter",
     label: "过滤区",
-    subtitle: "条件过滤与市场研判",
+    subtitle: "条件过滤与候选准入",
     color: "#ffb14a",
-    roles: [EmployeeRole.FILTER_GUARD, EmployeeRole.REGIME_GUARD],
-    sceneZones: ["filter", "decision"],
+    roles: [EmployeeRole.FILTER_GUARD],
+    sceneZones: ["filter"],
   },
   {
     id: "strategy",
@@ -54,9 +68,9 @@ export const workflowConfigs: WorkflowConfig[] = [
   {
     id: "decision",
     label: "决策区",
-    subtitle: "投票汇总与风险审批",
+    subtitle: "统一研判、投票分支与风险审批",
     color: "#ff6f8b",
-    roles: [EmployeeRole.VOTER, EmployeeRole.RISK_OFFICER],
+    roles: [EmployeeRole.REGIME_GUARD, EmployeeRole.VOTER, EmployeeRole.RISK_OFFICER],
     sceneZones: ["decision"],
   },
   {
@@ -67,27 +81,14 @@ export const workflowConfigs: WorkflowConfig[] = [
     roles: [EmployeeRole.TRADER, EmployeeRole.POSITION_MANAGER],
     sceneZones: ["execution"],
   },
-  {
-    id: "support",
-    label: "支持区",
-    subtitle: "账户、日历、巡检与回测支撑",
-    color: "#63b7ea",
-    roles: [
-      EmployeeRole.ACCOUNTANT,
-      EmployeeRole.CALENDAR_REPORTER,
-      EmployeeRole.INSPECTOR,
-      EmployeeRole.BACKTESTER,
-    ],
-    sceneZones: [],
-  },
 ];
 
 export const workflowConfigMap = new Map(
-  workflowConfigs.map((config) => [config.id, config]),
+  [...workflowConfigs, supportWorkflowConfig].map((config) => [config.id, config]),
 );
 
 export const workflowByRole = new Map<EmployeeRoleType, WorkflowId>(
-  workflowConfigs.flatMap((config) =>
+  [...workflowConfigs, supportWorkflowConfig].flatMap((config) =>
     config.roles.map((role) => [role, config.id] as const),
   ),
 );

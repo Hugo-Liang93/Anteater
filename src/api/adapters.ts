@@ -10,6 +10,7 @@
  */
 
 import type { AccountInfo, ApiResponse, HealthStatus, Position, Quote, StrategyInfo } from "./types";
+import type { QueueInfo } from "@/store/live";
 
 /** 安全取 number 值 */
 function num(v: unknown, fallback = 0): number {
@@ -26,30 +27,55 @@ export function normalizeQuote(res: ApiResponse<unknown>): Quote | null {
   const d = res.data as Record<string, unknown> | null;
   if (!d) return null;
 
+  const bid = num(d.bid);
+  const ask = num(d.ask);
+
   return {
     symbol: str(d.symbol, "XAUUSD"),
-    bid: num(d.bid),
-    ask: num(d.ask),
-    spread: d.spread != null ? num(d.spread) : num(res.metadata?.spread),
+    bid,
+    ask,
+    last: num(d.last),
+    volume: num(d.volume),
+    // spread 不在 QuoteModel 中，从 metadata 取或从 bid/ask 计算
+    spread: d.spread != null
+      ? num(d.spread)
+      : res.metadata?.spread != null
+        ? num(res.metadata.spread)
+        : ask - bid,
     time: str(d.time),
   };
 }
 
-/** 从 account API 响应中提取规范化的 AccountInfo */
+/** 从 account API 响应中提取规范化的 AccountInfo
+ *
+ * 后端 AccountInfoModel 只有 margin_free，无 profit/server。
+ * profit 从 metadata 取（或 0），server 从 metadata 取。
+ */
 export function normalizeAccount(res: ApiResponse<unknown>): AccountInfo | null {
   const d = res.data as Record<string, unknown> | null;
   if (!d) return null;
+
+  const meta = res.metadata as Record<string, unknown> | null;
 
   return {
     login: num(d.login),
     balance: num(d.balance),
     equity: num(d.equity),
     margin: num(d.margin),
+    // 后端字段名为 margin_free
     free_margin: d.free_margin != null ? num(d.free_margin) : num(d.margin_free),
-    profit: num(d.profit),
+    // profit 不在 AccountInfoModel 中，从 equity-balance 推算
+    profit: d.profit != null ? num(d.profit) : num(d.equity) - num(d.balance),
     currency: str(d.currency, "USD"),
     leverage: num(d.leverage),
-    server: d.server != null ? str(d.server) : str(res.metadata?.server, "Unknown"),
+    // server 不在 AccountInfoModel 中，从 metadata 取
+    server: d.server != null
+      ? str(d.server)
+      : meta?.server != null
+        ? str(meta.server)
+        : meta?.account_alias != null
+          ? str(meta.account_alias)
+          : "",
   };
 }
 
@@ -125,6 +151,42 @@ export function normalizeStrategies(res: ApiResponse<unknown>): StrategyInfo[] {
     }
     return { name: "unknown", category: "", preferred_scopes: [], required_indicators: [], regime_affinity: {} };
   });
+}
+
+/**
+ * 从 /monitoring/queues 响应中提取队列列表
+ *
+ * 后端返回 { queues: { name: {...} }, summary, threads, intrabar }，
+ * 需要展平为 QueueInfo[]。
+ */
+export function normalizeQueues(res: ApiResponse<unknown>): QueueInfo[] {
+  const d = res.data;
+  if (!d || typeof d !== "object") return [];
+
+  const rawObj = d as Record<string, unknown>;
+  const queuesSource = (
+    rawObj.queues != null && typeof rawObj.queues === "object"
+      ? rawObj.queues
+      : rawObj
+  ) as Record<string, unknown>;
+
+  const list: QueueInfo[] = [];
+  for (const [name, q] of Object.entries(queuesSource)) {
+    if (!q || typeof q !== "object") continue;
+    const qObj = q as Record<string, unknown>;
+    // 跳过非队列字段（summary, threads, intrabar 等）
+    if (qObj.size === undefined && qObj.max === undefined) continue;
+    list.push({
+      name,
+      size: num(qObj.size),
+      max: num(qObj.max),
+      utilization_pct: num(qObj.utilization_pct),
+      status: str(qObj.status, "unknown"),
+      drops_oldest: num(qObj.drops_oldest),
+      drops_newest: num(qObj.drops_newest),
+    });
+  }
+  return list;
 }
 
 /** 后端 positions type 是数字 (0=buy, 1=sell)，规范化 */

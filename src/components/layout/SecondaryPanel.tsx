@@ -14,11 +14,11 @@ export function SecondaryPanel() {
     <aside
       className={cn(
         "min-h-0 min-w-0 overflow-hidden border-r border-white/8 bg-[linear-gradient(180deg,rgba(12,20,32,0.98)_0%,rgba(10,17,28,0.98)_100%)]",
-        isOpen ? "w-[300px]" : "w-0 border-r-0",
+        isOpen ? "w-[320px]" : "w-0 border-r-0",
       )}
     >
       {isOpen && (
-        <div className="flex h-full w-[300px] flex-col overflow-hidden">
+        <div className="flex h-full w-[320px] flex-col overflow-hidden">
           {section === "market" && <MarketPanel />}
           {section === "signals" && <SignalsPanel />}
           {section === "risk" && <RiskPanel />}

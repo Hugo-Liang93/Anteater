@@ -27,7 +27,7 @@ const ZONE_MODE_LABELS: Record<string, string> = {
 };
 
 export function TraderMetrics({ quote, positions }: TraderMetricsProps): React.ReactNode {
-  const employee = useEmployeeStore.getState().employees.trader;
+  const employee = useEmployeeStore((s) => s.employees.trader);
   const stats = employee?.stats ?? {};
   const pendingEntries = Array.isArray(stats.pending_entries)
     ? (stats.pending_entries as PendingEntryData[])

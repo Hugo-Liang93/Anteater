@@ -149,6 +149,45 @@ function countSignalsByDirection(
   return `观望 ${counts.hold}`;
 }
 
+function buildDecisionRoutingSummary(input: WorkflowRuntimeInput): {
+  actionableSignals: number;
+  votedSignals: number;
+  directSignals: number;
+  votingGroupCount: number;
+  received: number;
+  passed: number;
+  blocked: number;
+} {
+  const voterStats = input.employees.voter?.stats ?? {};
+  const votingGroups = Array.isArray(voterStats.voting_groups)
+    ? (voterStats.voting_groups as Array<{ name?: string }>)
+    : [];
+  const voteStrategyNames = new Set(
+    votingGroups
+      .map((group) => String(group.name ?? "").trim())
+      .filter(Boolean),
+  );
+  voteStrategyNames.add("consensus");
+
+  const actionableSignals = input.signals.filter((signal) => signal.direction !== "hold");
+  const votedSignals = actionableSignals.filter((signal) => voteStrategyNames.has(signal.strategy));
+  const directSignals = actionableSignals.filter((signal) => !voteStrategyNames.has(signal.strategy));
+  const riskStats = input.employees.risk_officer?.stats ?? {};
+  const received = Number((riskStats.signals_received as number | undefined) ?? actionableSignals.length);
+  const passed = Number((riskStats.signals_passed as number | undefined) ?? 0);
+  const blocked = Number((riskStats.signals_blocked as number | undefined) ?? 0);
+
+  return {
+    actionableSignals: actionableSignals.length,
+    votedSignals: votedSignals.length,
+    directSignals: directSignals.length,
+    votingGroupCount: votingGroups.length,
+    received,
+    passed,
+    blocked,
+  };
+}
+
 function buildWorkflowMetrics(
   config: WorkflowConfig,
   input: WorkflowRuntimeInput,
@@ -192,12 +231,15 @@ function buildWorkflowMetrics(
         secondaryValue: `${input.previewSignals.length} 条`,
       };
     case "decision":
-      return {
-        primaryLabel: "待审批",
-        primaryValue: `${input.previewSignals.length} 条`,
-        secondaryLabel: "保护窗口",
-        secondaryValue: `${input.riskWindows.filter((item) => item.guard_active).length} 个`,
-      };
+      {
+        const routing = buildDecisionRoutingSummary(input);
+        return {
+          primaryLabel: "待风控",
+          primaryValue: `${routing.received} 条`,
+          secondaryLabel: "分流结构",
+          secondaryValue: `${routing.directSignals} 直达 / ${routing.votedSignals} 投票`,
+        };
+      }
     case "execution": {
       const pnl = input.positions.reduce((sum, position) => sum + position.profit, 0);
       return {
@@ -285,16 +327,25 @@ function buildWorkflowControl(
     }
     case "decision": {
       const guarded = input.riskWindows.filter((item) => item.guard_active).length;
+      const routing = buildDecisionRoutingSummary(input);
       return {
         handoffLabel: "当前交接",
         handoffValue:
-          input.previewSignals.length > 0
-            ? `有 ${input.previewSignals.length} 条信号等待风控与执行`
-            : "当前没有待审批信号",
+          routing.received > 0
+            ? `已接收 ${routing.received} 条 confirmed 信号，其中 ${routing.directSignals} 条直达风控，${routing.votedSignals} 条来自投票结果`
+            : "当前没有进入风控链路的 confirmed 信号",
         nextAction:
           guarded > 0
             ? "先评估保护窗口，再决定是否放行执行。"
-            : `当前方向结论：${countSignalsByDirection(input.previewSignals)}`,
+            : routing.blocked > 0
+              ? `当前有 ${routing.blocked} 条信号被风控或准入条件拦截`
+              : routing.passed > 0
+                ? `最近已放行 ${routing.passed} 条 confirmed 信号进入执行链路`
+                : routing.votedSignals > 0
+                  ? "继续核对投票结果与账户、日历、系统约束。"
+                  : routing.directSignals > 0
+                    ? `直达风控方向：${countSignalsByDirection(input.signals.filter((signal) => signal.direction !== "hold"))}`
+                    : "等待新的 confirmed 信号进入风控。",
       };
     }
     case "execution": {

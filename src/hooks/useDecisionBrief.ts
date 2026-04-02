@@ -7,10 +7,11 @@ import {
   normalizeDecisionBrief,
   type DecisionDeskInput,
 } from "@/lib/decisionDesk";
-import type { DecisionBrief } from "@/types/decision";
+import type { DecisionBrief, DecisionContext } from "@/types/decision";
 
 interface DecisionBriefState {
   brief: DecisionBrief;
+  context: DecisionContext;
   loading: boolean;
   error: string | null;
   /** 手动刷新：用最新 store 数据重新计算 */
@@ -38,6 +39,7 @@ export function useDecisionBrief(input: DecisionDeskInput): DecisionBriefState {
 
   const [state, setState] = useState<Omit<DecisionBriefState, "refresh">>(() => ({
     brief: fallback,
+    context,
     loading: false,
     error: null,
   }));
@@ -47,6 +49,7 @@ export function useDecisionBrief(input: DecisionDeskInput): DecisionBriefState {
     setState((prev) => ({
       ...prev,
       brief: fallback,
+      context,
       error: null,
       loading: config.decision.provider !== "heuristic",
     }));
@@ -69,6 +72,7 @@ export function useDecisionBrief(input: DecisionDeskInput): DecisionBriefState {
       if (result.success && result.data) {
         setState({
           brief: normalizeDecisionBrief(result.data, fallback, "remote", config.decision.modelLabel),
+          context,
           loading: false,
           error: null,
         });
@@ -82,6 +86,7 @@ export function useDecisionBrief(input: DecisionDeskInput): DecisionBriefState {
           "fallback",
           `${config.decision.modelLabel} 回退`,
         ),
+        context,
         loading: false,
         error: result.error?.message ?? "远程决策接口不可用，已回退到规则推导。",
       });

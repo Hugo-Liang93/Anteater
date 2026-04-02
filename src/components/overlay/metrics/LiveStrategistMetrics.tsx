@@ -11,7 +11,7 @@ interface LiveStrategistMetricsProps {
 export function LiveStrategistMetrics({
   previewSignals,
 }: LiveStrategistMetricsProps): React.ReactNode {
-  const employee = useEmployeeStore.getState().employees.live_strategist;
+  const employee = useEmployeeStore((s) => s.employees.live_strategist);
   const metrics = employee?.stats ?? {};
 
   const strategyNames = Array.isArray(metrics.intrabar_strategy_names)

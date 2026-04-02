@@ -3,7 +3,7 @@ import { useEmployeeStore } from "@/store/employees";
 import { Empty, KV, MiniCandleChart } from "./shared";
 
 export function LiveAnalystMetrics(): React.ReactNode {
-  const liveEmp = useEmployeeStore.getState().employees.live_analyst;
+  const liveEmp = useEmployeeStore((s) => s.employees.live_analyst);
   const metrics = liveEmp?.stats ?? {};
 
   const liveComputations = Number(metrics.computations ?? 0);

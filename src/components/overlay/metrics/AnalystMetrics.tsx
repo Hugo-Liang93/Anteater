@@ -9,9 +9,9 @@ import { Empty, KV } from "./shared";
 import { fmtVal, indColor } from "./utils";
 
 export function AnalystMetrics(): React.ReactNode {
-  const allIndicators = useLiveStore.getState().indicators;
+  const allIndicators = useLiveStore((s) => s.indicators);
   const activeTFs = config.timeframes.filter((tf) => allIndicators[tf]?.indicators);
-  const employee = useEmployeeStore.getState().employees.analyst;
+  const employee = useEmployeeStore((s) => s.employees.analyst);
   const stats = employee?.stats ?? {};
   const computations = Number(stats.computations ?? 0);
   const reconcileComputations = Number(stats.reconcile_computations ?? 0);

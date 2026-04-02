@@ -218,10 +218,13 @@ function CoffeeCup({ position }: { position: [number, number, number] }) {
 //  大 屏 面 板 组 件
 // ═══════════════════════════════════════════════════════════════
 
+/** 与 .font-data 一致的等宽字体栈（替代浏览器默认 monospace） */
+const PANEL_FONT = '"JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas", monospace';
+
 /** 通用面板行 */
 function Row({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
       <span style={{ color: "#8090a0" }}>{label}</span>
       <span style={{ color: valueColor ?? "#c8d0e0", fontWeight: 600 }}>{value}</span>
     </div>
@@ -245,14 +248,14 @@ function AccountPanel() {
   const isConnected = acctStatus !== "idle" && acctStatus !== "disconnected";
 
   return (
-    <Html position={[-2.2, 0.25, 0.3]} center distanceFactor={5.5} transform occlude="blending" zIndexRange={[10, 0]}>
+    <Html position={[-2.2, 0.25, 0.3]} center distanceFactor={1.83} transform occlude="blending" zIndexRange={[10, 0]}>
       <div style={{
-        width: 240, padding: "8px 12px",
-        background: "rgba(8,12,24,0.92)", border: "1.5px solid #26a69a",
-        borderRadius: 8, color: "#c8d0e0", fontFamily: "monospace", fontSize: 11,
+        width: 720, padding: "24px 36px",
+        background: "rgba(8,12,24,0.92)", border: "3px solid #26a69a",
+        borderRadius: 24, color: "#c8d0e0", fontFamily: PANEL_FONT, fontSize: 33,
         pointerEvents: "none", userSelect: "none",
       }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "#26a69a", letterSpacing: 2, marginBottom: 8, textAlign: "center" }}>
+        <div style={{ fontSize: 30, fontWeight: 700, color: "#26a69a", letterSpacing: 6, marginBottom: 24, textAlign: "center" }}>
           ACCOUNT STATUS
         </div>
         {isConnected && balance > 0 ? (
@@ -260,13 +263,13 @@ function AccountPanel() {
             <Row label="Balance" value={`$${balance.toFixed(2)}`} />
             <Row label="Equity" value={`$${equity.toFixed(2)}`} valueColor={pnlColor} />
             <Row label="P&L" value={`${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}`} valueColor={pnlColor} />
-            <div style={{ borderTop: "1px solid #1a2a3a", margin: "5px 0" }} />
+            <div style={{ borderTop: "2px solid #1a2a3a", margin: "15px 0" }} />
             <Row label="Margin" value={`$${margin.toFixed(2)}`} />
             <Row label="Free Margin" value={`$${freeMargin.toFixed(2)}`} />
             <Row label="Positions" value={String(positions.length)} valueColor={positions.length > 0 ? "#ffa726" : "#607080"} />
           </>
         ) : (
-          <div style={{ color: "#506070", fontSize: 10, textAlign: "center" }}>
+          <div style={{ color: "#506070", fontSize: 30, textAlign: "center" }}>
             {acctTask || "Waiting for account data..."}
           </div>
         )}
@@ -284,14 +287,14 @@ function TrendPanel() {
   const arrow = stDir == null ? "" : stDir > 0 ? " \u25B2" : " \u25BC";
 
   return (
-    <Html position={[2.2, 0.9, 0.3]} center distanceFactor={5.5} transform occlude="blending" zIndexRange={[10, 0]}>
+    <Html position={[2.2, 0.9, 0.3]} center distanceFactor={1.83} transform occlude="blending" zIndexRange={[10, 0]}>
       <div style={{
-        padding: "4px 14px", background: "rgba(8,12,24,0.90)",
-        border: `1.5px solid ${color}`, borderRadius: 6,
-        fontFamily: "monospace", pointerEvents: "none", userSelect: "none", textAlign: "center",
+        padding: "12px 42px", background: "rgba(8,12,24,0.90)",
+        border: `3px solid ${color}`, borderRadius: 18,
+        fontFamily: PANEL_FONT, pointerEvents: "none", userSelect: "none", textAlign: "center",
       }}>
-        <div style={{ fontSize: 8, color: "#607080", letterSpacing: 1 }}>H1 BIAS</div>
-        <div style={{ fontSize: 14, fontWeight: 800, color }}>{label}{arrow}</div>
+        <div style={{ fontSize: 24, color: "#607080", letterSpacing: 3 }}>H1 BIAS</div>
+        <div style={{ fontSize: 42, fontWeight: 800, color }}>{label}{arrow}</div>
       </div>
     </Html>
   );
@@ -320,23 +323,23 @@ function CalendarPanel() {
   const hasGuard = riskWindows.some((w) => w.guard_active);
 
   return (
-    <Html position={[2.2, -0.25, 0.3]} center distanceFactor={5.5} transform occlude="blending" zIndexRange={[10, 0]}>
+    <Html position={[2.2, -0.25, 0.3]} center distanceFactor={1.83} transform occlude="blending" zIndexRange={[10, 0]}>
       <div style={{
-        width: 220, padding: "6px 10px",
-        background: "rgba(8,12,24,0.92)", border: `1.5px solid ${hasGuard ? "#ff6b35" : "#7e57c2"}`,
-        borderRadius: 8, color: "#c8d0e0", fontFamily: "monospace", fontSize: 10,
+        width: 660, padding: "18px 30px",
+        background: "rgba(8,12,24,0.92)", border: `3px solid ${hasGuard ? "#ff6b35" : "#7e57c2"}`,
+        borderRadius: 24, color: "#c8d0e0", fontFamily: PANEL_FONT, fontSize: 30,
         pointerEvents: "none", userSelect: "none",
       }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "#7e57c2", letterSpacing: 2, marginBottom: 5, textAlign: "center" }}>
+        <div style={{ fontSize: 30, fontWeight: 700, color: "#7e57c2", letterSpacing: 6, marginBottom: 15, textAlign: "center" }}>
           ECONOMIC CALENDAR
         </div>
         {hasGuard && (
-          <div style={{ padding: "2px 6px", borderRadius: 4, background: "rgba(255,80,30,0.15)", color: "#ff6b35", fontSize: 9, textAlign: "center", marginBottom: 4 }}>
+          <div style={{ padding: "6px 18px", borderRadius: 12, background: "rgba(255,80,30,0.15)", color: "#ff6b35", fontSize: 27, textAlign: "center", marginBottom: 12 }}>
             TRADE GUARD ACTIVE
           </div>
         )}
         {upcoming.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
             {upcoming.map((ev, i) => {
               const isEnriched = "countdown_minutes" in ev;
               const impact = isEnriched ? (ev.importance >= 3 ? "high" : ev.importance >= 2 ? "med" : "low") : ("impact" in ev ? ev.impact : "low");
@@ -345,17 +348,17 @@ function CalendarPanel() {
               const timeStr = countdown < 60 ? `${countdown}m` : `${Math.round(countdown / 60)}h`;
               const goldHint = isEnriched && ev.gold_impact ? `Au: ${ev.gold_impact.above_forecast}` : "";
               return (
-                <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", lineHeight: 1.3 }}>
-                  <span style={{ color: impactColor, fontWeight: 700, fontSize: 9, minWidth: 20, flexShrink: 0 }}>
+                <div key={i} style={{ display: "flex", gap: 18, alignItems: "flex-start", lineHeight: 1.3 }}>
+                  <span style={{ color: impactColor, fontWeight: 700, fontSize: 27, minWidth: 60, flexShrink: 0 }}>
                     {impact === "high" ? "!!!" : impact === "med" ? "!!" : "!"}
                   </span>
                   <div style={{ flex: 1, overflow: "hidden" }}>
-                    <div style={{ color: "#c0c8d0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 10 }}>
+                    <div style={{ color: "#c0c8d0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 30 }}>
                       {ev.event_name}
                     </div>
-                    {goldHint && <div style={{ color: "#ffd54f", fontSize: 8 }}>{goldHint}</div>}
+                    {goldHint && <div style={{ color: "#ffd54f", fontSize: 24 }}>{goldHint}</div>}
                   </div>
-                  <span style={{ color: countdown < 60 ? "#ffa726" : "#607080", fontWeight: 600, fontSize: 9, flexShrink: 0 }}>
+                  <span style={{ color: countdown < 60 ? "#ffa726" : "#607080", fontWeight: 600, fontSize: 27, flexShrink: 0 }}>
                     {timeStr}
                   </span>
                 </div>
@@ -363,7 +366,7 @@ function CalendarPanel() {
             })}
           </div>
         ) : (
-          <div style={{ color: "#506070", fontSize: 10, textAlign: "center" }}>
+          <div style={{ color: "#506070", fontSize: 30, textAlign: "center" }}>
             {calTask || "No upcoming events"}
           </div>
         )}

@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { buildDecisionContext } from "@/lib/decisionDesk";
 import { useDecisionBrief } from "@/hooks/useDecisionBrief";
 import { useDecisionStore, type DecisionRecordStatus } from "@/store/decision";
 import { useUIStore } from "@/store/ui";
@@ -109,8 +108,7 @@ export default function AIWorkbenchPanel({ onClose }: AIWorkbenchPanelProps) {
   const addRecord = useDecisionStore((s) => s.addRecord);
 
   const liveInput = useDecisionInput();
-  const { brief, loading, error, refresh } = useDecisionBrief(liveInput);
-  const context = useMemo(() => buildDecisionContext(liveInput), [liveInput]);
+  const { brief, context, loading, error, refresh } = useDecisionBrief(liveInput);
 
   // ─── Derived data ───
 

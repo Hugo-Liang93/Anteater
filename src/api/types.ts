@@ -18,11 +18,14 @@ export interface ApiResponse<T> {
   metadata: Record<string, unknown> | null;
 }
 
-/** 报价 */
+/** 报价 — 对齐后端 QuoteModel */
 export interface Quote {
   symbol: string;
   bid: number;
   ask: number;
+  last: number;
+  volume: number;
+  /** spread 由适配器从 metadata 或 bid/ask 计算注入 */
   spread: number;
   time: string;
 }
@@ -38,16 +41,19 @@ export interface OhlcBar {
   real_volume: number;
 }
 
-/** 账户信息 */
+/** 账户信息 — 对齐后端 AccountInfoModel */
 export interface AccountInfo {
   login: number;
   balance: number;
   equity: number;
   margin: number;
+  /** 后端字段名为 margin_free，适配器统一映射为 free_margin */
   free_margin: number;
+  /** 后端 AccountInfoModel 不含 profit，从 metadata 或持仓计算 */
   profit: number;
   currency: string;
   leverage: number;
+  /** 后端 AccountInfoModel 不含 server，从 metadata 取 */
   server: string;
 }
 
@@ -76,16 +82,20 @@ export interface IndicatorSnapshot {
   indicators: Record<string, Record<string, number | null>>;
 }
 
-/** 信号事件 */
+/** 信号事件 — 对齐后端 SignalEventModel */
 export interface SignalEvent {
+  signal_id: string;
   symbol: string;
   timeframe: string;
   strategy: string;
-  signal_state: string;
   direction: "buy" | "sell" | "hold";
   confidence: number;
+  reason: string;
   scope: "confirmed" | "intrabar";
-  timestamp: string;
+  generated_at: string;
+  used_indicators: string[];
+  indicators_snapshot: Record<string, unknown>;
+  metadata: Record<string, unknown>;
 }
 
 /** 策略信息 */
@@ -97,9 +107,9 @@ export interface StrategyInfo {
   regime_affinity: Record<string, number>;
 }
 
-/** 健康检查结果 */
+/** 健康检查结果 — /monitoring/health 返回裸对象，需适配器规范化 */
 export interface HealthStatus {
-  status: "healthy" | "degraded" | "unhealthy";
+  status: "healthy" | "degraded" | "unhealthy" | "unknown";
   components: Record<
     string,
     {
@@ -111,13 +121,19 @@ export interface HealthStatus {
   uptime_seconds: number;
 }
 
-/** 队列监控 */
+/** 队列监控 — 后端返回嵌套 {queues: {name: {...}}, summary, threads} */
 export interface QueueStatus {
-  channel: string;
+  name: string;
   size: number;
-  capacity: number;
-  usage_pct: number;
-  drops: number;
+  max: number;
+  pending: number;
+  overflow_policy: string;
+  utilization_pct: number;
+  status: string;
+  drops_oldest: number;
+  drops_newest: number;
+  blocked_puts: number;
+  full_errors: number;
 }
 
 /** 经济日历风险窗口 */

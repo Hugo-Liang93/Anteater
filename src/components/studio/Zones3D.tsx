@@ -72,22 +72,22 @@ function ZoneRug({
       <Html
         position={[0, 0.08, -size[1] / 2 + 0.15]}
         center
-        distanceFactor={12}
+        distanceFactor={4}
         sprite
         zIndexRange={[18, 0]}
       >
         <div
           style={{
             color,
-            fontSize: active ? 11 : 9,
+            fontSize: active ? 33 : 27,
             fontWeight: 700,
-            letterSpacing: 3,
+            letterSpacing: 9,
             opacity: active ? 0.9 : 0.38,
             pointerEvents: "none",
             userSelect: "none",
             whiteSpace: "nowrap",
             textTransform: "uppercase",
-            textShadow: active ? `0 0 18px ${color}` : "none",
+            textShadow: active ? `0 0 54px ${color}` : "none",
             transition: "all 160ms ease",
           }}
         >

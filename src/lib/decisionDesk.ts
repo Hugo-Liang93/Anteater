@@ -6,7 +6,13 @@ import type {
   RiskWindow,
   SignalEvent,
 } from "@/api/types";
-import { employeeConfigMap, type EmployeeRoleType } from "@/config/employees";
+import {
+  EmployeeRole,
+  employeeConfigMap,
+  isSupportModuleRole,
+  type EmployeeRoleType,
+} from "@/config/employees";
+import { config } from "@/config";
 import { getWorkflowByRole, workflowConfigMap, type WorkflowId } from "@/config/workflows";
 import type { StudioEvent } from "@/types/protocol";
 import type { EmployeeState } from "@/store/employees";
@@ -91,14 +97,17 @@ function getFocusContext(
     const employee = employeeConfigMap.get(selectedEmployee);
     const workflowId = getWorkflowByRole(selectedEmployee);
     const workflow = workflowId ? workflowConfigMap.get(workflowId) : null;
+    const isSupportModule = isSupportModuleRole(selectedEmployee);
 
     return {
       workflowId,
       employeeRole: selectedEmployee,
       title: employee?.name ?? selectedEmployee,
-      subtitle: workflow
-        ? `当前关注 ${workflow.label} / ${employee?.title ?? "工位详情"}`
-        : employee?.title ?? "工位详情",
+      subtitle: isSupportModule
+        ? `当前关注支撑模块 / ${employee?.title ?? "模块详情"}`
+        : workflow
+          ? `当前关注 ${workflow.label} / ${employee?.title ?? "工位详情"}`
+          : employee?.title ?? "工位详情",
       focusRoles: [employee?.name ?? selectedEmployee],
     };
   }
@@ -124,11 +133,93 @@ function getFocusContext(
   };
 }
 
+const ROLE_PRIORITY: EmployeeRoleType[] = [
+  EmployeeRole.RISK_OFFICER,
+  EmployeeRole.TRADER,
+  EmployeeRole.POSITION_MANAGER,
+  EmployeeRole.VOTER,
+  EmployeeRole.STRATEGIST,
+  EmployeeRole.LIVE_STRATEGIST,
+  EmployeeRole.FILTER_GUARD,
+  EmployeeRole.REGIME_GUARD,
+  EmployeeRole.ANALYST,
+  EmployeeRole.LIVE_ANALYST,
+  EmployeeRole.COLLECTOR,
+  EmployeeRole.ACCOUNTANT,
+  EmployeeRole.CALENDAR_REPORTER,
+  EmployeeRole.INSPECTOR,
+  EmployeeRole.BACKTESTER,
+];
+
+const STATUS_PRIORITY: Record<EmployeeState["status"], number> = {
+  error: 0,
+  blocked: 0,
+  disconnected: 0,
+  warning: 1,
+  alert: 1,
+  reconnecting: 1,
+  reviewing: 2,
+  judging: 2,
+  submitting: 2,
+  working: 2,
+  walking: 2,
+  thinking: 2,
+  signal_ready: 3,
+  approved: 3,
+  executed: 3,
+  success: 3,
+  waiting: 4,
+  rejected: 4,
+  idle: 5,
+};
+
+function buildOrderedCurrentTasks(
+  employees: Record<EmployeeRoleType, EmployeeState>,
+): DecisionContext["system"]["currentTasks"] {
+  const rolePriorityMap = new Map(ROLE_PRIORITY.map((role, index) => [role, index]));
+
+  return Object.values(employees)
+    .sort((a, b) => {
+      const statusDiff = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+      if (statusDiff !== 0) return statusDiff;
+
+      const aPriority = rolePriorityMap.get(a.role) ?? ROLE_PRIORITY.length;
+      const bPriority = rolePriorityMap.get(b.role) ?? ROLE_PRIORITY.length;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+
+      return b.lastUpdate - a.lastUpdate;
+    })
+    .map((employee) => ({
+      role: getRoleName(employee.role),
+      status: employee.status,
+      task: employee.currentTask,
+    }));
+}
+
+function prioritizeDefaultTimeframe<T extends { timeframe: string }>(items: T[]): T[] {
+  const timeframeOrder = new Map<string, number>(
+    config.timeframes.map((timeframe, index) => [timeframe, index]),
+  );
+  return [...items].sort((a, b) => {
+    const aPreferred = a.timeframe === config.defaultTimeframe ? 0 : 1;
+    const bPreferred = b.timeframe === config.defaultTimeframe ? 0 : 1;
+    if (aPreferred !== bPreferred) return aPreferred - bPreferred;
+
+    const aOrder = timeframeOrder.get(a.timeframe) ?? Number.MAX_SAFE_INTEGER;
+    const bOrder = timeframeOrder.get(b.timeframe) ?? Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+
+    return 0;
+  });
+}
+
 export function buildDecisionContext(input: DecisionDeskInput): DecisionContext {
   const focus = getFocusContext(input.selectedWorkflow, input.selectedEmployee);
+  const displaySignals = prioritizeDefaultTimeframe(input.signals);
+  const displayPreviewSignals = prioritizeDefaultTimeframe(input.previewSignals);
   const mergedScore = mergeScores(
-    getDirectionScore(input.signals, 1),
-    getDirectionScore(input.previewSignals, 0.65),
+    getDirectionScore(displaySignals, 1),
+    getDirectionScore(displayPreviewSignals, 0.65),
     getDirectionScore(
       input.recentSignals.map((signal) => ({
         direction: signal.direction,
@@ -152,18 +243,18 @@ export function buildDecisionContext(input: DecisionDeskInput): DecisionContext 
       openPnl: input.positions.reduce((sum, position) => sum + position.profit, 0),
     },
     signals: {
-      formalCount: input.signals.length,
-      previewCount: input.previewSignals.length,
+      formalCount: displaySignals.length,
+      previewCount: displayPreviewSignals.length,
       recentCount: input.recentSignals.length,
       buyCount:
-        input.signals.filter((signal) => signal.direction === "buy").length
-        + input.previewSignals.filter((signal) => signal.direction === "buy").length,
+        displaySignals.filter((signal) => signal.direction === "buy").length
+        + displayPreviewSignals.filter((signal) => signal.direction === "buy").length,
       sellCount:
-        input.signals.filter((signal) => signal.direction === "sell").length
-        + input.previewSignals.filter((signal) => signal.direction === "sell").length,
+        displaySignals.filter((signal) => signal.direction === "sell").length
+        + displayPreviewSignals.filter((signal) => signal.direction === "sell").length,
       holdCount:
-        input.signals.filter((signal) => signal.direction === "hold").length
-        + input.previewSignals.filter((signal) => signal.direction === "hold").length,
+        displaySignals.filter((signal) => signal.direction === "hold").length
+        + displayPreviewSignals.filter((signal) => signal.direction === "hold").length,
       dominantBias: resolveStance(mergedScore),
     },
     risks: {
@@ -203,11 +294,7 @@ export function buildDecisionContext(input: DecisionDeskInput): DecisionContext 
     },
     system: {
       healthStatus: input.health?.status ?? "unknown",
-      currentTasks: Object.values(input.employees).slice(0, 8).map((employee) => ({
-        role: getRoleName(employee.role),
-        status: employee.status,
-        task: employee.currentTask,
-      })),
+      currentTasks: buildOrderedCurrentTasks(input.employees),
     },
     recentEvents: input.events.slice(0, 8).map((event) => ({
       source: getRoleName(event.source),

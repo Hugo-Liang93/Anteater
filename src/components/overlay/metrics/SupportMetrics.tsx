@@ -63,7 +63,7 @@ interface AccountantMetricsProps {
 }
 
 export function AccountantMetrics({ account }: AccountantMetricsProps): React.ReactNode {
-  const employee = useEmployeeStore.getState().employees.accountant;
+  const employee = useEmployeeStore((s) => s.employees.accountant);
   const stats = employee?.stats ?? {};
   const marginGuard =
     typeof stats.margin_guard === "object" && stats.margin_guard !== null
@@ -267,7 +267,7 @@ interface CalendarReporterMetricsProps {
 export function CalendarReporterMetrics({
   connected,
 }: CalendarReporterMetricsProps): React.ReactNode {
-  const riskWindows = useSignalStore.getState().riskWindows;
+  const riskWindows = useSignalStore((s) => s.riskWindows);
 
   if (riskWindows.length === 0) {
     return <Empty text={connected ? "近期没有经济事件窗口" : "等待连接恢复"} />;

@@ -37,12 +37,13 @@ export interface SyncInput {
   lastLoggedSignalId: string;
   indicators: Record<string, { indicators: Record<string, Record<string, number | null>> }>;
   signals: LiveSignal[];
+  votingGroups: Array<{ name: string; strategies: string[] }>;
 }
 
 export interface SyncPatch {
   status: ActivityStatus;
   currentTask: string;
-  stats: Record<string, number | string>;
+  stats: Record<string, unknown>;
 }
 
 export interface SyncOutput {
@@ -52,9 +53,16 @@ export interface SyncOutput {
 
 /** 纯函数：根据输入计算所有角色的状态补丁 */
 export function computeSync(input: SyncInput): SyncOutput {
-  const { quote, account, positions, connected, health, strategies, riskWindows, lastLoggedSignalId, indicators, signals } = input;
+  const { quote, account, positions, connected, health, strategies, riskWindows, lastLoggedSignalId, indicators, signals, votingGroups } = input;
   const patches = new Map<EmployeeRoleType, SyncPatch>();
   let newSignalLog: SyncOutput["newSignalLog"] = null;
+  const voteStrategyNames = new Set<string>(["consensus"]);
+  for (const group of votingGroups) {
+    const name = String(group.name ?? "").trim();
+    if (name) voteStrategyNames.add(name);
+  }
+  const votedSignals = signals.filter((signal) => voteStrategyNames.has(signal.strategy) && signal.direction !== "hold");
+  const directSignals = signals.filter((signal) => !voteStrategyNames.has(signal.strategy) && signal.direction !== "hold");
   // ─── 采集员 ───
   if (quote) {
     patches.set(EmployeeRole.COLLECTOR, {
@@ -85,7 +93,16 @@ export function computeSync(input: SyncInput): SyncOutput {
     patches.set(EmployeeRole.ANALYST, {
       status: "working",
       currentTask: `${totalCount} 指标 | ${detail}`,
-      stats: { indicators: totalCount, active_tfs: activeTFs.length, rsi: rsi ?? 0, atr: atr ?? 0 },
+      stats: {
+        indicators: totalCount,
+        total_indicator_count: totalCount,
+        active_tfs: activeTFs.length,
+        timeframe_count: activeTFs.length,
+        rsi: rsi ?? 0,
+        rsi_value: rsi ?? 0,
+        atr: atr ?? 0,
+        atr_value: atr ?? 0,
+      },
     });
   } else if (connected) {
     patches.set(EmployeeRole.ANALYST, { status: "thinking", currentTask: "计算指标中...", stats: {} });
@@ -106,16 +123,19 @@ export function computeSync(input: SyncInput): SyncOutput {
       stats: {
         total_strategies: strategies.length,
         buy_signals: buySignals.length,
+        buy_count: buySignals.length,
         sell_signals: sellSignals.length,
+        sell_count: sellSignals.length,
         signal_tfs: signalTFs.length,
         latest_strategy: latest.strategy,
         latest_timeframe: latest.timeframe,
         latest_confidence: latest.confidence,
+        top_confidence: latest.confidence,
       },
     });
     if (latest.signal_id !== lastLoggedSignalId) {
       newSignalLog = {
-        role: EmployeeRole.STRATEGIST,
+        role: voteStrategyNames.has(latest.strategy) ? EmployeeRole.VOTER : EmployeeRole.STRATEGIST,
         message: `${latest.timeframe} ${latest.strategy} → ${latest.direction} (${(latest.confidence * 100).toFixed(0)}%)`,
         type: latest.direction === "hold" ? "info" : "success",
         signalId: latest.signal_id,
@@ -149,51 +169,99 @@ export function computeSync(input: SyncInput): SyncOutput {
   patches.set(EmployeeRole.FILTER_GUARD, {
     status: signals.length > 0 ? "reviewing" : "idle",
     currentTask: signals.length > 0 ? "环境过滤中" : "等待指标快照",
-    stats: {},
+    stats: signals.length > 0
+      ? {
+          received: signals.length,
+          passed: signals.length,
+          blocked: 0,
+          total_snapshots: signals.length,
+          total_passed: signals.length,
+          total_blocked: 0,
+          pass_rate: 100,
+          confirmed_passed: signals.length,
+          confirmed_blocked: 0,
+          intrabar_passed: 0,
+          intrabar_blocked: 0,
+        }
+      : {},
   });
 
   // ─── 研判员（SSE 断线时 fallback） ───
   patches.set(EmployeeRole.REGIME_GUARD, {
     status: signals.length > 0 ? "reviewing" : "idle",
     currentTask: signals.length > 0 ? "Regime 研判中" : "等待 Regime 数据",
-    stats: {},
+    stats: signals.length > 0
+      ? {
+          regime: "待确认",
+          regime_type: "uncertain",
+        }
+      : {},
   });
 
-  // ─── 投票主席（多 TF 感知，按 confidence 加权）───
-  if (signals.length > 0) {
-    const dirs = signals.reduce(
-      (acc, s) => {
-        if (s.direction === "buy") { acc.buyCount++; acc.buyWeight += s.confidence; }
-        else if (s.direction === "sell") { acc.sellCount++; acc.sellWeight += s.confidence; }
+  // ─── 投票主席：仅汇总投票组结果，不再吞掉全部策略 ───
+  if (votedSignals.length > 0) {
+    const dirs = votedSignals.reduce(
+      (acc, signal) => {
+        if (signal.direction === "buy") {
+          acc.buyCount += 1;
+          acc.buyWeight += signal.confidence;
+        } else if (signal.direction === "sell") {
+          acc.sellCount += 1;
+          acc.sellWeight += signal.confidence;
+        }
         return acc;
       },
       { buyCount: 0, sellCount: 0, buyWeight: 0, sellWeight: 0 },
     );
-    const consensus = dirs.buyWeight > dirs.sellWeight ? "偏多" : dirs.sellWeight > dirs.buyWeight ? "偏空" : "分歧";
-    const tfStr = signalTFs.length > 1 ? ` | ${signalTFs.join("/")}` : "";
+    const consensus =
+      dirs.buyWeight > dirs.sellWeight ? "偏多"
+      : dirs.sellWeight > dirs.buyWeight ? "偏空"
+      : "分歧";
+    const votedTFs = [...new Set(votedSignals.map((signal) => signal.timeframe).filter(Boolean))];
+    const tfStr = votedTFs.length > 1 ? ` | ${votedTFs.join("/")}` : votedTFs[0] ? ` | ${votedTFs[0]}` : "";
     patches.set(EmployeeRole.VOTER, {
       status: "working",
-      currentTask: `${signals.length} 票 | ${consensus} (${dirs.buyCount}买/${dirs.sellCount}卖)${tfStr}`,
-      stats: { buy: dirs.buyCount, sell: dirs.sellCount, buy_weight: dirs.buyWeight, sell_weight: dirs.sellWeight, signal_tfs: signalTFs.length },
+      currentTask: `${votedSignals.length} 条投票结果 | ${consensus} (${dirs.buyCount}多/${dirs.sellCount}空)${tfStr}`,
+      stats: {
+        buy: dirs.buyCount,
+        buy_votes: dirs.buyCount,
+        sell: dirs.sellCount,
+        sell_votes: dirs.sellCount,
+        consensus_direction: consensus,
+        buy_weight: dirs.buyWeight,
+        sell_weight: dirs.sellWeight,
+        signal_tfs: votedTFs.length,
+        voting_groups: votingGroups,
+      },
     });
   } else {
     patches.set(EmployeeRole.VOTER, {
-      status: strategies.length > 0 ? "thinking" : "idle",
-      currentTask: strategies.length > 0 ? `汇总 ${strategies.length} 策略投票` : "等待策略投票",
-      stats: {},
+      status: "idle",
+      currentTask: votingGroups.length > 0 ? `等待 ${votingGroups.length} 个投票组结果` : "当前无投票组结果",
+      stats: { voting_groups: votingGroups },
     });
   }
 
-  // ─── 风控官（信号决策漏斗：接收/通过/拦截） ───
-  if (connected && signals.length > 0) {
-    const actionable = signals.filter((s) => s.direction !== "hold");
+  // ─── 风控官：只接收 confirmed 分支，统计直达与投票结果 ───
+  const actionableSignals = [...directSignals, ...votedSignals];
+  if (connected && actionableSignals.length > 0) {
     patches.set(EmployeeRole.RISK_OFFICER, {
-      status: actionable.length > 0 ? "reviewing" : "idle",
-      currentTask: actionable.length > 0 ? "信号风控审核中" : "等待信号",
-      stats: { actionable_signals: actionable.length },
+      status: "reviewing",
+      currentTask: `审核 ${actionableSignals.length} 条 confirmed 信号 | 直达 ${directSignals.length} / 投票 ${votedSignals.length}`,
+      stats: {
+        actionable_signals: actionableSignals.length,
+        received: actionableSignals.length,
+        passed: 0,
+        blocked: 0,
+        signals_received: actionableSignals.length,
+        signals_passed: 0,
+        signals_blocked: 0,
+        direct_signal_count: directSignals.length,
+        voted_signal_count: votedSignals.length,
+      },
     });
   } else {
-    patches.set(EmployeeRole.RISK_OFFICER, { status: "idle", currentTask: "等待信号", stats: {} });
+    patches.set(EmployeeRole.RISK_OFFICER, { status: "idle", currentTask: "等待 confirmed 信号", stats: {} });
   }
 
   // ─── 交易员 ───
@@ -202,7 +270,12 @@ export function computeSync(input: SyncInput): SyncOutput {
     patches.set(EmployeeRole.TRADER, {
       status: "working",
       currentTask: `${positions.length} 笔持仓 | P&L ${totalProfit >= 0 ? "+" : ""}${totalProfit.toFixed(2)}`,
-      stats: { positions: positions.length, pnl: totalProfit },
+      stats: {
+        positions: positions.length,
+        position_count: positions.length,
+        pnl: totalProfit,
+        total_pnl: totalProfit,
+      },
     });
   } else {
     const hasSignal = signals.some((s) => s.direction !== "hold" && s.confidence > 0.5);
@@ -220,7 +293,12 @@ export function computeSync(input: SyncInput): SyncOutput {
     patches.set(EmployeeRole.POSITION_MANAGER, {
       status: "working",
       currentTask: `${positions.length} 仓 (${types}) | ${totalProfit >= 0 ? "+" : ""}${totalProfit.toFixed(2)}`,
-      stats: { positions: positions.length, profit: totalProfit },
+      stats: {
+        positions: positions.length,
+        position_count: positions.length,
+        profit: totalProfit,
+        total_pnl: totalProfit,
+      },
     });
   } else {
     patches.set(EmployeeRole.POSITION_MANAGER, { status: "idle", currentTask: "无持仓", stats: {} });
@@ -287,6 +365,7 @@ export function computeSync(input: SyncInput): SyncOutput {
         total_events: riskWindows.length,
         high_impact: highImpact.length,
         active_guards: activeGuards.length,
+        active_guard_count: activeGuards.length,
         nearest_event: nearest?.event_name ?? "",
         nearest_mins: nearest ? Math.round(nearest.ms / 60_000) : -1,
       },
@@ -304,7 +383,11 @@ export function computeSync(input: SyncInput): SyncOutput {
     patches.set(EmployeeRole.INSPECTOR, {
       status: issues > 0 ? "alert" : "reviewing",
       currentTask: issues > 0 ? `${issues}/${compCount} 组件异常` : `${compCount} 组件巡检中`,
-      stats: { components: compCount, issues },
+      stats: {
+        components: compCount,
+        issues,
+        issue_count: issues,
+      },
     });
   } else {
     patches.set(EmployeeRole.INSPECTOR, {
@@ -337,12 +420,16 @@ function _syncAllImmediate() {
     const { quotes, account, positions, connected } = useMarketStore.getState();
     const { health, strategies, riskWindows, lastLoggedSignalId } = useSignalStore.getState();
     const { indicators, signals } = useLiveStore.getState();
+    const voterStats = useEmployeeStore.getState().employees.voter?.stats ?? {};
+    const votingGroups = Array.isArray(voterStats.voting_groups)
+      ? (voterStats.voting_groups as Array<{ name: string; strategies: string[] }>)
+      : [];
 
     const input: SyncInput = {
       quote: quotes["XAUUSD"],
       account, positions, connected,
       health, strategies, riskWindows, lastLoggedSignalId,
-      indicators, signals,
+      indicators, signals, votingGroups,
     };
 
     const output = computeSync(input);

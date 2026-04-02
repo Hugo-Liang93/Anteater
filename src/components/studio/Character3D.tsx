@@ -483,38 +483,38 @@ function NameTag({ role, color, name, title, hovered }: {
   const status = useEmployeeStore((s) => s.employees[role]?.status ?? ("idle" as ActivityStatus));
 
   return (
-    <Html position={[0, 1.95, 0]} center distanceFactor={7} sprite zIndexRange={[24, 0]}>
+    <Html position={[0, 1.95, 0]} center distanceFactor={2.33} sprite zIndexRange={[24, 0]}>
       <div
         style={{
           background: hovered ? "rgba(10,20,30,0.95)" : "rgba(15,25,35,0.88)",
-          border: `1.5px solid ${color}`,
-          borderRadius: 8,
-          padding: hovered ? "6px 12px" : "4px 10px",
+          border: `2px solid ${color}`,
+          borderRadius: 24,
+          padding: hovered ? "18px 36px" : "12px 30px",
           whiteSpace: "nowrap",
           pointerEvents: "none",
           userSelect: "none",
-          minWidth: hovered ? 120 : 80,
+          minWidth: hovered ? 360 : 240,
           textAlign: "center",
           transition: "all 0.2s ease",
         }}
       >
-        <div style={{ color, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+        <div style={{ color, fontSize: 33, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
           <span style={{
-            width: 6, height: 6, borderRadius: "50%",
+            width: 18, height: 18, borderRadius: "50%",
             backgroundColor: statusColor(status),
             display: "inline-block",
-            boxShadow: status === "working" ? `0 0 4px ${statusColor(status)}` : "none",
+            boxShadow: status === "working" ? `0 0 12px ${statusColor(status)}` : "none",
           }} />
           {name}
         </div>
         {hovered && title && (
-          <div style={{ color: "#667788", fontSize: 9, marginTop: 1 }}>{title}</div>
+          <div style={{ color: "#667788", fontSize: 27, marginTop: 3 }}>{title}</div>
         )}
-        <div style={{ color: "#8899aa", fontSize: 9, maxWidth: hovered ? 200 : 150, overflow: "hidden", textOverflow: "ellipsis", marginTop: 1 }}>
+        <div style={{ color: "#8899aa", fontSize: 27, maxWidth: hovered ? 600 : 450, overflow: "hidden", textOverflow: "ellipsis", marginTop: 3 }}>
           {hovered ? currentTask : currentTask.length > 22 ? currentTask.slice(0, 21) + "…" : currentTask}
         </div>
         {hovered && (
-          <div style={{ color: statusColor(status), fontSize: 8, marginTop: 2, fontWeight: 600 }}>
+          <div style={{ color: statusColor(status), fontSize: 24, marginTop: 6, fontWeight: 600 }}>
             {status.toUpperCase()}
           </div>
         )}
@@ -567,25 +567,35 @@ function RoleAccessory({ role }: { role: EmployeeRoleType }) {
   }
 }
 
-/** 策略师 BUY/SELL/HOLD 头顶指示器 */
+/** 策略师头顶指示器：显示置信度最高的信号（TF + 方向 + 置信度） */
 function SignalIndicator() {
   const signals = useLiveStore((s) => s.signals);
-  const latest = signals[0];
 
-  if (!latest || latest.direction === "hold") return null;
+  const top = signals.reduce<(typeof signals)[number] | null>((best, s) => {
+    if (s.direction === "hold") return best;
+    if (!best) return s;
+    return s.confidence > best.confidence ? s : best;
+  }, null);
 
-  const isBuy = latest.direction === "buy";
+  if (!top) return null;
+
+  const isBuy = top.direction === "buy";
   const color = isBuy ? "#00d4aa" : "#ff4757";
-  const label = isBuy ? "BUY" : "SELL";
+  const pct = `${(top.confidence * 100).toFixed(0)}%`;
 
   return (
-    <Html position={[0, 2.15, 0]} center distanceFactor={7} sprite zIndexRange={[24, 0]}>
+    <Html position={[0, 2.15, 0]} center distanceFactor={2.33} sprite zIndexRange={[24, 0]}>
       <div style={{
-        background: color, color: "#fff", fontSize: 9, fontWeight: 800,
-        padding: "2px 6px", borderRadius: 4, pointerEvents: "none",
-        userSelect: "none", boxShadow: `0 0 8px ${color}`, letterSpacing: 1,
+        display: "flex", alignItems: "center", gap: 12,
+        background: "rgba(8,12,24,0.92)", border: `2px solid ${color}`,
+        color: "#fff", fontSize: 27, fontWeight: 700,
+        padding: "6px 21px", borderRadius: 15, pointerEvents: "none",
+        userSelect: "none", boxShadow: `0 0 24px ${color}40`,
+        fontFamily: '"JetBrains Mono", "Cascadia Code", "Consolas", monospace',
       }}>
-        {label}
+        <span style={{ color: "#8090a0", fontSize: 24 }}>{top.timeframe}</span>
+        <span style={{ color, fontWeight: 800 }}>{isBuy ? "BUY" : "SELL"}</span>
+        <span style={{ color: "#c8d0e0", fontSize: 24 }}>{pct}</span>
       </div>
     </Html>
   );
